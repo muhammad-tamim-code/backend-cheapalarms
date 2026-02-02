@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\REST\Controllers\Helpers\ServiceM8ControllerHelper;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\JobLinkService;
 use CheapAlarms\Plugin\Services\ServiceM8Service;
@@ -29,17 +30,6 @@ class ServiceM8Controller implements ControllerInterface
         $this->linkService = $this->container->get(JobLinkService::class);
         $this->auth    = $this->container->get(Authenticator::class);
         $this->locationResolver = $this->container->get(LocationResolver::class);
-    }
-
-    /**
-     * Validate UUID format (alphanumeric and hyphens only)
-     *
-     * @param string $uuid UUID to validate
-     * @return bool True if valid format
-     */
-    private function validateUuid(string $uuid): bool
-    {
-        return (bool) preg_match('/^[a-zA-Z0-9\-]+$/', $uuid);
     }
 
     public function register(): void
@@ -208,7 +198,7 @@ class ServiceM8Controller implements ControllerInterface
                     }
 
                     // SECURITY: Validate UUID format if provided
-                    if (!empty($jobUuid) && !$this->validateUuid($jobUuid)) {
+                    if (!empty($jobUuid) && !ServiceM8ControllerHelper::validateUuid($jobUuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid job UUID format',
@@ -216,7 +206,7 @@ class ServiceM8Controller implements ControllerInterface
                     }
 
                     // SECURITY: Validate estimateId format (alphanumeric, hyphens, underscores)
-                    if (!empty($estimateId) && !preg_match('/^[a-zA-Z0-9\-_]+$/', $estimateId)) {
+                    if (!empty($estimateId) && !ServiceM8ControllerHelper::validateEstimateId($estimateId)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid estimate ID format',
@@ -494,7 +484,7 @@ class ServiceM8Controller implements ControllerInterface
                     $jobUuid = sanitize_text_field($request->get_param('jobUuid'));
                     
                     // SECURITY: Validate UUID format
-                    if (!$this->validateUuid($jobUuid)) {
+                    if (!ServiceM8ControllerHelper::validateUuid($jobUuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid job UUID format',
@@ -516,7 +506,7 @@ class ServiceM8Controller implements ControllerInterface
                     $jobUuid = sanitize_text_field($request->get_param('jobUuid'));
                     
                     // SECURITY: Validate UUID format
-                    if (!$this->validateUuid($jobUuid)) {
+                    if (!ServiceM8ControllerHelper::validateUuid($jobUuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid job UUID format',
@@ -536,7 +526,7 @@ class ServiceM8Controller implements ControllerInterface
                     $endDate = sanitize_text_field($body['endDate'] ?? '');
 
                     // SECURITY: Validate staffUuid format
-                    if (!empty($staffUuid) && !$this->validateUuid($staffUuid)) {
+                    if (!empty($staffUuid) && !ServiceM8ControllerHelper::validateUuid($staffUuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid staff UUID format',
@@ -571,7 +561,7 @@ class ServiceM8Controller implements ControllerInterface
                     $uuid = sanitize_text_field($request->get_param('uuid'));
                     
                     // SECURITY: Validate UUID format
-                    if (!$this->validateUuid($uuid)) {
+                    if (!ServiceM8ControllerHelper::validateUuid($uuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid job UUID format',
@@ -589,7 +579,7 @@ class ServiceM8Controller implements ControllerInterface
                     $uuid = sanitize_text_field($request->get_param('uuid'));
                     
                     // SECURITY: Validate UUID format
-                    if (!$this->validateUuid($uuid)) {
+                    if (!ServiceM8ControllerHelper::validateUuid($uuid)) {
                         return new WP_REST_Response([
                             'ok' => false,
                             'error' => 'Invalid job UUID format',

@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\Services;
 
 use CheapAlarms\Plugin\Services\UserContextHelper;
+use CheapAlarms\Plugin\Services\EmailTemplateHtmlHelper;
 use CheapAlarms\Plugin\Config\Config;
 
 /**
@@ -48,7 +49,7 @@ class EmailTemplateService
         switch ($variation) {
             case 'A': // New Customer, First Quote
                 $subject = __('Welcome! Your CheapAlarms quote is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -68,15 +69,15 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('View as Guest', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // Returning Customer, Has Password
                 $subject = sprintf(__('Your new quote %s is ready', 'cheapalarms'), $estimateNumber);
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -103,10 +104,10 @@ class EmailTemplateService
                     $ctas[] = ['href' => $loginUrl, 'text' => __('Login to Portal', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'C': // Returning Customer, No Password
@@ -116,7 +117,7 @@ class EmailTemplateService
                 if ($isSecondQuote) {
                     // Special messaging for second quote scenario
                     $subject = sprintf(__('Your second quote %s is ready', 'cheapalarms'), $estimateNumber);
-                    $body = $this->getEmailHeader();
+                    $body = EmailTemplateHtmlHelper::getEmailHeader();
                     $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                     $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                     $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -131,7 +132,7 @@ class EmailTemplateService
                 } else {
                     // Original messaging for other cases (shouldn't happen often, but keep as fallback)
                     $subject = sprintf(__('Your new quote %s is ready', 'cheapalarms'), $estimateNumber);
-                    $body = $this->getEmailHeader();
+                    $body = EmailTemplateHtmlHelper::getEmailHeader();
                     $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                     $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                     $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -154,10 +155,10 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('View as Guest', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'D': // Customer with Multiple Estimates
@@ -166,7 +167,7 @@ class EmailTemplateService
                 if (!$hasPasswordSet) {
                     // Multiple quotes but no password - guest access is limited to current quote only
                     $subject = __('Another quote ready for you', 'cheapalarms');
-                    $body = $this->getEmailHeader();
+                    $body = EmailTemplateHtmlHelper::getEmailHeader();
                     $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                     $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                     $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -189,14 +190,14 @@ class EmailTemplateService
                         $ctas[] = ['href' => $portalUrl, 'text' => __('View as Guest', 'cheapalarms'), 'primary' => false];
                     }
                     if (!empty($ctas)) {
-                        $body .= $this->getCTAs($ctas);
+                        $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                     }
                     $body .= '</div>';
-                    $body .= $this->getEmailFooter();
+                    $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 } else {
                     // Original Variation D logic (has password - can see all quotes)
                     $subject = __('Another quote ready for you', 'cheapalarms');
-                    $body = $this->getEmailHeader();
+                    $body = EmailTemplateHtmlHelper::getEmailHeader();
                     $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                     $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                     $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -219,10 +220,10 @@ class EmailTemplateService
                         $ctas[] = ['href' => $loginUrl, 'text' => __('Login to Portal', 'cheapalarms'), 'primary' => false];
                     }
                     if (!empty($ctas)) {
-                        $body .= $this->getCTAs($ctas);
+                        $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                     }
                     $body .= '</div>';
-                    $body .= $this->getEmailFooter();
+                    $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 }
                 break;
         }
@@ -255,7 +256,7 @@ class EmailTemplateService
         switch ($variation) {
             case 'A': // New User, First Time Setting Password
                 $subject = __('Set Your Password - CheapAlarms Portal', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -268,18 +269,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Set Your Password', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('Or copy and paste this link into your browser:', 'cheapalarms')) . '</p>';
                 $body .= '<p style="margin: 10px 0 0 0; color: #666666; font-size: 12px; word-break: break-all;">' . esc_html($resetUrl) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // Returning User, Password Reset
             default:
                 $subject = __('Reset Your Password - CheapAlarms Portal', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -292,12 +293,12 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Reset Password', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('Or copy and paste this link into your browser:', 'cheapalarms')) . '</p>';
                 $body .= '<p style="margin: 10px 0 0 0; color: #666666; font-size: 12px; word-break: break-all;">' . esc_html($resetUrl) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
         }
 
@@ -336,7 +337,7 @@ class EmailTemplateService
                 $subject = $isResend 
                     ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
                     : __('Your CheapAlarms portal is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -351,18 +352,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Set Your Password', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // New User, Has Password, First Quote
                 $subject = $isResend 
                     ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
                     : __('Your CheapAlarms portal is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -374,18 +375,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'C': // Returning User, Has Password
                 $subject = $isResend 
                     ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
                     : __('Your CheapAlarms portal is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -397,18 +398,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'D': // Returning User, No Password
                 $subject = $isResend 
                     ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
                     : __('Your CheapAlarms portal is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -423,11 +424,11 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Set Your Password', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'E': // Customer with Multiple Estimates
@@ -435,7 +436,7 @@ class EmailTemplateService
                 $subject = $isResend 
                     ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
                     : __('Your CheapAlarms portal is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -471,11 +472,11 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
         }
 
@@ -514,7 +515,7 @@ class EmailTemplateService
                 $subject = $estimateNumber 
                     ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
                     : __('Your estimate is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -532,18 +533,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Set Your Password', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // Returning User, Has Password
                 $subject = $estimateNumber 
                     ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
                     : __('Your estimate is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -559,18 +560,18 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('View Your Estimate', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'C': // Returning User, No Password
                 $subject = $estimateNumber 
                     ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
                     : __('Your estimate is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -589,11 +590,11 @@ class EmailTemplateService
                     $ctas[] = ['href' => $resetUrl, 'text' => __('Set Your Password', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'D': // Resend
@@ -601,7 +602,7 @@ class EmailTemplateService
                 $subject = $estimateNumber 
                     ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
                     : __('Your estimate is ready', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -613,11 +614,11 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('View Your Estimate', 'cheapalarms'), 'primary' => true];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
         }
 
@@ -650,7 +651,7 @@ class EmailTemplateService
         switch ($variation) {
             case 'A': // First Acceptance
                 $subject = __('Thank you for accepting your estimate', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -673,7 +674,7 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6; margin-top: 20px;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(__('Next Steps:', 'cheapalarms')) . '</p>';
@@ -684,13 +685,13 @@ class EmailTemplateService
                 $body .= '</ul>';
                 $body .= '</div>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // Returning Customer
             default:
                 $subject = __('Thank you for accepting your estimate', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -710,7 +711,7 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6; margin-top: 20px;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(__('Next Steps:', 'cheapalarms')) . '</p>';
@@ -721,7 +722,7 @@ class EmailTemplateService
                 $body .= '</ul>';
                 $body .= '</div>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
         }
 
@@ -763,7 +764,7 @@ class EmailTemplateService
         switch ($variation) {
             case 'A': // First Invoice
                 $subject = __('Your invoice is ready for payment', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -785,7 +786,7 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6; margin-top: 20px;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(__('Payment Options:', 'cheapalarms')) . '</p>';
@@ -796,13 +797,13 @@ class EmailTemplateService
                 $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('You can also view this invoice and track your project progress in your portal.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
 
             case 'B': // Returning Customer
             default:
                 $subject = __('Your invoice is ready for payment', 'cheapalarms');
-                $body = $this->getEmailHeader();
+                $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -824,13 +825,13 @@ class EmailTemplateService
                     $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => false];
                 }
                 if (!empty($ctas)) {
-                    $body .= $this->getCTAs($ctas);
+                    $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
                 }
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6; margin-top: 20px;">';
                 $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('You can view this invoice and track your project progress in your portal.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
                 $body .= '</div>';
-                $body .= $this->getEmailFooter();
+                $body .= EmailTemplateHtmlHelper::getEmailFooter();
                 break;
         }
 
@@ -885,7 +886,7 @@ class EmailTemplateService
         }
         
         $subject = __('Your installation has been scheduled', 'cheapalarms');
-        $body = $this->getEmailHeader();
+        $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
         $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
         $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -917,11 +918,11 @@ class EmailTemplateService
             $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => empty($invoiceUrl)];
         }
         if (!empty($ctas)) {
-            $body .= $this->getCTAs($ctas);
+            $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
         }
         $body .= '<p style="margin: 20px 0 0 0; line-height: 1.6;">' . esc_html(__('If you need to reschedule or have any questions, please contact us.', 'cheapalarms')) . '</p>';
         $body .= '</div>';
-        $body .= $this->getEmailFooter();
+        $body .= EmailTemplateHtmlHelper::getEmailFooter();
         
         return [
             'subject' => $subject,
@@ -973,7 +974,7 @@ class EmailTemplateService
         }
         
         $subject = __('Payment confirmed - Thank you!', 'cheapalarms');
-        $body = $this->getEmailHeader();
+        $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
         $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
         $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -1008,12 +1009,12 @@ class EmailTemplateService
             $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => true];
         }
         if (!empty($ctas)) {
-            $body .= $this->getCTAs($ctas);
+            $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
         }
         
         $body .= '<p style="margin: 20px 0 0 0; line-height: 1.6;">' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
         $body .= '</div>';
-        $body .= $this->getEmailFooter();
+        $body .= EmailTemplateHtmlHelper::getEmailFooter();
         
         return [
             'subject' => $subject,
@@ -1043,7 +1044,7 @@ class EmailTemplateService
             ? sprintf(__('Update needed for Estimate #%s', 'cheapalarms'), $estimateNumber)
             : __('Update needed for your estimate', 'cheapalarms');
         
-        $body = $this->getEmailHeader();
+        $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
         $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
         $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -1083,12 +1084,12 @@ class EmailTemplateService
             $ctas[] = ['href' => $portalUrl, 'text' => __('Open Your Portal', 'cheapalarms'), 'primary' => true];
         }
         if (!empty($ctas)) {
-            $body .= $this->getCTAs($ctas);
+            $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
         }
         
         $body .= '<p style="margin: 20px 0 0 0; line-height: 1.6;">' . esc_html(__('If you have any questions or need clarification, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
         $body .= '</div>';
-        $body .= $this->getEmailFooter();
+        $body .= EmailTemplateHtmlHelper::getEmailFooter();
         
         return [
             'subject' => $subject,
@@ -1116,7 +1117,7 @@ class EmailTemplateService
             ? __('Your estimate has been reviewed and updated', 'cheapalarms')
             : __('Your estimate review is complete', 'cheapalarms');
         
-        $body = $this->getEmailHeader();
+        $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
         $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
         $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -1164,12 +1165,12 @@ class EmailTemplateService
             $ctas[] = ['href' => $portalUrl, 'text' => __('View Updated Estimate', 'cheapalarms'), 'primary' => true];
         }
         if (!empty($ctas)) {
-            $body .= $this->getCTAs($ctas);
+            $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
         }
         
         $body .= '<p style="margin: 20px 0 0 0; line-height: 1.6;">' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
         $body .= '</div>';
-        $body .= $this->getEmailFooter();
+        $body .= EmailTemplateHtmlHelper::getEmailFooter();
         
         return [
             'subject' => $subject,
@@ -1212,7 +1213,7 @@ class EmailTemplateService
             ? sprintf(__('🎉 Great news! Your CheapAlarms estimate has been updated - Save %s %s', 'cheapalarms'), $currency, number_format(abs($netChange), 2))
             : __('Your CheapAlarms estimate has been updated', 'cheapalarms');
         
-        $body = $this->getEmailHeader();
+        $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
         $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
         $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
@@ -1266,88 +1267,18 @@ class EmailTemplateService
             $ctas[] = ['href' => $portalUrl, 'text' => __('View Updated Estimate', 'cheapalarms'), 'primary' => true];
         }
         if (!empty($ctas)) {
-            $body .= $this->getCTAs($ctas);
+            $body .= EmailTemplateHtmlHelper::getCTAs($ctas);
         }
         
         $body .= '<p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">' . esc_html(__('Have questions about the changes? Just reply to this email!', 'cheapalarms')) . '</p>';
         $body .= '</div>';
-        $body .= $this->getEmailFooter();
+        $body .= EmailTemplateHtmlHelper::getEmailFooter();
         
         return [
             'subject' => $subject,
             'body' => $body,
             'variation' => $isSavings ? 'savings' : ($isIncrease ? 'increase' : 'standard'),
         ];
-    }
-
-    /**
-     * Get email header HTML
-     */
-    private function getEmailHeader(): string
-    {
-        return '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #c95375;">
-                <h1 style="color: #c95375; font-size: 24px; font-weight: bold; margin: 0; font-family: Arial, sans-serif;">CheapAlarms</h1>
-                <p style="color: #666666; font-size: 12px; margin: 5px 0 0 0; font-family: Arial, sans-serif;">' . esc_html(__('Your Security Partner', 'cheapalarms')) . '</p>
-            </div>';
-    }
-
-    /**
-     * Get email footer HTML
-     */
-    private function getEmailFooter(): string
-    {
-        return '<div style="background-color: #f5f5f5; padding: 30px 20px; text-align: center; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666666; font-family: Arial, sans-serif;">
-            <div style="max-width: 600px; margin: 0 auto;">
-                <p style="margin: 0 0 10px 0;"><strong style="color: #333333;">CheapAlarms</strong></p>
-                <p style="margin: 0 0 10px 0;">' . esc_html(__('Your trusted security partner', 'cheapalarms')) . '</p>
-                <p style="margin: 0; font-size: 11px; color: #999999;">' . esc_html(__('This email was sent to you regarding your account. If you have any questions, please contact our support team.', 'cheapalarms')) . '</p>
-            </div>
-        </div>
-    </div>';
-    }
-
-    /**
-     * Get CTA buttons HTML
-     * 
-     * @param array $ctas Array of ['href' => string, 'text' => string, 'primary' => bool]
-     */
-    private function getCTAs(array $ctas): string
-    {
-        if (empty($ctas)) {
-            return '';
-        }
-
-        $html = '<div style="text-align: center; margin: 30px 0;">';
-        $visibleIndex = 0;
-        
-        foreach ($ctas as $cta) {
-            // Skip if href is empty
-            if (empty($cta['href'])) {
-                continue;
-            }
-
-            // Wrap secondary CTAs in a div (first visible is index 0, second is index 1, etc.)
-            if ($visibleIndex > 0) {
-                $html .= '<div style="margin-top: 15px;">';
-            }
-            
-            if ($cta['primary'] ?? false) {
-                $html .= '<a href="' . esc_url($cta['href']) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; text-align: center; font-family: Arial, sans-serif;">' . esc_html($cta['text'] ?? '') . '</a>';
-            } else {
-                $html .= '<a href="' . esc_url($cta['href']) . '" style="color: #1EA6DF; text-decoration: underline; font-size: 14px;">' . esc_html($cta['text'] ?? '') . '</a>';
-            }
-            
-            // Close div for secondary CTAs
-            if ($visibleIndex > 0) {
-                $html .= '</div>';
-            }
-            
-            $visibleIndex++;
-        }
-        
-        $html .= '</div>';
-        return $html;
     }
 }
 
