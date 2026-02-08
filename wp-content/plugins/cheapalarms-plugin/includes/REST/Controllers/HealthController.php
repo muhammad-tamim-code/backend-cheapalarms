@@ -75,9 +75,14 @@ class HealthController implements ControllerInterface
             $status = 'degraded';
         }
 
-        // Return minimal response - just status code and minimal body
+        // Return minimal response with version info for deployment verification
         $httpStatus = $status === 'ok' ? 200 : 503;
-        $response = new WP_REST_Response(['status' => $status], $httpStatus);
+        $response = new WP_REST_Response([
+            'status' => $status,
+            'version' => defined('CA_PLUGIN_VERSION') ? CA_PLUGIN_VERSION : 'unknown',
+            'build' => defined('CA_BUILD_TIME') ? CA_BUILD_TIME : 'dev',
+            'buildHash' => defined('CA_BUILD_HASH') ? CA_BUILD_HASH : 'local',
+        ], $httpStatus);
         
         // Add cache control to prevent excessive checks
         $response->header('Cache-Control', 'public, max-age=30');
@@ -97,11 +102,11 @@ class HealthController implements ControllerInterface
         $hasAuth = $this->checkAdminAuth();
 
         if (!$hasSecret && !$hasAuth) {
-            return new WP_REST_Response([
-                'ok' => false,
-                'error' => 'Unauthorized. Requires secret header or admin authentication.',
-                'code' => 'unauthorized',
-            ], 401);
+            return $this->errorResponse(new WP_Error(
+                'unauthorized',
+                'Unauthorized. Requires secret header or admin authentication.',
+                ['status' => 401]
+            ));
         }
 
         $status = 'healthy';
@@ -244,6 +249,28 @@ class HealthController implements ControllerInterface
         }
 
         return current_user_can('ca_manage_portal');
+    }
+
+    /**
+     * Create standardized error response
+     *
+     * @param WP_Error $error
+     * @return WP_REST_Response
+     */
+    private function errorResponse(WP_Error $error): WP_REST_Response
+    {
+        $status = $error->get_error_data()['status'] ?? 500;
+        $code = $error->get_error_code();
+        $message = $error->get_error_message();
+        
+        $response = new WP_REST_Response([
+            'ok'    => false,
+            'error' => $message,
+            'code'  => $code,
+        ], $status);
+        
+        $this->addSecurityHeaders($response);
+        return $response;
     }
 
     /**

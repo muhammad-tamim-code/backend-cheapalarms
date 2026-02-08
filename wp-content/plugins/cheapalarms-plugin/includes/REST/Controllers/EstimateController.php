@@ -66,7 +66,7 @@ class EstimateController implements ControllerInterface
                 
                 $estimateId = sanitize_text_field($request->get_param('estimateId'));
                 if (!$estimateId) {
-                    return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                    return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                 }
                 
                 // Allow admins (SECURITY: Check for WP_Error, not just truthy value)
@@ -76,18 +76,11 @@ class EstimateController implements ControllerInterface
                     return $this->respond($result, $request);
                 }
                 
-                // FIX: Use direct JWT authentication instead of resetting user context
-                // This ensures JWT cookies are properly authenticated (same fix as /portal/dashboard)
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
+                // Authenticate user via JWT or session
+                $user = $this->getAuthenticatedUser();
                 
                 // Check if user is authenticated and linked to estimate
-                if ($user && $user->ID > 0) {
+                if ($user) {
                     $linkedEstimateIds = get_user_meta($user->ID, 'ca_estimate_ids', true);
                     if (!is_array($linkedEstimateIds)) {
                         $linkedEstimateIds = array_filter([$linkedEstimateIds]);
@@ -140,10 +133,7 @@ class EstimateController implements ControllerInterface
                 }
                 
                 // No valid permission
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'err' => 'You do not have permission to view this estimate. Please log in or use a valid invite link.',
-                ], 401);
+                return $this->respond(new WP_Error('unauthorized', __('You do not have permission to view this estimate. Please log in or use a valid invite link.', 'cheapalarms'), ['status' => 401]));
             },
         ]);
 
@@ -376,17 +366,11 @@ class EstimateController implements ControllerInterface
                         return false; // No estimate ID provided
                     }
                     
-                    // FIX: Use direct JWT authentication instead of resetting user context
-                    $userId = $this->auth->authenticateViaJwt();
-                    if ($userId && $userId > 0) {
-                        wp_set_current_user($userId);
-                        $user = wp_get_current_user();
-                    } else {
-                        $user = wp_get_current_user();
-                    }
+                    // Authenticate user via JWT or session
+                    $user = $this->getAuthenticatedUser();
                     
                     // Check if user is authenticated and linked to estimate
-                    if ($user && $user->ID > 0) {
+                    if ($user) {
                         $linkedEstimateIds = get_user_meta($user->ID, 'ca_estimate_ids', true);
                         if (!is_array($linkedEstimateIds)) {
                             $linkedEstimateIds = array_filter([$linkedEstimateIds]);
@@ -421,11 +405,9 @@ class EstimateController implements ControllerInterface
             [
                 'methods'             => 'GET',
                 'permission_callback' => function (WP_REST_Request $request) {
-                    // FIX: Authenticate via JWT first, then check capabilities
-                    // This ensures JWT-authenticated users can access photos
-                    $userId = $this->auth->authenticateViaJwt();
-                    if ($userId && $userId > 0) {
-                        wp_set_current_user($userId);
+                    // Authenticate via JWT first, then check capabilities
+                    $user = $this->getAuthenticatedUser();
+                    if ($user) {
                         return current_user_can('ca_access_portal') || current_user_can('ca_manage_portal');
                     }
                     // Allow public access - photos are linked to estimateId, not sensitive data
@@ -434,7 +416,7 @@ class EstimateController implements ControllerInterface
                 'callback'            => function (WP_REST_Request $request) {
                     $estimateId = sanitize_text_field($request->get_param('estimateId'));
                     if (!$estimateId) {
-                        return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                        return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                     }
                     $raw = get_option('ca_estimate_uploads_' . $estimateId, '');
                     if (!$raw) {
@@ -546,6 +528,22 @@ class EstimateController implements ControllerInterface
     }
 
     /**
+     * Get the currently authenticated user via JWT or WordPress session.
+     * Centralizes JWT authentication to avoid code duplication.
+     * 
+     * @return \WP_User|null The authenticated user or null if not authenticated
+     */
+    private function getAuthenticatedUser(): ?\WP_User
+    {
+        $userId = $this->auth->authenticateViaJwt();
+        if ($userId && $userId > 0) {
+            wp_set_current_user($userId);
+        }
+        $user = wp_get_current_user();
+        return ($user && $user->ID > 0) ? $user : null;
+    }
+
+    /**
      * @param array|WP_Error $result
      */
     private function respond($result, ?WP_REST_Request $request = null): WP_REST_Response
@@ -563,7 +561,8 @@ class EstimateController implements ControllerInterface
         // Add cache headers for GET requests (improve performance)
         if ($request && $request->get_method() === 'GET') {
             // Cache for 2 minutes, allow stale-while-revalidate for 5 minutes
-            $response->header('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+            // Use 'private' because estimate data is user-specific and authenticated
+            $response->header('Cache-Control', 'private, max-age=120, stale-while-revalidate=300');
             $response->header('Vary', 'Authorization, Cookie');
         }
         

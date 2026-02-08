@@ -425,6 +425,8 @@ class PortalService
             'booking'     => $meta['booking'] ?? null, // Include booking data for customer portal
             'payment'     => $meta['payment'] ?? null, // Include payment data for customer portal
             'revision'     => $meta['revision'] ?? null, // Include revision data for customer portal
+            'revisionHistory' => $meta['revisionHistory'] ?? [], // Full revision history for edit timeline
+            'itemsMeta' => $meta['itemsMeta'] ?? [], // Custom item metadata (photoRequired, isCustom)
             'minimumPaymentInfo' => $minimumPaymentInfo, // Include minimum payment calculation for frontend
             'isGuestMode'  => $isGuestMode,
             'daysRemaining' => $daysRemaining,
@@ -5569,22 +5571,90 @@ class PortalService
 
     /**
      * Store estimate revision data in portal meta
-     * Used when admin edits estimate based on customer photos
+     * Appends to revisionHistory array and keeps 'revision' for backward compatibility
      * 
      * @param string $estimateId
      * @param array $revisionData
+     * @param int|null $adminUserId Optional admin user ID (defaults to current user)
      * @return bool
      */
-    public function storeRevisionData(string $estimateId, array $revisionData): bool
+    public function storeRevisionData(string $estimateId, array $revisionData, ?int $adminUserId = null): bool
     {
         try {
+            // Get current meta to access existing history
+            $meta = $this->getMeta($estimateId);
+            $history = $meta['revisionHistory'] ?? [];
+            
+            // Generate unique revision ID
+            $revisionId = 'rev-' . time() . '-' . substr(uniqid(), -6);
+            
+            // Get admin user info
+            $adminUserId = $adminUserId ?? get_current_user_id();
+            $adminUser = get_userdata($adminUserId);
+            $adminName = $adminUser ? $adminUser->display_name : 'Admin';
+            
+            // Build detailed revision entry with line changes
+            $revision = [
+                'revisionId' => $revisionId,
+                'revisedAt' => current_time('c'), // ISO 8601 format
+                'revisedBy' => [
+                    'id' => $adminUserId,
+                    'name' => sanitize_text_field($adminName),
+                    'role' => 'admin',
+                ],
+                'source' => sanitize_text_field($revisionData['source'] ?? 'admin-edit'),
+                'adminNote' => sanitize_text_field($revisionData['adminNote'] ?? ''),
+                'oldTotal' => $this->sanitizeNumeric($revisionData['oldTotal'] ?? 0),
+                'newTotal' => $this->sanitizeNumeric($revisionData['newTotal'] ?? 0),
+                'netChange' => $this->sanitizeNumeric($revisionData['netChange'] ?? 0),
+                'lineChanges' => $this->buildLineChanges($revisionData),
+                'discount' => $revisionData['discount'] ?? null,
+            ];
+            
+            // Append to history (keep last 50 revisions)
+            $history[] = $revision;
+            if (count($history) > 50) {
+                $history = array_slice($history, -50);
+            }
+            
+            // Update itemsMeta map for custom items (tracks photoRequired, isCustom)
+            // This allows frontend to know which items need photo uploads
+            // KEY BY ITEM NAME (not ID) because GHL assigns its own IDs that don't match frontend IDs
+            $itemsMeta = $meta['itemsMeta'] ?? [];
+            foreach ($revisionData['addedItems'] ?? [] as $item) {
+                $itemName = sanitize_text_field($item['name'] ?? '');
+                if ($itemName) {
+                    $itemsMeta[$itemName] = [
+                        'photoRequired' => !empty($item['photoRequired']),
+                        'isCustom' => !empty($item['isCustom']),
+                        'addedAt' => current_time('c'),
+                    ];
+                }
+            }
+            // Remove itemsMeta for removed items (by name)
+            foreach ($revisionData['removedItems'] ?? [] as $item) {
+                $itemName = sanitize_text_field($item['name'] ?? '');
+                if ($itemName && isset($itemsMeta[$itemName])) {
+                    unset($itemsMeta[$itemName]);
+                }
+            }
+            
             $this->logger->info('Storing estimate revision data', [
                 'estimateId' => $estimateId,
-                'netChange' => $revisionData['netChange'] ?? 0,
-                'hasNote' => !empty($revisionData['adminNote']),
+                'revisionId' => $revisionId,
+                'netChange' => $revision['netChange'],
+                'hasNote' => !empty($revision['adminNote']),
+                'lineChangesCount' => count($revision['lineChanges']),
+                'historyCount' => count($history),
+                'itemsMetaCount' => count($itemsMeta),
             ]);
 
-            return $this->updateMeta($estimateId, ['revision' => $revisionData]);
+            // Update revision, revisionHistory, and itemsMeta
+            return $this->updateMeta($estimateId, [
+                'revision' => $revision,
+                'revisionHistory' => $history,
+                'itemsMeta' => $itemsMeta,
+            ]);
         } catch (\Exception $e) {
             $this->logger->error('Failed to store revision data', [
                 'estimateId' => $estimateId,
@@ -5592,6 +5662,79 @@ class PortalService
             ]);
             return false;
         }
+    }
+
+    /**
+     * Build line-by-line changes array from revision data
+     * 
+     * @param array $revisionData
+     * @return array
+     */
+    private function buildLineChanges(array $revisionData): array
+    {
+        $changes = [];
+        
+        // Quantity changes
+        foreach ($revisionData['changedItems'] ?? [] as $item) {
+            $changes[] = [
+                'itemId' => sanitize_text_field($item['itemId'] ?? $item['id'] ?? ''),
+                'name' => sanitize_text_field($item['name'] ?? 'Item'),
+                'action' => 'qty',
+                'oldQty' => intval($item['oldQty'] ?? $item['originalQty'] ?? 0),
+                'newQty' => intval($item['newQty'] ?? 0),
+                'oldAmount' => $this->sanitizeNumeric($item['oldAmount'] ?? 0),
+                'newAmount' => $this->sanitizeNumeric($item['newAmount'] ?? 0),
+            ];
+        }
+        
+        // Added items
+        foreach ($revisionData['addedItems'] ?? [] as $item) {
+            $changes[] = [
+                'itemId' => sanitize_text_field($item['itemId'] ?? $item['id'] ?? ''),
+                'name' => sanitize_text_field($item['name'] ?? 'Item'),
+                'action' => 'add',
+                'qty' => intval($item['qty'] ?? 1),
+                'amount' => $this->sanitizeNumeric($item['amount'] ?? 0),
+                'photoRequired' => !empty($item['photoRequired']),
+            ];
+        }
+        
+        // Removed items
+        foreach ($revisionData['removedItems'] ?? [] as $item) {
+            $changes[] = [
+                'itemId' => sanitize_text_field($item['itemId'] ?? $item['id'] ?? ''),
+                'name' => sanitize_text_field($item['name'] ?? 'Item'),
+                'action' => 'remove',
+                'qty' => intval($item['qty'] ?? 1),
+                'amount' => $this->sanitizeNumeric($item['amount'] ?? 0),
+            ];
+        }
+        
+        // Discount change (if present)
+        if (!empty($revisionData['discount']) && ($revisionData['discount']['value'] ?? 0) != 0) {
+            $changes[] = [
+                'action' => 'discount',
+                'type' => sanitize_text_field($revisionData['discount']['type'] ?? 'percentage'),
+                'value' => $this->sanitizeNumeric($revisionData['discount']['value'] ?? 0),
+            ];
+        }
+        
+        return $changes;
+    }
+
+    /**
+     * Sanitize numeric value (handles NaN, Infinity, null)
+     * 
+     * @param mixed $value
+     * @return float
+     */
+    private function sanitizeNumeric($value): float
+    {
+        $num = floatval($value);
+        if (!is_finite($num)) {
+            return 0.0;
+        }
+        return $num;
     }
 
     /**

@@ -31,31 +31,33 @@ class AuthController implements ControllerInterface
         $this->authenticator = $this->container->get(Authenticator::class);
     }
 
+    /**
+     * Get authenticated user via JWT or session
+     */
+    private function getAuthenticatedUser(): ?\WP_User
+    {
+        $userId = $this->authenticator->authenticateViaJwt();
+        if ($userId && $userId > 0) {
+            wp_set_current_user($userId);
+        }
+        $user = wp_get_current_user();
+        return ($user && $user->ID > 0) ? $user : null;
+    }
+
     public function register(): void
     {
         // Auth nonce for CSRF protection (logged-in users)
         register_rest_route('ca/v1', '/auth/nonce', [
             'methods'             => 'GET',
             'permission_callback' => function () {
-                // FIX: Use direct JWT authentication for consistency with other endpoints
-                $userId = $this->authenticator->authenticateViaJwt();
-                
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    return true;
-                }
-                
-                // Fallback: check if user is already authenticated (for non-JWT requests)
-                $userId = get_current_user_id();
-                return $userId > 0;
+                // Authenticate via JWT or session
+                $user = $this->getAuthenticatedUser();
+                return $user !== null;
             },
             'callback'            => function () {
                 $user = wp_get_current_user();
                 if (!$user || 0 === $user->ID) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'err' => 'not_authenticated',
-                    ], 401);
+                    return $this->respond(new WP_Error('unauthorized', __('Authentication required.', 'cheapalarms'), ['status' => 401]));
                 }
                 return new WP_REST_Response([
                     'ok' => true,
@@ -80,20 +82,17 @@ class AuthController implements ControllerInterface
                 $inviteToken = sanitize_text_field($request->get_param('inviteToken') ?? '');
 
                 if ($estimateId === '' || $inviteToken === '') {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'err' => 'missing_params',
-                    ], 400);
+                    return $this->respond(new WP_Error('bad_request', __('Missing required parameters.', 'cheapalarms'), ['status' => 400]));
                 }
 
                 $portalService = $this->container->get(PortalService::class);
                 $validation = $portalService->validateInviteToken($estimateId, $inviteToken);
                 if (empty($validation['valid'])) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'err' => $validation['message'] ?? 'invalid_invite',
-                        'code' => $validation['reason'] ?? 'invalid_invite',
-                    ], 403);
+                    return $this->respond(new WP_Error(
+                        $validation['reason'] ?? 'invalid_invite',
+                        $validation['message'] ?? __('Invalid invite token.', 'cheapalarms'),
+                        ['status' => 403]
+                    ));
                 }
 
                 return new WP_REST_Response([
@@ -168,13 +167,10 @@ class AuthController implements ControllerInterface
      */
     public function checkAuthentication(): bool|WP_Error
     {
-        // FIX: Directly authenticate via JWT token, bypassing filter system
-        // This ensures JWT authentication works reliably without filter conflicts
-        $userId = $this->authenticator->authenticateViaJwt();
+        // Authenticate via JWT or session
+        $user = $this->getAuthenticatedUser();
         
-        if ($userId && $userId > 0) {
-            // Set the current user to ensure context persists
-            wp_set_current_user($userId);
+        if ($user) {
             return true;
         }
 
@@ -203,10 +199,7 @@ class AuthController implements ControllerInterface
             if ($isDebug) {
                 error_log('[AUTH_ME] User not found - current_user_id: ' . get_current_user_id());
             }
-            return new WP_REST_Response([
-                'ok' => false,
-                'err' => 'User not found',
-            ], 401);
+            return $this->respond(new WP_Error('unauthorized', __('User not found.', 'cheapalarms'), ['status' => 401]));
         }
         
         if ($isDebug) {

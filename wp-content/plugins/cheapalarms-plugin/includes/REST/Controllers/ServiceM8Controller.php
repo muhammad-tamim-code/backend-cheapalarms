@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\REST\Controllers\Helpers\ServiceM8ControllerHelper;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\JobLinkService;
@@ -17,19 +18,18 @@ use function sanitize_email;
 use function sanitize_text_field;
 use function sanitize_textarea_field;
 
-class ServiceM8Controller implements ControllerInterface
+class ServiceM8Controller extends AdminController
 {
     private ServiceM8Service $service;
     private JobLinkService $linkService;
     private Authenticator $auth;
-    private LocationResolver $locationResolver;
 
-    public function __construct(private Container $container)
+    public function __construct(Container $container)
     {
+        parent::__construct($container);
         $this->service = $this->container->get(ServiceM8Service::class);
         $this->linkService = $this->container->get(JobLinkService::class);
         $this->auth    = $this->container->get(Authenticator::class);
-        $this->locationResolver = $this->container->get(LocationResolver::class);
     }
 
     public function register(): void
@@ -148,10 +148,7 @@ class ServiceM8Controller implements ControllerInterface
                         $body = json_decode($request->get_body(), true);
                     }
                     if (!is_array($body)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid request body',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_body', 'Invalid request body', ['status' => 400]));
                     }
 
                     $estimateId = sanitize_text_field($body['estimateId'] ?? '');
@@ -159,27 +156,17 @@ class ServiceM8Controller implements ControllerInterface
                     $metadata = is_array($body['metadata'] ?? null) ? $body['metadata'] : null;
 
                     if (empty($estimateId) || empty($jobUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'estimateId and jobUuid are required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'estimateId and jobUuid are required', ['status' => 400]));
                     }
 
                     $result = $this->linkService->linkEstimateToJob($estimateId, $jobUuid, $metadata);
                     
                     if (is_wp_error($result)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => $result->get_error_message(),
-                            'code' => $result->get_error_code(),
-                        ], $result->get_error_data()['status'] ?? 500);
+                        return $this->respond($result);
                     }
 
                     $linkData = $this->linkService->getLinkByEstimateId($estimateId);
-                    return new WP_REST_Response([
-                        'ok' => true,
-                        'link' => $linkData,
-                    ], 200);
+                    return $this->respond(['ok' => true, 'link' => $linkData]);
                 },
             ],
             [
@@ -191,60 +178,36 @@ class ServiceM8Controller implements ControllerInterface
 
                     // SECURITY: Require at least one parameter
                     if (empty($estimateId) && empty($jobUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'estimateId or jobUuid is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'estimateId or jobUuid is required', ['status' => 400]));
                     }
 
                     // SECURITY: Validate UUID format if provided
                     if (!empty($jobUuid) && !ServiceM8ControllerHelper::validateUuid($jobUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid job UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid job UUID format', ['status' => 400]));
                     }
 
                     // SECURITY: Validate estimateId format (alphanumeric, hyphens, underscores)
                     if (!empty($estimateId) && !ServiceM8ControllerHelper::validateEstimateId($estimateId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid estimate ID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_estimate_id', 'Invalid estimate ID format', ['status' => 400]));
                     }
 
                     if (!empty($estimateId)) {
                         $linkData = $this->linkService->getLinkByEstimateId($estimateId);
                         if (!$linkData) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'Link not found',
-                            ], 404);
+                            return $this->respond(new WP_Error('not_found', 'Link not found', ['status' => 404]));
                         }
-                        return new WP_REST_Response([
-                            'ok' => true,
-                            'link' => $linkData,
-                        ], 200);
+                        return $this->respond(['ok' => true, 'link' => $linkData]);
                     }
 
                     if (!empty($jobUuid)) {
                         $linkData = $this->linkService->getLinkByJobUuid($jobUuid);
                         if (!$linkData) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'Link not found',
-                            ], 404);
+                            return $this->respond(new WP_Error('not_found', 'Link not found', ['status' => 404]));
                         }
-                        return new WP_REST_Response([
-                            'ok' => true,
-                            'link' => $linkData,
-                        ], 200);
+                        return $this->respond(['ok' => true, 'link' => $linkData]);
                     }
 
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'estimateId or jobUuid is required',
-                    ], 400);
+                    return $this->respond(new WP_Error('missing_params', 'estimateId or jobUuid is required', ['status' => 400]));
                 },
             ],
             [
@@ -254,18 +217,15 @@ class ServiceM8Controller implements ControllerInterface
                     $estimateId = sanitize_text_field($request->get_param('estimateId') ?? '');
 
                     if (empty($estimateId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'estimateId is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'estimateId is required', ['status' => 400]));
                     }
 
                     $result = $this->linkService->unlinkEstimateFromJob($estimateId);
                     
-                    return new WP_REST_Response([
-                        'ok' => $result,
-                        'message' => $result ? 'Link removed' : 'Link not found',
-                    ], $result ? 200 : 404);
+                    if (!$result) {
+                        return $this->respond(new WP_Error('not_found', 'Link not found', ['status' => 404]));
+                    }
+                    return $this->respond(['ok' => true, 'message' => 'Link removed']);
                 },
             ],
         ]);
@@ -281,11 +241,7 @@ class ServiceM8Controller implements ControllerInterface
                     
                     $links = $this->linkService->getAllLinks($limit);
                     
-                    return new WP_REST_Response([
-                        'ok' => true,
-                        'links' => $links,
-                        'count' => count($links),
-                    ], 200);
+                    return $this->respond(['ok' => true, 'links' => $links, 'count' => count($links)]);
                 },
             ],
         ]);
@@ -301,10 +257,7 @@ class ServiceM8Controller implements ControllerInterface
                         $body = json_decode($request->get_body(), true);
                     }
                     if (!is_array($body)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid request body',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_body', 'Invalid request body', ['status' => 400]));
                     }
 
                     $estimateId = sanitize_text_field($body['estimateId'] ?? '');
@@ -313,27 +266,18 @@ class ServiceM8Controller implements ControllerInterface
                     $options = is_array($body['options'] ?? null) ? $body['options'] : [];
 
                     if (empty($estimateId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'estimateId is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'estimateId is required', ['status' => 400]));
                     }
 
                     if (empty($locationId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'locationId is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'locationId is required', ['status' => 400]));
                     }
 
                     if (empty($jobUuid)) {
                         // Try to get job UUID from existing link
                         $existingLink = $this->linkService->getLinkByEstimateId($estimateId);
                         if (!$existingLink || empty($existingLink['jobUuid'])) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'jobUuid is required or estimate must be linked to a job',
-                            ], 400);
+                            return $this->respond(new WP_Error('missing_params', 'jobUuid is required or estimate must be linked to a job', ['status' => 400]));
                         }
                         $jobUuid = $existingLink['jobUuid'];
                     }
@@ -345,13 +289,13 @@ class ServiceM8Controller implements ControllerInterface
                         return $this->respond($result);
                     }
 
-                    return new WP_REST_Response([
+                    return $this->respond([
                         'ok' => true,
                         'job' => $result['job'],
                         'jobUuid' => $result['jobUuid'],
                         'company' => $result['company'],
                         'updated' => true,
-                    ], 200);
+                    ]);
                 },
             ],
         ]);
@@ -367,10 +311,7 @@ class ServiceM8Controller implements ControllerInterface
                         $body = json_decode($request->get_body(), true);
                     }
                     if (!is_array($body)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid request body',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_body', 'Invalid request body', ['status' => 400]));
                     }
 
                     $estimateId = sanitize_text_field($body['estimateId'] ?? '');
@@ -378,10 +319,7 @@ class ServiceM8Controller implements ControllerInterface
                     $options = is_array($body['options'] ?? null) ? $body['options'] : [];
 
                     if (empty($estimateId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'estimateId is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'estimateId is required', ['status' => 400]));
                     }
 
                     // Resolve locationId from request body or config default (like other admin endpoints)
@@ -390,10 +328,7 @@ class ServiceM8Controller implements ControllerInterface
                         : $this->locationResolver->resolve(null);
                     
                     if (empty($locationId)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'locationId is required. Please provide it in the request or configure it in settings.',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'locationId is required. Please provide it in the request or configure it in settings.', ['status' => 400]));
                     }
 
                     // Check if estimate is already linked
@@ -404,11 +339,7 @@ class ServiceM8Controller implements ControllerInterface
                         // Update existing job instead of creating new one
                         $jobUuid = $existingLink['jobUuid'] ?? null;
                         if (empty($jobUuid)) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'Existing link found but job UUID is missing',
-                                'existingLink' => $existingLink,
-                            ], 400);
+                            return $this->respond(new WP_Error('invalid_state', 'Existing link found but job UUID is missing', ['status' => 400]));
                         }
 
                         $result = $this->service->updateJobFromEstimate($estimateId, $locationId, $jobUuid, $options);
@@ -417,21 +348,16 @@ class ServiceM8Controller implements ControllerInterface
                             return $this->respond($result);
                         }
 
-                        return new WP_REST_Response([
+                        return $this->respond([
                             'ok' => true,
                             'job' => $result['job'],
                             'jobUuid' => $result['jobUuid'],
                             'company' => $result['company'],
                             'updated' => true,
                             'linked' => true,
-                        ], 200);
+                        ]);
                     } elseif ($existingLink) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Estimate is already linked to a job',
-                            'existingLink' => $existingLink,
-                            'hint' => 'Use updateIfExists=true to update the existing job',
-                        ], 409); // Conflict
+                        return $this->respond(new WP_Error('conflict', 'Estimate is already linked to a job', ['status' => 409, 'existingLink' => $existingLink, 'hint' => 'Use updateIfExists=true to update the existing job']));
                     }
 
                     // Create job from estimate (with idempotency check via linkService)
@@ -463,14 +389,14 @@ class ServiceM8Controller implements ControllerInterface
                         error_log('Job UUID not found in response, cannot create link. Response keys: ' . implode(', ', array_keys($result)));
                     }
 
-                    return new WP_REST_Response([
+                    return $this->respond([
                         'ok' => true,
                         'job' => $result['job'],
                         'jobUuid' => $jobUuid, // Explicitly include UUID
                         'company' => $result['company'],
                         'companyCreated' => $result['companyCreated'] ?? false,
                         'linked' => !empty($jobUuid),
-                    ], 200);
+                    ]);
                 },
             ],
         ]);
@@ -485,10 +411,7 @@ class ServiceM8Controller implements ControllerInterface
                     
                     // SECURITY: Validate UUID format
                     if (!ServiceM8ControllerHelper::validateUuid($jobUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid job UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid job UUID format', ['status' => 400]));
                     }
                     
                     $result = $this->service->getJobActivities($jobUuid);
@@ -507,10 +430,7 @@ class ServiceM8Controller implements ControllerInterface
                     
                     // SECURITY: Validate UUID format
                     if (!ServiceM8ControllerHelper::validateUuid($jobUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid job UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid job UUID format', ['status' => 400]));
                     }
                     
                     $body = $request->get_json_params();
@@ -527,23 +447,14 @@ class ServiceM8Controller implements ControllerInterface
 
                     // SECURITY: Validate staffUuid format
                     if (!empty($staffUuid) && !ServiceM8ControllerHelper::validateUuid($staffUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid staff UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid staff UUID format', ['status' => 400]));
                     }
 
                     if (empty($staffUuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'staffUuid is required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'staffUuid is required', ['status' => 400]));
                     }
                     if (empty($startDate) || empty($endDate)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'startDate and endDate are required',
-                        ], 400);
+                        return $this->respond(new WP_Error('missing_params', 'startDate and endDate are required', ['status' => 400]));
                     }
 
                     $result = $this->service->scheduleJob($jobUuid, $staffUuid, $startDate, $endDate, $this->linkService);
@@ -562,10 +473,7 @@ class ServiceM8Controller implements ControllerInterface
                     
                     // SECURITY: Validate UUID format
                     if (!ServiceM8ControllerHelper::validateUuid($uuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid job UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid job UUID format', ['status' => 400]));
                     }
                     
                     $result = $this->service->getJob($uuid);
@@ -580,10 +488,7 @@ class ServiceM8Controller implements ControllerInterface
                     
                     // SECURITY: Validate UUID format
                     if (!ServiceM8ControllerHelper::validateUuid($uuid)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Invalid job UUID format',
-                        ], 400);
+                        return $this->respond(new WP_Error('invalid_uuid', 'Invalid job UUID format', ['status' => 400]));
                     }
                     
                     $result = $this->service->deleteJob($uuid);
@@ -596,7 +501,7 @@ class ServiceM8Controller implements ControllerInterface
     /**
      * @param array|WP_Error $result
      */
-    private function respond($result): WP_REST_Response
+    protected function respond($result, ?WP_REST_Request $request = null): WP_REST_Response
     {
         if (is_wp_error($result)) {
             $status = $result->get_error_data()['status'] ?? 500;
@@ -657,24 +562,20 @@ class ServiceM8Controller implements ControllerInterface
         return $response;
     }
 
-    private function addSecurityHeaders(WP_REST_Response $response): void
-    {
-        // Prevent MIME type sniffing
-        $response->header('X-Content-Type-Options', 'nosniff');
-        
-        // XSS protection (legacy but still useful)
-        $response->header('X-XSS-Protection', '1; mode=block');
-        
-        // Prevent clickjacking
-        $response->header('X-Frame-Options', 'DENY');
-        
-        // Referrer policy
-        $response->header('Referrer-Policy', 'strict-origin-when-cross-origin');
-    }
-
     private function isDevBypass(): bool
     {
-        return defined('WP_DEBUG') && WP_DEBUG && isset($_SERVER['HTTP_X_CA_DEV']) && $_SERVER['HTTP_X_CA_DEV'] === '1';
+        $header  = isset($_SERVER['HTTP_X_CA_DEV']) ? trim((string) $_SERVER['HTTP_X_CA_DEV']) : '';
+        $query   = isset($_GET['__dev']) ? trim((string) $_GET['__dev']) : '';
+        $addr    = $_SERVER['REMOTE_ADDR'] ?? '';
+        $isLocal = in_array($addr, ['127.0.0.1', '::1'], true);
+        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
+        if ($isLocal && $isDebug && ($header === '1' || $query === '1')) {
+            return true;
+        }
+        if ($isLocal && $isDebug && defined('CA_DEV_BYPASS') && CA_DEV_BYPASS) {
+            return true;
+        }
+        return false;
     }
 }
 

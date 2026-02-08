@@ -23,3 +23,4 @@ config/secrets.php
 # Build artifacts
 *.zip
 node_modules/
+build-info.php

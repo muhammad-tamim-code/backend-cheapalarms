@@ -162,7 +162,18 @@ class UsersController implements ControllerInterface
 
     private function isDevBypass(): bool
     {
-        return defined('WP_DEBUG') && WP_DEBUG && isset($_SERVER['HTTP_X_CA_DEV']) && $_SERVER['HTTP_X_CA_DEV'] === '1';
+        $header = isset($_SERVER['HTTP_X_CA_DEV']) ? trim((string) $_SERVER['HTTP_X_CA_DEV']) : '';
+        $query  = isset($_GET['__dev']) ? trim((string) $_GET['__dev']) : '';
+        $addr   = $_SERVER['REMOTE_ADDR'] ?? '';
+        $isLocal = in_array($addr, ['127.0.0.1', '::1'], true);
+        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
+        if ($isLocal && $isDebug && ($header === '1' || $query === '1')) {
+            return true;
+        }
+        if ($isLocal && $isDebug && defined('CA_DEV_BYPASS') && CA_DEV_BYPASS) {
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -109,21 +109,14 @@ class PortalController implements ControllerInterface
                     $inviteToken = sanitize_text_field($request->get_param('inviteToken'));
                     
                     if (!$estimateId) {
-                        return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                        return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                     }
                     
-                    // FIX: Use direct JWT authentication instead of ensureUserLoaded()
-                    // This ensures JWT cookies are properly authenticated (same fix as /portal/dashboard)
-                    $userId = $this->auth->authenticateViaJwt();
-                    if ($userId && $userId > 0) {
-                        wp_set_current_user($userId);
-                        $user = wp_get_current_user();
-                    } else {
-                        $user = wp_get_current_user();
-                    }
+                    // Authenticate user via JWT or session
+                    $user = $this->getAuthenticatedUser();
                     
                     // If user is authenticated, allow access
-                    if ($user && $user->ID > 0) {
+                    if ($user) {
                         $result = $this->service->getStatus($estimateId, $locationId, $inviteToken, $user);
                         return $this->respond($result, $request);
                     }
@@ -173,20 +166,14 @@ class PortalController implements ControllerInterface
                 return true;
             },
             'callback'            => function (WP_REST_Request $request) {
-                // FIX: Use direct JWT authentication instead of resetting user context
-                // This ensures JWT cookies are properly authenticated (same fix as AdminController)
-                $userId = $this->auth->authenticateViaJwt();
+                $user = $this->getAuthenticatedUser();
                 
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    // Fallback: try to get existing user (for non-JWT requests)
-                    $user = wp_get_current_user();
-                }
-                
-                if (!$user || 0 === $user->ID) {
-                    return new WP_REST_Response(['ok' => false, 'err' => 'Authentication required'], 401);
+                if (!$user) {
+                    return $this->respond(new WP_Error(
+                        'unauthorized',
+                        __('Authentication required', 'cheapalarms'),
+                        ['status' => 401]
+                    ));
                 }
 
                 $result = $this->service->getDashboardData($user);
@@ -211,16 +198,11 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
                 
+                // Authenticate user
+                $user = $this->getAuthenticatedUser();
+                
                 // Block guest mode (read-only access)
-                // FIX: Authenticate first, then check if user exists
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
-                if ($inviteToken && (!$user || 0 === $user->ID)) {
+                if ($inviteToken && !$user) {
                     return $this->respond(new WP_Error(
                         'guest_mode_blocked',
                         __('Please create an account to accept this estimate. Guest access is read-only.', 'cheapalarms'),
@@ -257,16 +239,11 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
                 
+                // Authenticate user
+                $user = $this->getAuthenticatedUser();
+                
                 // Block guest mode (read-only access)
-                // FIX: Authenticate first, then check if user exists
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
-                if ($inviteToken && (!$user || 0 === $user->ID)) {
+                if ($inviteToken && !$user) {
                     return $this->respond(new WP_Error(
                         'guest_mode_blocked',
                         __('Please create an account to request review. Guest access is read-only.', 'cheapalarms'),
@@ -303,17 +280,11 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
 
-                // FIX: Authenticate first, then check if user exists
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
+                // Authenticate user
+                $user = $this->getAuthenticatedUser();
 
                 // Block guest mode (read-only access)
-                if ($inviteToken && (!$user || 0 === $user->ID)) {
+                if ($inviteToken && !$user) {
                     return $this->respond(new WP_Error(
                         'guest_mode_blocked',
                         __('Please create an account to create an invoice. Guest access is read-only.', 'cheapalarms'),
@@ -354,16 +325,11 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
                 
+                // Authenticate user
+                $user = $this->getAuthenticatedUser();
+                
                 // Block guest mode (read-only access)
-                // FIX: Authenticate first, then check if user exists
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
-                if ($inviteToken && (!$user || 0 === $user->ID)) {
+                if ($inviteToken && !$user) {
                     return $this->respond(new WP_Error(
                         'guest_mode_blocked',
                         __('Please create an account to reject this estimate. Guest access is read-only.', 'cheapalarms'),
@@ -391,7 +357,7 @@ class PortalController implements ControllerInterface
                 $estimateId = sanitize_text_field($payload['estimateId'] ?? '');
                 $locationId = sanitize_text_field($payload['locationId'] ?? '');
                 if (!$estimateId) {
-                    return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                    return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                 }
 
                 $estimate = $this->estimateService->getEstimate([
@@ -415,7 +381,7 @@ class PortalController implements ControllerInterface
                 $estimateId = sanitize_text_field($payload['estimateId'] ?? '');
                 $locationId = sanitize_text_field($payload['locationId'] ?? '');
                 if (!$estimateId) {
-                    return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                    return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                 }
 
                 $estimate = $this->estimateService->getEstimate([
@@ -426,7 +392,7 @@ class PortalController implements ControllerInterface
                     return $this->respond($estimate);
                 }
 
-                $result    = $this->service->resendInvite($estimateId, $estimate['contact'] ?? []);
+                $result = $this->service->resendInvite($estimateId, $estimate['contact'] ?? []);
                 return $this->respond($result);
             },
         ]);
@@ -439,7 +405,7 @@ class PortalController implements ControllerInterface
                 $ghlContactId = sanitize_text_field($payload['ghlContactId'] ?? '');
                 
                 if (!$ghlContactId) {
-                    return new WP_REST_Response(['ok' => false, 'error' => 'ghlContactId required'], 400);
+                    return $this->respond(new WP_Error('bad_request', __('ghlContactId is required', 'cheapalarms'), ['status' => 400]));
                 }
 
                 // Get GHL client and fetch contact details
@@ -447,10 +413,7 @@ class PortalController implements ControllerInterface
                 $config = $this->container->get(\CheapAlarms\Plugin\Config\Config::class);
                 
                 if (empty($config->getLocationId())) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'Missing GHL_LOCATION_ID in environment',
-                    ], 500);
+                    return $this->respond(new WP_Error('server_error', __('Missing GHL_LOCATION_ID in environment', 'cheapalarms'), ['status' => 500]));
                 }
 
                 // Fetch GHL contact details
@@ -477,6 +440,7 @@ class PortalController implements ControllerInterface
                 $payload     = $request->get_json_params();
                 $estimateId  = sanitize_text_field($payload['estimateId'] ?? '');
                 $locationId  = sanitize_text_field($payload['locationId'] ?? '');
+                $inviteToken = sanitize_text_field($payload['inviteToken'] ?? '');
                 
                 // Input validation
                 if (empty($estimateId)) {
@@ -487,7 +451,16 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
                 
-                $result = $this->service->submitPhotos($estimateId, $locationId);
+                // SECURITY: Verify user has access to this estimate before allowing photo submission
+                $user = $this->getAuthenticatedUser();
+                $status = $this->service->getStatus($estimateId, $locationId, $inviteToken, $user);
+                if (is_wp_error($status)) {
+                    return $this->respond($status);
+                }
+                
+                // Use validated locationId from status
+                $effectiveLocationId = $status['locationId'] ?? $locationId;
+                $result = $this->service->submitPhotos($estimateId, $effectiveLocationId);
                 return $this->respond($result);
             },
         ]);
@@ -498,11 +471,9 @@ class PortalController implements ControllerInterface
                 $estimateId = sanitize_text_field($request->get_param('estimateId'));
                 $inviteToken = sanitize_text_field($request->get_param('inviteToken'));
                 
-                // FIX: Authenticate via JWT first, then check capabilities
-                // This ensures JWT-authenticated users can access test-account endpoint
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
+                // Authenticate via JWT first, then check capabilities
+                $user = $this->getAuthenticatedUser();
+                if ($user) {
                     return current_user_can('ca_access_portal') || current_user_can('ca_manage_portal');
                 }
                 
@@ -517,10 +488,10 @@ class PortalController implements ControllerInterface
                 $locationId  = sanitize_text_field($request->get_param('locationId'));
                 $inviteToken = sanitize_text_field($request->get_param('inviteToken'));
                 if (!$estimateId) {
-                    return new WP_REST_Response(['ok' => false, 'err' => 'estimateId required'], 400);
+                    return $this->respond(new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]));
                 }
 
-                $user = wp_get_current_user();
+                $user = $this->getAuthenticatedUser();
                 $status = $this->service->getStatus($estimateId, $locationId, $inviteToken, $user);
                 if (is_wp_error($status)) {
                     return $this->respond($status);
@@ -529,7 +500,7 @@ class PortalController implements ControllerInterface
                 return $this->respond([
                     'account' => $status['account'] ?? null,
                     'ok'      => true,
-                ]);
+                ], $request);
             },
         ]);
 
@@ -549,15 +520,8 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
 
-                // Validate estimate access (includes locationId validation via getStatus)
-                // FIX: Use direct JWT authentication instead of resetting user context
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
+                // Authenticate user and validate estimate access
+                $user = $this->getAuthenticatedUser();
                 $status = $this->service->getStatus($estimateId, $locationId, $inviteToken, $user);
                 if (is_wp_error($status)) {
                     return $this->respond($status); // Will return 403 if not authorized or invalid locationId
@@ -599,15 +563,8 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('bad_request', __('Invalid estimateId format', 'cheapalarms'), ['status' => 400]));
                 }
 
-                // Validate estimate access (includes locationId validation via getStatus)
-                // FIX: Use direct JWT authentication instead of resetting user context
-                $userId = $this->auth->authenticateViaJwt();
-                if ($userId && $userId > 0) {
-                    wp_set_current_user($userId);
-                    $user = wp_get_current_user();
-                } else {
-                    $user = wp_get_current_user();
-                }
+                // Authenticate user and validate estimate access
+                $user = $this->getAuthenticatedUser();
                 $status = $this->service->getStatus($estimateId, $locationId, $inviteToken, $user);
                 if (is_wp_error($status)) {
                     return $this->respond($status); // Will return 403 if not authorized or invalid locationId
@@ -616,7 +573,7 @@ class PortalController implements ControllerInterface
                 $paymentData = [
                     'amount' => isset($payload['amount']) ? (float) $payload['amount'] : null,
                     'provider' => sanitize_text_field($payload['provider'] ?? 'mock'),
-                    'transactionId' => sanitize_text_field($payload['transactionId'] ?? null),
+                    'transactionId' => sanitize_text_field($payload['transactionId'] ?? ''),
                 ];
 
                 // Use validated locationId from status (getStatus always returns locationId)
@@ -635,6 +592,22 @@ class PortalController implements ControllerInterface
     }
 
     /**
+     * Get the currently authenticated user via JWT or WordPress session.
+     * Centralizes JWT authentication to avoid code duplication.
+     * 
+     * @return \WP_User|null The authenticated user or null if not authenticated
+     */
+    private function getAuthenticatedUser(): ?\WP_User
+    {
+        $userId = $this->auth->authenticateViaJwt();
+        if ($userId && $userId > 0) {
+            wp_set_current_user($userId);
+        }
+        $user = wp_get_current_user();
+        return ($user && $user->ID > 0) ? $user : null;
+    }
+
+    /**
      * Universal helper to validate estimate access (authenticated user or valid invite token)
      * 
      * @param string $estimateId
@@ -643,17 +616,10 @@ class PortalController implements ControllerInterface
      */
     private function validateEstimateAccess(string $estimateId, string $inviteToken = ''): bool|WP_Error
     {
-        // FIX: Use direct JWT authentication instead of resetting user context
-        $userId = $this->auth->authenticateViaJwt();
-        if ($userId && $userId > 0) {
-            wp_set_current_user($userId);
-            $user = wp_get_current_user();
-        } else {
-            $user = wp_get_current_user();
-        }
+        $user = $this->getAuthenticatedUser();
 
         // If user is authenticated, allow access
-        if ($user && $user->ID > 0) {
+        if ($user) {
             return true;
         }
 
@@ -693,9 +659,10 @@ class PortalController implements ControllerInterface
         $response = new WP_REST_Response($result, 200);
         
         // Add cache headers for GET requests (improve performance)
+        // Use 'private' since responses contain user-specific data
         if ($request && $request->get_method() === 'GET') {
-            // Cache for 2 minutes, allow stale-while-revalidate for 5 minutes
-            $response->header('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+            // Cache for 2 minutes in browser only, allow stale-while-revalidate for 5 minutes
+            $response->header('Cache-Control', 'private, max-age=120, stale-while-revalidate=300');
             $response->header('Vary', 'Authorization, Cookie');
         }
         

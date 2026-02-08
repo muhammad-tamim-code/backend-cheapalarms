@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use WP_Error;
@@ -12,13 +13,14 @@ use WP_REST_Response;
 use function sanitize_email;
 use function sanitize_text_field;
 
-class GhlController implements ControllerInterface
+class GhlController extends AdminController
 {
     private GhlClient $client;
     private Authenticator $auth;
 
-    public function __construct(private Container $container)
+    public function __construct(Container $container)
     {
+        parent::__construct($container);
         $this->client = $this->container->get(GhlClient::class);
         $this->auth   = $this->container->get(Authenticator::class);
     }
@@ -46,17 +48,11 @@ class GhlController implements ControllerInterface
                     $config = $this->container->get(\CheapAlarms\Plugin\Config\Config::class);
                     
                     if (empty($config->getGhlToken())) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Missing GHL_API_KEY in environment',
-                        ], 500);
+                        return $this->respond(new WP_Error('configuration_error', __('GHL API key not configured.', 'cheapalarms'), ['status' => 500]));
                     }
                     
                     if (empty($config->getLocationId())) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'Missing GHL_LOCATION_ID in environment',
-                        ], 500);
+                        return $this->respond(new WP_Error('configuration_error', __('GHL location ID not configured.', 'cheapalarms'), ['status' => 500]));
                     }
 
                     $body = $request->get_json_params();
@@ -73,10 +69,7 @@ class GhlController implements ControllerInterface
                     $lastName = !empty($body['lastName']) ? sanitize_text_field($body['lastName']) : '';
 
                     if (empty($email) && empty($phone)) {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'email or phone required',
-                        ], 400);
+                        return $this->respond(new WP_Error('bad_request', __('Email or phone is required.', 'cheapalarms'), ['status' => 400]));
                     }
 
                     $payload = [
@@ -121,31 +114,24 @@ class GhlController implements ControllerInterface
                                     
                                     if (!empty($existingContactId)) {
                                         // Contact exists, return it as success
-                                        return new WP_REST_Response([
-                                            'ok' => true,
+                                        return $this->respond([
                                             'contact' => [
                                                 'id' => $existingContactId,
                                                 'email' => $email,
                                                 'firstName' => $firstName,
                                                 'lastName' => $lastName,
                                             ],
-                                        ], 200);
+                                        ]);
                                     }
                                 }
                             }
                         }
                         
                         // For other errors, return the error
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => $result->get_error_message(),
-                        ], $result->get_error_data()['code'] ?? 500);
+                        return $this->respond($result);
                     }
 
-                    return new WP_REST_Response([
-                        'ok' => true,
-                        'contact' => $result,
-                    ], 200);
+                    return $this->respond(['contact' => $result]);
                 },
             ],
         ]);
@@ -158,17 +144,11 @@ class GhlController implements ControllerInterface
                 $config = $this->container->get(\CheapAlarms\Plugin\Config\Config::class);
                 
                 if (empty($config->getGhlToken())) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'Missing GHL_API_KEY in environment',
-                    ], 500);
+                    return $this->respond(new WP_Error('configuration_error', __('GHL API key not configured.', 'cheapalarms'), ['status' => 500]));
                 }
                 
                 if (empty($config->getLocationId())) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'Missing GHL_LOCATION_ID in environment',
-                    ], 500);
+                    return $this->respond(new WP_Error('configuration_error', __('GHL location ID not configured.', 'cheapalarms'), ['status' => 500]));
                 }
 
                 $limit = (int) ($request->get_param('limit') ?: 50);
@@ -188,38 +168,12 @@ class GhlController implements ControllerInterface
                 
                 if (is_wp_error($result)) {
                     $logger = $this->container->get(\CheapAlarms\Plugin\Services\Logger::class);
-                    $errorData = $result->get_error_data();
                     $logger->error('GHL contacts list error', [
                         'error' => $result->get_error_message(),
                         'code' => $result->get_error_code(),
-                        'data' => $errorData,
+                        'data' => $result->get_error_data(),
                     ]);
-                    
-                    // Parse error body to get detailed GHL error message
-                    $ghlError = null;
-                    if (isset($errorData['body'])) {
-                        $decoded = json_decode($errorData['body'], true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            $ghlError = $decoded;
-                        }
-                    }
-                    
-                    // SECURITY: Only include debug information in debug mode
-                    $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-                    $errorResponse = [
-                        'ok' => false,
-                        'error' => $isDebug ? $result->get_error_message() : 'Service temporarily unavailable. Please try again.',
-                        'code' => $result->get_error_code(),
-                    ];
-                    
-                    if ($isDebug) {
-                        $errorResponse['_debug'] = [
-                            'ghlError' => $ghlError,
-                            'rawErrorData' => $this->sanitizeErrorData($errorData),
-                        ];
-                    }
-                    
-                    return new WP_REST_Response($errorResponse, $errorData['code'] ?? 500);
+                    return $this->respond($result);
                 }
 
                 // GHL API response structure can vary - handle different formats
@@ -248,24 +202,11 @@ class GhlController implements ControllerInterface
                     ]);
                 }
 
-                $response = [
-                    'ok' => true,
+                return $this->respond([
                     'contacts' => $contacts,
                     'total' => $total,
                     'limit' => $limit,
-                ];
-                
-                // SECURITY: Only include debug information in debug mode
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    $response['_debug'] = [
-                        'response_keys' => is_array($result) ? array_keys($result) : 'not_array',
-                        'contacts_count' => count($contacts),
-                    ];
-                }
-                
-                $restResponse = new WP_REST_Response($response, 200);
-                $this->addSecurityHeaders($restResponse);
-                return $restResponse;
+                ]);
             },
         ]);
 
@@ -277,10 +218,7 @@ class GhlController implements ControllerInterface
                 $config = $this->container->get(\CheapAlarms\Plugin\Config\Config::class);
                 
                 if (empty($config->getGhlToken())) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'Missing GHL_API_KEY in environment',
-                    ], 500);
+                    return $this->respond(new WP_Error('configuration_error', __('GHL API key not configured.', 'cheapalarms'), ['status' => 500]));
                 }
 
                 $body = $request->get_json_params();
@@ -298,24 +236,15 @@ class GhlController implements ControllerInterface
                 $fromEmail = !empty($body['fromEmail']) ? sanitize_email($body['fromEmail']) : '';
 
                 if (empty($contactId)) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'contactId required',
-                    ], 400);
+                    return $this->respond(new WP_Error('bad_request', __('Contact ID is required.', 'cheapalarms'), ['status' => 400]));
                 }
 
                 if (empty($subject)) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'subject required',
-                    ], 400);
+                    return $this->respond(new WP_Error('bad_request', __('Subject is required.', 'cheapalarms'), ['status' => 400]));
                 }
 
                 if (empty($html) && empty($text)) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => 'Provide html or text content',
-                    ], 400);
+                    return $this->respond(new WP_Error('bad_request', __('HTML or text content is required.', 'cheapalarms'), ['status' => 400]));
                 }
 
                 $effectiveFromEmail = $fromEmail ?: get_option('ghl_from_email', 'quotes@cheapalarms.dev');
@@ -341,150 +270,28 @@ class GhlController implements ControllerInterface
                 $result = $this->client->post('/conversations/messages', $payload);
                 
                 if (is_wp_error($result)) {
-                    return new WP_REST_Response([
-                        'ok' => false,
-                        'error' => $result->get_error_message(),
-                    ], $result->get_error_data()['code'] ?? 500);
+                    return $this->respond($result);
                 }
 
-                return new WP_REST_Response([
-                    'ok' => true,
-                    'message' => $result,
-                ], 200);
+                return $this->respond(['message' => $result]);
             },
         ]);
     }
 
-    /**
-     * @param array|WP_Error $result
-     */
-    private function respond($result): WP_REST_Response
-    {
-        if (is_wp_error($result)) {
-            return $this->errorResponse($result);
-        }
-
-        if (!isset($result['ok'])) {
-            $result['ok'] = true;
-        }
-
-        $response = new WP_REST_Response($result, 200);
-        $this->addSecurityHeaders($response);
-        return $response;
-    }
-
-    /**
-     * Create standardized error response with sanitization
-     *
-     * @param WP_Error $error
-     * @return WP_REST_Response
-     */
-    private function errorResponse(WP_Error $error): WP_REST_Response
-    {
-        $status = $error->get_error_data()['status'] ?? 500;
-        $code = $error->get_error_code();
-        $message = $error->get_error_message();
-        $errorData = $error->get_error_data();
-        
-        // SECURITY: Sanitize error messages in production
-        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-        
-        if (!$isDebug) {
-            // Generic messages for production to prevent information disclosure
-            $genericMessages = [
-                'rest_forbidden' => 'Access denied.',
-                'unauthorized' => 'Authentication required.',
-                'invalid_token' => 'Invalid authentication token.',
-                'rate_limited' => 'Too many requests. Please try again later.',
-                'bad_request' => 'Invalid request.',
-                'not_found' => 'Resource not found.',
-                'server_error' => 'An error occurred. Please try again.',
-                'ghl_api_error' => 'Service temporarily unavailable. Please try again.',
-                'ghl_http_error' => 'Service temporarily unavailable. Please try again.',
-            ];
-            
-            $message = $genericMessages[$code] ?? 'An error occurred. Please try again.';
-        }
-        
-        $response = [
-            'ok'   => false,
-            'error' => $message,
-            'code' => $code,
-            // Include 'err' for backward compatibility
-            'err'  => $message,
-        ];
-        
-        // Only include detailed error information in debug mode
-        if ($isDebug && !empty($errorData) && is_array($errorData)) {
-            $sanitized = $this->sanitizeErrorData($errorData);
-            if (!empty($sanitized)) {
-                $response['details'] = $sanitized;
-            }
-        }
-        
-        $restResponse = new WP_REST_Response($response, $status);
-        $this->addSecurityHeaders($restResponse);
-        return $restResponse;
-    }
-
-    /**
-     * Remove sensitive data from error details
-     *
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
-     */
-    private function sanitizeErrorData(array $data): array
-    {
-        $sensitive = ['password', 'token', 'secret', 'key', 'authorization', 'cookie', 'api_key'];
-        $sanitized = [];
-        
-        foreach ($data as $key => $value) {
-            $keyLower = strtolower($key);
-            $isSensitive = false;
-            
-            foreach ($sensitive as $sensitiveKey) {
-                if (str_contains($keyLower, $sensitiveKey)) {
-                    $isSensitive = true;
-                    break;
-                }
-            }
-            
-            if ($isSensitive) {
-                $sanitized[$key] = '[REDACTED]';
-            } elseif (is_array($value)) {
-                $sanitized[$key] = $this->sanitizeErrorData($value);
-            } else {
-                $sanitized[$key] = $value;
-            }
-        }
-        
-        return $sanitized;
-    }
-
-    /**
-     * Add security headers to response
-     *
-     * @param WP_REST_Response $response
-     * @return void
-     */
-    private function addSecurityHeaders(WP_REST_Response $response): void
-    {
-        // Prevent MIME type sniffing
-        $response->header('X-Content-Type-Options', 'nosniff');
-        
-        // XSS protection (legacy but still useful)
-        $response->header('X-XSS-Protection', '1; mode=block');
-        
-        // Prevent clickjacking
-        $response->header('X-Frame-Options', 'DENY');
-        
-        // Referrer policy
-        $response->header('Referrer-Policy', 'strict-origin-when-cross-origin');
-    }
-
     private function isDevBypass(): bool
     {
-        return defined('WP_DEBUG') && WP_DEBUG && isset($_SERVER['HTTP_X_CA_DEV']) && $_SERVER['HTTP_X_CA_DEV'] === '1';
+        $header  = isset($_SERVER['HTTP_X_CA_DEV']) ? trim((string) $_SERVER['HTTP_X_CA_DEV']) : '';
+        $query   = isset($_GET['__dev']) ? trim((string) $_GET['__dev']) : '';
+        $addr    = $_SERVER['REMOTE_ADDR'] ?? '';
+        $isLocal = in_array($addr, ['127.0.0.1', '::1'], true);
+        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
+        if ($isLocal && $isDebug && ($header === '1' || $query === '1')) {
+            return true;
+        }
+        if ($isLocal && $isDebug && defined('CA_DEV_BYPASS') && CA_DEV_BYPASS) {
+            return true;
+        }
+        return false;
     }
 }
 

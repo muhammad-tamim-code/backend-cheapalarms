@@ -734,6 +734,10 @@ class AdminEstimateController extends AdminController
                 'payment'    => $meta['payment'] ?? null,
                 // CRITICAL: Include quote data (contains revisionNumber, acceptance_enabled, status, etc.)
                 'quote'      => $meta['quote'] ?? null,
+                // CRITICAL: Include revision data for admin edit history timeline
+                'revision'        => $meta['revision'] ?? null,
+                'revisionHistory' => $meta['revisionHistory'] ?? [],
+                'itemsMeta'       => $meta['itemsMeta'] ?? [],
             ],
             'linkedInvoice' => $linkedInvoice,
         ]);

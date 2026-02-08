@@ -73,6 +73,44 @@ abstract class AdminController implements ControllerInterface
     }
 
     /**
+     * Require admin capability (ca_manage_portal).
+     * Returns WP_REST_Response error if not authorized, null if authorized.
+     * 
+     * Usage in callback:
+     *   $error = $this->requireAdmin();
+     *   if ($error) return $error;
+     * 
+     * @return WP_REST_Response|null
+     */
+    protected function requireAdmin(): ?WP_REST_Response
+    {
+        $this->ensureUserLoaded();
+        $auth = $this->container->get(\CheapAlarms\Plugin\REST\Auth\Authenticator::class);
+        $authCheck = $auth->requireCapability('ca_manage_portal');
+        if (is_wp_error($authCheck)) {
+            return $this->respond($authCheck);
+        }
+        return null;
+    }
+
+    /**
+     * Require view capability (ca_view_estimates).
+     * Returns WP_REST_Response error if not authorized, null if authorized.
+     * 
+     * @return WP_REST_Response|null
+     */
+    protected function requireViewer(): ?WP_REST_Response
+    {
+        $this->ensureUserLoaded();
+        $auth = $this->container->get(\CheapAlarms\Plugin\REST\Auth\Authenticator::class);
+        $authCheck = $auth->requireCapability('ca_view_estimates');
+        if (is_wp_error($authCheck)) {
+            return $this->respond($authCheck);
+        }
+        return null;
+    }
+
+    /**
      * Get portal meta for an estimate.
      *
      * @return array<string, mixed>

@@ -97,10 +97,7 @@ class QuoteRequestController implements ControllerInterface
         $phone = sanitize_text_field($body['phone'] ?? '');
 
         if (empty($firstName) || empty($lastName) || empty($email)) {
-            return new WP_REST_Response([
-                'ok' => false,
-                'error' => 'Missing required fields: firstName, lastName, email',
-            ], 400);
+            return $this->respond(new WP_Error('missing_params', 'Missing required fields: firstName, lastName, email', ['status' => 400]));
         }
 
         // Define lock key BEFORE using it (needed for duplicate prevention)
@@ -136,12 +133,7 @@ class QuoteRequestController implements ControllerInterface
                                 
                                 if ($timeSinceCreation < 60) {
                                     // Recent estimate found - duplicate request
-                                    return new WP_REST_Response([
-                                        'ok' => false,
-                                        'error' => 'A quote request was recently submitted for this email. Please check your inbox. If you need another quote, please wait a moment and try again.',
-                                        'code' => 'duplicate_request',
-                                        'retryAfter' => 60 - $timeSinceCreation,
-                                    ], 429); // 429 Too Many Requests
+                                    return $this->respond(new WP_Error('duplicate_request', 'A quote request was recently submitted for this email. Please check your inbox. If you need another quote, please wait a moment and try again.', ['status' => 429, 'retryAfter' => 60 - $timeSinceCreation]));
                                 }
                             }
                         }
@@ -149,12 +141,7 @@ class QuoteRequestController implements ControllerInterface
                 }
                 
                 // Lock is active but no recent estimate found - might be processing
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'A quote request is currently being processed for this email. Please wait a moment and check your email.',
-                    'code' => 'duplicate_request',
-                    'retryAfter' => 60 - $lockAge,
-                ], 429);
+                return $this->respond(new WP_Error('duplicate_request', 'A quote request is currently being processed for this email. Please wait a moment and check your email.', ['status' => 429, 'retryAfter' => 60 - $lockAge]));
             }
         }
         
@@ -164,10 +151,7 @@ class QuoteRequestController implements ControllerInterface
         // Validate items
         $items = $body['items'] ?? [];
         if (empty($items) || !is_array($items)) {
-            return new WP_REST_Response([
-                'ok' => false,
-                'error' => 'Missing or invalid items array',
-            ], 400);
+            return $this->respond(new WP_Error('invalid_items', 'Missing or invalid items array', ['status' => 400]));
         }
         
         // Sanitize items to match GHL expected structure
@@ -193,10 +177,7 @@ class QuoteRequestController implements ControllerInterface
         
         // Ensure we have at least one valid item after sanitization
         if (empty($sanitizedItems)) {
-            return new WP_REST_Response([
-                'ok' => false,
-                'error' => 'No valid items found. Items must have name and amount > 0.',
-            ], 400);
+            return $this->respond(new WP_Error('invalid_items', 'No valid items found. Items must have name and amount > 0.', ['status' => 400]));
         }
 
         // Optional fields
@@ -300,11 +281,7 @@ class QuoteRequestController implements ControllerInterface
 
                     // If GHL indicates phone-based duplication, don't auto-merge.
                     if (!empty($contactId) && is_string($matchingField) && strtolower($matchingField) === 'phone') {
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'This phone number is already linked to another account. Please use the email you used previously, or contact support.',
-                            'code' => 'phone_conflict',
-                        ], 409);
+                        return $this->respond(new WP_Error('phone_conflict', 'This phone number is already linked to another account. Please use the email you used previously, or contact support.', ['status' => 409]));
                     }
 
                     // If GHL indicates email-based duplication, it's safe to reuse.
@@ -326,11 +303,7 @@ class QuoteRequestController implements ControllerInterface
                             ], 5, $effectiveLocationId, 0);
 
                             if (is_wp_error($search)) {
-                                return new WP_REST_Response([
-                                    'ok' => false,
-                                    'error' => 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.',
-                                    'code' => 'contact_conflict',
-                                ], 409);
+                                return $this->respond(new WP_Error('contact_conflict', 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.', ['status' => 409]));
                             }
 
                             $contacts = $search['contacts'] ?? $search['items'] ?? [];
@@ -343,19 +316,11 @@ class QuoteRequestController implements ControllerInterface
                                 }
                             }
                         } catch (\Exception $e) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.',
-                                'code' => 'contact_conflict',
-                            ], 409);
+                            return $this->respond(new WP_Error('contact_conflict', 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.', ['status' => 409]));
                         }
 
                         if (!$foundByEmail) {
-                            return new WP_REST_Response([
-                                'ok' => false,
-                                'error' => 'We found an existing contact with this email/phone combination, but couldn’t safely confirm it’s the same person. Please use the email you used previously or contact support.',
-                                'code' => 'contact_conflict',
-                            ], 409);
+                            return $this->respond(new WP_Error('contact_conflict', 'We found an existing contact with this email/phone combination, but could not safely confirm if this is the same person. Please use the email you used previously or contact support.', ['status' => 409]));
                         }
 
                         if (!empty($contactIdFromSearch)) {
@@ -366,11 +331,7 @@ class QuoteRequestController implements ControllerInterface
                         }
                     } elseif (!empty($contactId) && is_string($matchingField) && $matchingField !== '') {
                         // Unknown matching field - treat as conflict to avoid wrong merge.
-                        return new WP_REST_Response([
-                            'ok' => false,
-                            'error' => 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.',
-                            'code' => 'contact_conflict',
-                        ], 409);
+                        return $this->respond(new WP_Error('contact_conflict', 'We found an existing contact that conflicts with the details you entered. Please use the email you used previously or contact support.', ['status' => 409]));
                     }
                 }
             } else {
@@ -406,10 +367,7 @@ class QuoteRequestController implements ControllerInterface
                     'hasContactResult' => isset($contactResult),
                     'contactResultType' => isset($contactResult) ? gettype($contactResult) : 'not set',
                 ]));
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => $errorMessage,
-                ], 500);
+                return $this->respond(new WP_Error('contact_creation_failed', $errorMessage, ['status' => 500]));
             }
 
             // Step 2: Create estimate in GHL
@@ -470,18 +428,12 @@ class QuoteRequestController implements ControllerInterface
             $estimateResult = $this->estimateService->createEstimate($estimateData, 8, 0, true);
             
             if (is_wp_error($estimateResult)) {
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'Failed to create estimate: ' . $estimateResult->get_error_message(),
-                ], 500);
+                return $this->respond(new WP_Error('estimate_creation_failed', 'Failed to create estimate: ' . $estimateResult->get_error_message(), ['status' => 500]));
             }
 
             // Check if result has 'ok' key
             if (!isset($estimateResult['ok']) || !$estimateResult['ok']) {
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'Failed to create estimate',
-                ], 500);
+                return $this->respond(new WP_Error('estimate_creation_failed', 'Failed to create estimate', ['status' => 500]));
             }
 
             // Extract ID from nested response structure
@@ -492,10 +444,7 @@ class QuoteRequestController implements ControllerInterface
             $estimateCurrencyFromCreate = $response['estimate']['currency'] ?? $response['currency'] ?? 'AUD';
             
             if (!$estimateId) {
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'Estimate created but ID missing in response',
-                ], 500);
+                return $this->respond(new WP_Error('estimate_id_missing', 'Estimate created but ID missing in response', ['status' => 500]));
             }
 
             // Step 3: Create portal entry and send invitation
@@ -692,19 +641,13 @@ class QuoteRequestController implements ControllerInterface
             $jsonMeta = wp_json_encode($portalMeta);
             if ($jsonMeta === false) {
                 error_log('[CheapAlarms][ERROR] Failed to encode portal meta JSON for estimate: ' . $estimateId);
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'Failed to save portal data. Please contact support.',
-                ], 500);
+                return $this->respond(new WP_Error('portal_save_failed', 'Failed to save portal data. Please contact support.', ['status' => 500]));
             }
             
             $metaSaved = update_option("ca_portal_meta_{$estimateId}", $jsonMeta);
             if (!$metaSaved) {
                 error_log('[CheapAlarms][ERROR] Failed to save portal meta for estimate: ' . $estimateId);
-                return new WP_REST_Response([
-                    'ok' => false,
-                    'error' => 'Failed to save portal data. Please contact support.',
-                ], 500);
+                return $this->respond(new WP_Error('portal_save_failed', 'Failed to save portal data. Please contact support.', ['status' => 500]));
             }
 
             // Step 4: Update workflow status (skip auto-sending estimate email - we'll send consolidated quote request email below)
@@ -857,7 +800,7 @@ class QuoteRequestController implements ControllerInterface
             // Success! Keep the lock for full 60 seconds to prevent duplicate submissions
             // (Don't clear it - let it expire naturally)
             
-            return new WP_REST_Response([
+            return $this->respond([
                 'ok' => true,
                 'contactId' => $contactId,
                 'estimateId' => $estimateId,
@@ -865,7 +808,7 @@ class QuoteRequestController implements ControllerInterface
                 'portalUrl' => $portalUrl,
                 'emailSent' => $emailSent,
                 'message' => 'Quote request submitted successfully! Check your email for the portal link.',
-            ], 200);
+            ]);
 
         } catch (\Exception $e) {
             // Clear lock on error so user can retry
@@ -873,10 +816,7 @@ class QuoteRequestController implements ControllerInterface
             
             error_log('Quote request error: ' . $e->getMessage());
             
-            return new WP_REST_Response([
-                'ok' => false,
-                'error' => 'An unexpected error occurred. Please try again.',
-            ], 500);
+            return $this->respond(new WP_Error('unexpected_error', 'An unexpected error occurred. Please try again.', ['status' => 500]));
         }
     }
 
