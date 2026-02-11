@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
@@ -154,12 +155,9 @@ class EstimateController implements ControllerInterface
                 if (!is_wp_error($snapshotItems) && is_array($snapshotItems) && count($snapshotItems) > 0) {
                     $items = $snapshotItems;
 
-                    // Best-effort background refresh if snapshots are stale.
+                    // Best-effort background refresh if snapshots are stale (estimates: 3 min tier).
                     $lastSyncedAt = $this->snapshotRepo->lastSyncedAt($locationId);
-                    $stale = false;
-                    if (!is_wp_error($lastSyncedAt) && is_string($lastSyncedAt) && $lastSyncedAt) {
-                        $stale = (time() - (int)strtotime($lastSyncedAt)) > (3 * MINUTE_IN_SECONDS);
-                    }
+                    $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::ESTIMATE_STALE_SECONDS);
                     if ($stale && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
                         wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
                     }

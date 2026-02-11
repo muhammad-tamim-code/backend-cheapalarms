@@ -4,6 +4,7 @@ namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\Logger;
@@ -26,13 +27,15 @@ class AdminGhlContactsController extends AdminController
     private Authenticator $auth;
     private GhlClient $ghlClient;
     private Logger $logger;
+    private ContactSnapshotRepository $contactSnapshotRepo;
 
     public function __construct(Container $container)
     {
         parent::__construct($container);
-        $this->auth = $this->container->get(Authenticator::class);
-        $this->ghlClient = $this->container->get(GhlClient::class);
-        $this->logger = $this->container->get(Logger::class);
+        $this->auth                = $this->container->get(Authenticator::class);
+        $this->ghlClient           = $this->container->get(GhlClient::class);
+        $this->logger              = $this->container->get(Logger::class);
+        $this->contactSnapshotRepo = $this->container->get(ContactSnapshotRepository::class);
     }
 
     public function register(): void
@@ -154,6 +157,25 @@ class AdminGhlContactsController extends AdminController
             'contactId' => $contactId,
             'alreadyDeleted' => $result['ghl']['alreadyDeleted'],
         ]);
+
+        // Soft-delete the local contact snapshot (fail silently)
+        $localDelete = $this->contactSnapshotRepo->softDelete(
+            $contactId,
+            $locationId,
+            $user->ID ?? 0,
+            'Deleted from GHL via admin panel'
+        );
+        if (is_wp_error($localDelete)) {
+            // Not a critical failure — GHL is the source of truth
+            $errorCode = $localDelete->get_error_code();
+            if ($errorCode !== 'not_found' && $errorCode !== 'already_deleted') {
+                $this->logger->warning('Contact snapshot soft-delete failed', [
+                    'correlationId' => $correlationId,
+                    'contactId'     => $contactId,
+                    'error'         => $localDelete->get_error_message(),
+                ]);
+            }
+        }
 
         return $this->respond($result);
     }

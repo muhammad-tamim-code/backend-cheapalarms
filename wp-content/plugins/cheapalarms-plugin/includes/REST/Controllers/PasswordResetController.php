@@ -2,7 +2,9 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\PortalService;
@@ -417,12 +419,38 @@ class PasswordResetController implements ControllerInterface
     }
 
     /**
-     * Find or create GHL contact by email
+     * Find or create GHL contact by email.
+     * Local-first: checks the contact snapshot table first (5-min freshness),
+     * then falls through to GHL API and writes-through on hit/create.
+     *
      * @return string|WP_Error GHL contact ID
      */
     private function findOrCreateGhlContact(string $email, WP_User $user, string $locationId): string|WP_Error
     {
-        // Try to find existing contact
+        // ── LOCAL-FIRST: try snapshot table ──────────────────────────
+        try {
+            /** @var ContactSnapshotRepository $contactRepo */
+            $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+            $local = $contactRepo->findByEmail($email, $locationId);
+
+            if ($local !== null && !is_wp_error($local)) {
+                $syncedAt = $local['syncedAt'] ?? null;
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                    $localContactId = $local['contactId'] ?? null;
+                    if (!empty($localContactId)) {
+                        return $localContactId;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Local lookup failed – fall through to GHL API
+            $this->logger->warning('Contact snapshot lookup failed in PasswordResetController', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // ── GHL API: search for existing contact ─────────────────────
         $response = $this->ghlClient->get('/contacts/search', [
             'query' => $email,
         ], 20, $locationId);
@@ -438,6 +466,8 @@ class PasswordResetController implements ControllerInterface
                         if (empty($contact['email'])) {
                             $this->updateContactEmail($foundId, $email, $locationId);
                         }
+                        // Write-through: cache this contact locally
+                        $this->writeThroughContact($locationId, $contact);
                         return $foundId;
                     }
                 }
@@ -538,6 +568,14 @@ class PasswordResetController implements ControllerInterface
                             // Ensure email is set on existing contact
                             $this->updateContactEmail($existingContactId, $email, $locationId);
                             
+                            // Write-through: cache the duplicate contact locally
+                            $this->writeThroughContact($locationId, [
+                                'id'    => $existingContactId,
+                                'email' => $email,
+                                'firstName' => $firstName,
+                                'lastName'  => $lastName,
+                            ]);
+                            
                             return $existingContactId;
                         } else {
                             $this->logger->warning('Duplicate contact error but no contactId in meta', [
@@ -577,6 +615,8 @@ class PasswordResetController implements ControllerInterface
                                 'contactId' => $foundId,
                             ]);
                             $this->updateContactEmail($foundId, $email, $locationId);
+                            // Write-through: cache the found contact locally
+                            $this->writeThroughContact($locationId, $contact);
                             return $foundId;
                         }
                     }
@@ -590,25 +630,30 @@ class PasswordResetController implements ControllerInterface
         // GHL API returns contact in different structures
         // Try multiple possible response structures in order of likelihood
         $contactId = '';
+        $createdContactData = null;
         
         // Structure 1: { contact: { id: "..." } }
         if (isset($createResponse['contact']) && is_array($createResponse['contact'])) {
             $contactId = $createResponse['contact']['id'] ?? '';
+            $createdContactData = $createResponse['contact'];
         }
         
         // Structure 2: { id: "..." } (direct ID)
         if (empty($contactId) && isset($createResponse['id'])) {
             $contactId = $createResponse['id'];
+            $createdContactData = $createResponse;
         }
         
         // Structure 3: { contactId: "..." }
         if (empty($contactId) && isset($createResponse['contactId'])) {
             $contactId = $createResponse['contactId'];
+            $createdContactData = $createResponse;
         }
         
         // Structure 4: Response itself might be the contact object
         if (empty($contactId) && isset($createResponse['id']) && is_string($createResponse['id'])) {
             $contactId = $createResponse['id'];
+            $createdContactData = $createResponse;
         }
 
         if (empty($contactId)) {
@@ -619,7 +664,43 @@ class PasswordResetController implements ControllerInterface
             );
         }
 
+        // Write-through: cache the newly created contact locally
+        $writeData = is_array($createdContactData) ? $createdContactData : ['id' => $contactId, 'email' => $email];
+        if (empty($writeData['email'])) {
+            $writeData['email'] = $email;
+        }
+        $this->writeThroughContact($locationId, $writeData);
+
         return $contactId;
+    }
+
+    /**
+     * Write-through: upsert a single contact to the local snapshot table.
+     * Fails silently (logs but does not fail the main operation).
+     */
+    private function writeThroughContact(string $locationId, array $contactData): void
+    {
+        $contactId = $contactData['id'] ?? $contactData['_id'] ?? $contactData['contactId'] ?? null;
+        if (!$contactId) {
+            return;
+        }
+
+        try {
+            $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+            $record = ContactSnapshotRepository::normalizeFromGhl($contactData);
+            $res    = $contactRepo->upsertOne($locationId, $record);
+            if (is_wp_error($res)) {
+                $this->logger->warning('Contact write-through failed', [
+                    'contactId' => $contactId,
+                    'error'     => $res->get_error_message(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Contact write-through exception', [
+                'contactId' => $contactId,
+                'error'     => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -183,6 +183,49 @@ class InvoiceService
     }
 
     /**
+     * Fetch ONE page from GHL invoice list endpoint (used for snapshot syncing).
+     *
+     * @return array{ok:bool, locationId:string, items:array<int, array<string,mixed>>, nextOffset:?string}|WP_Error
+     */
+    public function fetchInvoiceListPage(string $locationId, int $limit = 50, string $offset = '0')
+    {
+        $locationId = $locationId ?: $this->config->getLocationId();
+        if (!$locationId) {
+            return new WP_Error('missing_location', __('Location ID is not configured.', 'cheapalarms'));
+        }
+
+        $limit = max(1, min(100, $limit));
+
+        $query = [
+            'altId'   => $locationId,
+            'altType' => 'location',
+            'limit'   => $limit,
+            'offset'  => (string)$offset,
+        ];
+
+        $response = $this->client->get('/invoices/', $query, 25, $locationId);
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $records = $response['invoices'] ?? $response['items'] ?? [];
+        $next    = $response['nextOffset'] ?? ($response['meta']['nextOffset'] ?? null);
+
+        // GHL invoices use startAfterId/offset-based pagination.
+        // If the number of returned items < limit, there are no more pages.
+        if (is_array($records) && count($records) < $limit) {
+            $next = null;
+        }
+
+        return [
+            'ok'         => true,
+            'locationId' => $locationId,
+            'items'      => is_array($records) ? $records : [],
+            'nextOffset' => $next ? (string)$next : null,
+        ];
+    }
+
+    /**
      * Send invoice via GHL API.
      *
      * @param string $invoiceId Invoice ID

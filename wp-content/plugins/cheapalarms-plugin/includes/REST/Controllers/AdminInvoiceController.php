@@ -2,9 +2,11 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Container;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\PortalService;
 use WP_Error;
@@ -18,6 +20,7 @@ class AdminInvoiceController extends AdminController
     private InvoiceService $invoiceService;
     private PortalService $portalService;
     private Authenticator $auth;
+    private InvoiceSnapshotRepository $snapshotRepo;
 
     public function __construct(Container $container)
     {
@@ -25,6 +28,7 @@ class AdminInvoiceController extends AdminController
         $this->invoiceService = $this->container->get(InvoiceService::class);
         $this->portalService  = $this->container->get(PortalService::class);
         $this->auth           = $this->container->get(Authenticator::class);
+        $this->snapshotRepo   = $this->container->get(InvoiceSnapshotRepository::class);
     }
 
     public function register(): void
@@ -53,6 +57,37 @@ class AdminInvoiceController extends AdminController
                     return $this->respond($authCheck);
                 }
                 return $this->bulkDelete($request);
+            },
+        ]);
+
+        // Non-blocking snapshot refresh for invoice lists (WP-Cron)
+        // MUST be registered BEFORE the parameterized (?P<invoiceId>) route
+        register_rest_route('ca/v1', '/admin/invoices/sync-snapshots', [
+            'methods'             => 'POST',
+            'permission_callback' => fn () => true,
+            'callback'            => function (WP_REST_Request $request) {
+                $this->ensureUserLoaded();
+                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                if (is_wp_error($authCheck)) {
+                    return $this->respond($authCheck);
+                }
+
+                $locationIdResult = $this->resolveLocationId($request);
+                if (is_wp_error($locationIdResult)) {
+                    return $this->respond($locationIdResult);
+                }
+                $locationId = $locationIdResult;
+
+                $already = wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId]);
+                if (!$already) {
+                    wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
+                }
+
+                return $this->respond([
+                    'ok'       => true,
+                    'message'  => 'Invoice snapshot sync scheduled',
+                    'already'  => (bool)$already,
+                ]);
             },
         ]);
 
@@ -156,6 +191,10 @@ class AdminInvoiceController extends AdminController
 
     /**
      * List invoices with filters and pagination.
+     *
+     * LOCAL-FIRST: reads from wp_ca_invoice_snapshots table.
+     * Falls back to GHL API if snapshots are empty (first run).
+     * Schedules background sync if data is stale (> 3 min).
      */
     public function listInvoices(WP_REST_Request $request): WP_REST_Response
     {
@@ -169,32 +208,89 @@ class AdminInvoiceController extends AdminController
         $status    = sanitize_text_field($request->get_param('status') ?? '');
         $page      = max(1, (int)($request->get_param('page') ?? 1));
         $pageSize  = max(1, min(100, (int)($request->get_param('pageSize') ?? 20)));
+        $offset    = ($page - 1) * $pageSize;
 
-        $filters = [
-            'limit'  => $pageSize,
-            'offset' => ($page - 1) * $pageSize,
-        ];
-        if ($status) {
-            $filters['status'] = $status;
+        // === LOCAL-FIRST: Try snapshot table ===
+        $dataSource = 'api'; // Default; overridden if we read from local DB
+        $items = null;
+        $total = 0;
+
+        $hasLocalData = $this->snapshotRepo->hasData($locationId);
+        if (!is_wp_error($hasLocalData) && $hasLocalData) {
+            $snapshotResult = $this->snapshotRepo->listByLocation(
+                $locationId,
+                $status ?: null,
+                $search ?: null,
+                $pageSize,
+                $offset
+            );
+
+            if (!is_wp_error($snapshotResult)) {
+                $items = $snapshotResult['items'];
+                $total = $snapshotResult['total'];
+                $dataSource = 'local';
+
+                // Schedule background sync if stale (invoices: 3 min tier)
+                $lastSyncedAt = $this->snapshotRepo->lastSyncedAt($locationId);
+                $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::INVOICE_STALE_SECONDS);
+                if ($stale) {
+                    $dataSource = 'local-stale';
+                    if (!wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
+                        wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
+                    }
+                }
+
+                error_log('[CheapAlarms][INVOICE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . $total);
+            }
         }
 
-        $result = $this->invoiceService->listInvoices($locationId, $filters);
-        if (is_wp_error($result)) {
-            return $this->respond($result);
+        // === GHL FALLBACK: If no local data, fetch from GHL and populate snapshots ===
+        if ($items === null) {
+            error_log('[CheapAlarms][INVOICE_CACHE] MISS (API fallback)');
+
+            // Schedule background sync to populate the snapshot table
+            if (!wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
+                wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
+            }
+
+            // Meanwhile, serve from GHL directly (same as old behavior)
+            $filters = [
+                'limit'  => $pageSize,
+                'offset' => $offset,
+            ];
+            if ($status) {
+                $filters['status'] = $status;
+            }
+
+            $result = $this->invoiceService->listInvoices($locationId, $filters);
+            if (is_wp_error($result)) {
+                return $this->respond($result);
+            }
+
+            $items = $result['items'] ?? [];
+            $total = $result['total'] ?? count($items);
+
+            // Apply search filter for GHL results (local DB handles this in SQL)
+            if ($search) {
+                $items = array_values(array_filter($items, function ($item) use ($search) {
+                    $matches = false;
+                    $matches = $matches || (isset($item['invoiceNumber']) && stripos((string)$item['invoiceNumber'], $search) !== false);
+                    $matches = $matches || (isset($item['contactName']) && stripos($item['contactName'], $search) !== false);
+                    $matches = $matches || (isset($item['contactEmail']) && stripos($item['contactEmail'], $search) !== false);
+                    return $matches;
+                }));
+                $total = count($items);
+            }
         }
 
-        $items = $result['items'] ?? [];
-        
-        // PHASE 1: Collect all invoice IDs
+        // === ENRICH with portal meta (same for both sources) ===
         $invoiceIds = array_filter(array_map(fn($item) => $item['id'] ?? null, $items), fn($id) => !empty($id));
         
-        // PHASE 2: Batch reverse lookup - find all estimate IDs for these invoices (ONE query)
         $invoiceToEstimateMap = [];
         if (!empty($invoiceIds)) {
             $invoiceToEstimateMap = $this->portalMeta->batchFindEstimateIdsByInvoiceIds($invoiceIds);
         }
         
-        // PHASE 3: Collect all linked estimate IDs, normalize to strings, and batch fetch their portal meta
         $linkedEstimateIds = array_filter(
             array_map('strval', array_values($invoiceToEstimateMap)),
             fn($id) => !empty($id)
@@ -204,7 +300,6 @@ class AdminInvoiceController extends AdminController
             $allMeta = $this->portalMeta->batchGet($linkedEstimateIds);
         }
 
-        // PHASE 4: Process invoices with pre-fetched data
         $out = [];
         foreach ($items as $item) {
             $invoiceId = $item['id'] ?? null;
@@ -212,26 +307,12 @@ class AdminInvoiceController extends AdminController
                 continue;
             }
 
-            // Apply search filter
-            if ($search) {
-                $matches = false;
-                $matches = $matches || (isset($item['invoiceNumber']) && stripos((string)$item['invoiceNumber'], $search) !== false);
-                $matches = $matches || (isset($item['contactName']) && stripos($item['contactName'], $search) !== false);
-                $matches = $matches || (isset($item['contactEmail']) && stripos($item['contactEmail'], $search) !== false);
-                if (!$matches) {
-                    continue;
-                }
-            }
-
-            // Get linked estimate ID from batch result and normalize to string
-            // Normalize invoiceId to string first (map keys are normalized strings)
             $invoiceIdNormalized = (string)$invoiceId;
             $linkedEstimateId = $invoiceToEstimateMap[$invoiceIdNormalized] ?? null;
             if ($linkedEstimateId) {
                 $linkedEstimateId = (string)$linkedEstimateId;
             }
             
-            // Get portal status and calculate amountDue from pre-fetched meta
             $portalStatus = 'sent';
             $calculatedAmountDue = $item['amountDue'] ?? $item['total'] ?? 0;
             
@@ -240,11 +321,9 @@ class AdminInvoiceController extends AdminController
                 if (!empty($meta)) {
                     $portalStatus = $meta['invoice']['status'] ?? $meta['quote']['status'] ?? 'sent';
                     
-                    // Calculate amountDue from payment data (portal meta takes precedence over GHL)
                     if (isset($meta['invoice']['amountDue'])) {
                         $calculatedAmountDue = (float)$meta['invoice']['amountDue'];
                     } elseif (isset($meta['payment']['remainingBalance'])) {
-                        // Fallback: use payment remainingBalance if invoice amountDue not set
                         $calculatedAmountDue = (float)$meta['payment']['remainingBalance'];
                     }
                 }
@@ -266,17 +345,24 @@ class AdminInvoiceController extends AdminController
             ];
         }
 
-        return $this->respond([
+        $response = $this->respond([
             'ok'       => true,
             'items'    => $out,
-            'total'    => $result['total'] ?? count($out),
+            'total'    => $total,
             'page'     => $page,
             'pageSize' => $pageSize,
         ]);
+
+        // Debug header so we know which path served the data
+        $response->header('X-Data-Source', $dataSource);
+
+        return $response;
     }
 
     /**
      * Get single invoice detail with linked estimate info.
+     *
+     * LOCAL-FIRST: tries snapshot table, falls back to GHL API.
      */
     public function getInvoice(WP_REST_Request $request): WP_REST_Response
     {
@@ -287,10 +373,27 @@ class AdminInvoiceController extends AdminController
         }
         $locationId = $locationIdResult;
 
-        // Fetch invoice from GHL
-        $invoice = $this->invoiceService->getInvoice($invoiceId, $locationId);
-        if (is_wp_error($invoice)) {
-            return $this->respond($invoice);
+        // === LOCAL-FIRST: Try snapshot table ===
+        $dataSource = 'api';
+        $invoice = null;
+
+        $snapshot = $this->snapshotRepo->getByInvoiceId($invoiceId, $locationId);
+        if (!is_wp_error($snapshot) && is_array($snapshot)) {
+            // Re-normalize through InvoiceService::getInvoice style output
+            // The raw_json stores the original GHL response, so we normalize it
+            $invoice = $this->normalizeInvoiceFromRaw($snapshot, $invoiceId);
+            $dataSource = 'local';
+        }
+
+        // === GHL FALLBACK ===
+        if ($invoice === null) {
+            $invoice = $this->invoiceService->getInvoice($invoiceId, $locationId);
+            if (is_wp_error($invoice)) {
+                return $this->respond($invoice);
+            }
+
+            // Write-through: store this invoice in local snapshot for next time
+            $this->writeThroughInvoice($locationId, $invoice);
         }
 
         // Find linked estimate - improved lookup with better error handling
@@ -400,7 +503,7 @@ class AdminInvoiceController extends AdminController
             }
         }
 
-        return $this->respond([
+        $response = $this->respond([
             'ok'            => true,
             'id'            => $invoice['id'] ?? $invoiceId,
             'invoiceNumber' => $invoice['invoiceNumber'] ?? null,
@@ -426,10 +529,14 @@ class AdminInvoiceController extends AdminController
             'xeroInvoiceNumber' => $xeroInvoiceNumber, // Xero invoice number from portal meta
             'xeroSync' => $xeroSync, // Xero sync status, errors, retry info
         ]);
+
+        $response->header('X-Data-Source', $dataSource);
+
+        return $response;
     }
 
     /**
-     * Sync invoice by re-fetching from GHL.
+     * Sync invoice by re-fetching from GHL and updating local snapshot.
      */
     public function syncInvoice(WP_REST_Request $request): WP_REST_Response
     {
@@ -440,13 +547,16 @@ class AdminInvoiceController extends AdminController
         }
         $locationId = $locationIdResult;
 
-        // Re-fetch from GHL
-        $invoice = $this->invoiceService->syncInvoice($invoiceId, $locationId);
+        // Force re-fetch from GHL (bypasses local snapshot)
+        $invoice = $this->invoiceService->getInvoice($invoiceId, $locationId);
         if (is_wp_error($invoice)) {
             return $this->respond($invoice);
         }
 
-        return $this->getInvoice($request); // Reuse getInvoice logic
+        // Write-through: update local snapshot with fresh data
+        $this->writeThroughInvoice($locationId, $invoice);
+
+        return $this->getInvoice($request); // Reuse getInvoice logic (will now read fresh local data)
     }
 
     /**
@@ -500,6 +610,12 @@ class AdminInvoiceController extends AdminController
             if (empty($invoiceMeta['xeroInvoiceId'])) {
                 $this->portalService->syncInvoiceToXero($linkedEstimateId, $invoiceId, $locationId);
             }
+        }
+
+        // Write-through: re-fetch sent invoice from GHL and update local snapshot
+        $freshInvoice = $this->invoiceService->getInvoice($invoiceId, $locationId);
+        if (!is_wp_error($freshInvoice)) {
+            $this->writeThroughInvoice($locationId, $freshInvoice);
         }
 
         return $this->respond([
@@ -616,6 +732,14 @@ class AdminInvoiceController extends AdminController
 
         // Step 2: Local delete (if needed, and GHL succeeded or scope=local)
         if ($doLocal && !($scope === 'both' && !$result['ghl']['ok'])) {
+            // Also soft-delete from invoice snapshot table (best-effort)
+            if ($locationId) {
+                $snapshotDeleteResult = $this->snapshotRepo->softDelete($invoiceId, $locationId, $user->ID ?? 0, 'Deleted via admin');
+                if (is_wp_error($snapshotDeleteResult) && $snapshotDeleteResult->get_error_code() !== 'already_deleted' && $snapshotDeleteResult->get_error_code() !== 'not_found') {
+                    error_log('[INVOICE_SNAPSHOT] Soft delete failed for invoice ' . $invoiceId . ': ' . $snapshotDeleteResult->get_error_message());
+                }
+            }
+
             $localResult = $this->deleteInvoiceLocal($invoiceId);
             if (is_wp_error($localResult)) {
                 $result['local'] = [
@@ -864,6 +988,99 @@ class AdminInvoiceController extends AdminController
             'depositAmount' => $depositAmount,
             'depositType' => $depositType,
         ]);
+    }
+
+    // ─── Private helpers for local-first read ──────────────────────────────
+
+    /**
+     * Normalize a raw GHL invoice (from snapshot raw_json) into the same shape
+     * that InvoiceService::getInvoice() returns.
+     *
+     * @param array<string, mixed> $raw GHL invoice payload (decoded raw_json)
+     * @param string $invoiceId Fallback invoice ID
+     * @return array<string, mixed>
+     */
+    private function normalizeInvoiceFromRaw(array $raw, string $invoiceId): array
+    {
+        // Remove our internal metadata key before processing
+        unset($raw['_snapshotSyncedAt']);
+
+        $invoice = $raw['invoice'] ?? $raw;
+
+        $contact = $invoice['contact'] ?? $invoice['contactDetails'] ?? [];
+        $items   = $invoice['items'] ?? $invoice['lineItems'] ?? $invoice['invoiceItems'] ?? [];
+        if (!is_array($items)) {
+            $items = [];
+        }
+
+        return [
+            'ok'            => true,
+            'id'            => $invoice['id'] ?? $invoice['_id'] ?? $invoiceId,
+            'invoiceNumber' => $invoice['invoiceNumber'] ?? $invoice['number'] ?? null,
+            'title'         => $invoice['title'] ?? 'INVOICE',
+            'status'        => $invoice['status'] ?? 'draft',
+            'contact'       => [
+                'id'    => $contact['id'] ?? $contact['contactId'] ?? null,
+                'name'  => $contact['name'] ?? (($contact['firstName'] ?? '') . ' ' . ($contact['lastName'] ?? '')),
+                'email' => $contact['email'] ?? '',
+                'phone' => $contact['phone'] ?? '',
+            ],
+            'items'         => $items,
+            'subtotal'      => (float)($invoice['subtotal'] ?? 0),
+            'tax'           => (float)($invoice['tax'] ?? 0),
+            'discount'      => (float)($invoice['discount'] ?? 0),
+            'total'         => (float)($invoice['total'] ?? 0),
+            'amountDue'     => (float)($invoice['amountDue'] ?? $invoice['total'] ?? 0),
+            'currency'      => $invoice['currency'] ?? 'AUD',
+            'issueDate'     => $invoice['issueDate'] ?? null,
+            'dueDate'       => $invoice['dueDate'] ?? null,
+            'createdAt'     => $invoice['createdAt'] ?? '',
+            'updatedAt'     => $invoice['updatedAt'] ?? '',
+            'payments'      => $invoice['payments'] ?? [],
+            'raw'           => $invoice,
+        ];
+    }
+
+    /**
+     * Write-through: store a normalized invoice (from GHL API) into the local snapshot table.
+     * This is best-effort — if it fails, we log but don't break the main operation.
+     *
+     * @param string $locationId
+     * @param array<string, mixed> $invoice Normalized invoice from InvoiceService::getInvoice()
+     */
+    private function writeThroughInvoice(string $locationId, array $invoice): void
+    {
+        $invoiceId = $invoice['id'] ?? null;
+        if (!$invoiceId || !$locationId) {
+            return;
+        }
+
+        $contact     = $invoice['contact'] ?? [];
+        $contactName = $contact['name'] ?? '';
+        $contactEmail = $contact['email'] ?? '';
+        $contactId   = $contact['id'] ?? '';
+
+        $record = [
+            'id'            => (string)$invoiceId,
+            'invoiceNumber' => $invoice['invoiceNumber'] ?? null,
+            'contactId'     => $contactId,
+            'email'         => $contactEmail,
+            'name'          => $contactName,
+            'status'        => $invoice['status'] ?? '',
+            'total'         => (float)($invoice['total'] ?? 0),
+            'amountPaid'    => (float)(($invoice['total'] ?? 0) - ($invoice['amountDue'] ?? $invoice['total'] ?? 0)),
+            'currency'      => $invoice['currency'] ?? 'AUD',
+            'dueDate'       => $invoice['dueDate'] ?? null,
+            'createdAt'     => $invoice['createdAt'] ?? null,
+            'updatedAt'     => $invoice['updatedAt'] ?? null,
+            'rawJson'       => wp_json_encode($invoice['raw'] ?? $invoice),
+        ];
+
+        $result = $this->snapshotRepo->upsertOne($locationId, $record);
+        if (is_wp_error($result)) {
+            // Log but don't fail the main operation
+            error_log('[INVOICE_SNAPSHOT] Write-through failed for invoice ' . $invoiceId . ': ' . $result->get_error_message());
+        }
     }
 
 }

@@ -2,6 +2,8 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\EstimateService;
@@ -198,27 +200,55 @@ class QuoteRequestController implements ControllerInterface
             
             // If not in WordPress, check GHL before creating contact
             if ($isTrulyNewUser) {
-                // Search GHL for existing contact by email
-                // CRITICAL: locationId should be ONLY in header, NOT in query params
-                $ghlSearchResult = $this->ghlClient->get('/contacts/search', [
-                    'query' => $email,
-                ], 8, $effectiveLocationId);
-                
-                if (!is_wp_error($ghlSearchResult)) {
-                    $contacts = $ghlSearchResult['contacts'] ?? $ghlSearchResult['items'] ?? [];
-                    foreach ($contacts as $contact) {
-                        $contactEmail = $contact['email'] ?? '';
-                        if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
-                            // Contact exists in GHL - not a new user
-                            $isTrulyNewUser = false;
-                            $existingGhlContactId = $contact['id'] ?? null;
-                            error_log('[CheapAlarms][INFO] Found existing GHL contact for email: ' . $email . ' (contactId: ' . ($existingGhlContactId ?: 'null') . ')');
-                            break;
+                // ── LOCAL-FIRST: try snapshot table ──────────────────
+                $localContactHit = false;
+                try {
+                    /** @var ContactSnapshotRepository $contactRepo */
+                    $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+                    $local = $contactRepo->findByEmail($email, $effectiveLocationId);
+
+                    if ($local !== null && !is_wp_error($local)) {
+                        $syncedAt = $local['syncedAt'] ?? null;
+                        if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                            $localContactId = $local['contactId'] ?? null;
+                            if (!empty($localContactId)) {
+                                $isTrulyNewUser = false;
+                                $existingGhlContactId = $localContactId;
+                                $localContactHit = true;
+                                error_log('[CheapAlarms][INFO] Found existing contact from local snapshot for email: ' . $email . ' (contactId: ' . $existingGhlContactId . ')');
+                            }
                         }
                     }
-                } else {
-                    // Search failed - log but continue (will try to create contact)
-                    error_log('[CheapAlarms][WARNING] GHL contact search failed before contact creation: ' . $ghlSearchResult->get_error_message());
+                } catch (\Throwable $e) {
+                    // Local lookup failed – fall through to GHL API
+                    error_log('[CheapAlarms][WARN] Contact snapshot lookup failed in QuoteRequestController: ' . $e->getMessage());
+                }
+
+                // ── FALLBACK: GHL API search ─────────────────────────
+                if (!$localContactHit) {
+                    // CRITICAL: locationId should be ONLY in header, NOT in query params
+                    $ghlSearchResult = $this->ghlClient->get('/contacts/search', [
+                        'query' => $email,
+                    ], 8, $effectiveLocationId);
+                    
+                    if (!is_wp_error($ghlSearchResult)) {
+                        $contacts = $ghlSearchResult['contacts'] ?? $ghlSearchResult['items'] ?? [];
+                        foreach ($contacts as $contact) {
+                            $contactEmail = $contact['email'] ?? '';
+                            if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
+                                // Contact exists in GHL - not a new user
+                                $isTrulyNewUser = false;
+                                $existingGhlContactId = $contact['id'] ?? null;
+                                error_log('[CheapAlarms][INFO] Found existing GHL contact for email: ' . $email . ' (contactId: ' . ($existingGhlContactId ?: 'null') . ')');
+                                // Write-through: cache the found contact locally
+                                $this->writeThroughContact($effectiveLocationId, $contact);
+                                break;
+                            }
+                        }
+                    } else {
+                        // Search failed - log but continue (will try to create contact)
+                        error_log('[CheapAlarms][WARNING] GHL contact search failed before contact creation: ' . $ghlSearchResult->get_error_message());
+                    }
                 }
             } else {
                 error_log('[CheapAlarms][INFO] Email exists in WordPress (userId: ' . $wpUserId . ') - not a new user');
@@ -290,6 +320,14 @@ class QuoteRequestController implements ControllerInterface
                         // Contact exists in GHL - user is not truly new
                         $isTrulyNewUser = false;
                         error_log('[CheapAlarms][INFO] Contact duplicate by email detected - user is not new (contactId: ' . $contactId . ')');
+                        // Write-through: cache the duplicate contact locally
+                        $this->writeThroughContact($effectiveLocationId, [
+                            'id'        => $contactId,
+                            'email'     => $email,
+                            'firstName' => $firstName,
+                            'lastName'  => $lastName,
+                            'phone'     => $phone,
+                        ]);
                     } elseif (!empty($contactId) && empty($matchingField)) {
                         // Defensive: if matchingField is missing, verify by searching contacts by email (fast, no retry).
                         // Fail CLOSED: if we cannot confirm it's an email-duplicate, we return a friendly conflict.
@@ -342,6 +380,11 @@ class QuoteRequestController implements ControllerInterface
                         error_log('[CheapAlarms][INFO] Created new GHL contact: ' . $contactId);
                     } else {
                         error_log('[CheapAlarms][INFO] GHL contact created (but user was not truly new): ' . $contactId);
+                    }
+                    // Write-through: cache the newly created contact locally
+                    $createdContactData = $contactResult['contact'] ?? $contactResult;
+                    if (is_array($createdContactData)) {
+                        $this->writeThroughContact($effectiveLocationId, $createdContactData);
                     }
                 }
             }
@@ -873,6 +916,29 @@ class QuoteRequestController implements ControllerInterface
         $response->header('X-Content-Type-Options', 'nosniff');
         $response->header('X-Frame-Options', 'DENY');
         $response->header('X-XSS-Protection', '1; mode=block');
+    }
+
+    /**
+     * Write-through: upsert a single contact to the local snapshot table.
+     * Fails silently (logs but does not fail the main operation).
+     */
+    private function writeThroughContact(string $locationId, array $contactData): void
+    {
+        $contactId = $contactData['id'] ?? $contactData['_id'] ?? $contactData['contactId'] ?? null;
+        if (!$contactId) {
+            return;
+        }
+
+        try {
+            $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+            $record = ContactSnapshotRepository::normalizeFromGhl($contactData);
+            $res    = $contactRepo->upsertOne($locationId, $record);
+            if (is_wp_error($res)) {
+                error_log('[CheapAlarms][WARN] Contact write-through failed: ' . $res->get_error_message());
+            }
+        } catch (\Throwable $e) {
+            error_log('[CheapAlarms][WARN] Contact write-through exception: ' . $e->getMessage());
+        }
     }
 }
 

@@ -2,7 +2,9 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\PortalService;
@@ -416,13 +418,42 @@ class PortalController implements ControllerInterface
                     return $this->respond(new WP_Error('server_error', __('Missing GHL_LOCATION_ID in environment', 'cheapalarms'), ['status' => 500]));
                 }
 
-                // Fetch GHL contact details
-                // GHL API: GET /contacts/{contactId} with LocationId header
+                // Fetch contact details (local-first, fallback to GHL API)
                 $locationId = $config->getLocationId();
-                $ghlContact = $ghlClient->get("/contacts/{$ghlContactId}", [], 25, $locationId);
-                
-                if (is_wp_error($ghlContact)) {
-                    return $this->respond($ghlContact);
+                $ghlContact = null;
+
+                // ── LOCAL-FIRST: try snapshot table ──────────────────
+                try {
+                    /** @var ContactSnapshotRepository $contactRepo */
+                    $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+                    $localContact = $contactRepo->getByContactId($ghlContactId, $locationId);
+
+                    if (!is_wp_error($localContact) && is_array($localContact)) {
+                        $syncedAt = $localContact['_snapshotSyncedAt'] ?? null;
+                        if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                            $ghlContact = $localContact;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Local lookup failed – fall through to GHL API
+                    error_log('[CheapAlarms][WARN] Contact snapshot lookup failed in PortalController: ' . $e->getMessage());
+                }
+
+                // ── FALLBACK: GHL API ────────────────────────────────
+                if ($ghlContact === null) {
+                    $ghlContact = $ghlClient->get("/contacts/{$ghlContactId}", [], 25, $locationId);
+
+                    if (is_wp_error($ghlContact)) {
+                        return $this->respond($ghlContact);
+                    }
+
+                    // Write-through: cache the fetched contact locally
+                    try {
+                        $contactRepo ??= $this->container->get(ContactSnapshotRepository::class);
+                        $contactRepo->upsertOne($locationId, ContactSnapshotRepository::normalizeFromGhl($ghlContact));
+                    } catch (\Throwable $e) {
+                        // Fail silently
+                    }
                 }
 
                 // Get CustomerService and invite

@@ -17,6 +17,13 @@ use CheapAlarms\Plugin\Middleware\RequestIdMiddleware;
 use CheapAlarms\Plugin\Middleware\RateLimitHeaderMiddleware;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotSyncService;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotSyncService;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotSyncService;
+use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
+use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
+use CheapAlarms\Plugin\Services\ServiceM8\Sm8SnapshotSyncService;
 
 use function add_action;
 use function add_filter;
@@ -179,6 +186,16 @@ class Plugin
             $this->container->get(EstimateSnapshotSyncService::class)->syncLocation($locationId);
         }, 10, 1);
 
+        // Background sync hook for invoice snapshots (WP-Cron).
+        add_action('ca_sync_invoice_snapshots', function (string $locationId) {
+            $this->container->get(InvoiceSnapshotSyncService::class)->syncLocation($locationId);
+        }, 10, 1);
+
+        // Background sync hook for contact snapshots (WP-Cron).
+        add_action('ca_sync_contact_snapshots', function (string $locationId) {
+            $this->container->get(ContactSnapshotSyncService::class)->syncLocation($locationId);
+        }, 10, 1);
+
         // Retention cleanup job (daily) - permanently delete estimates soft-deleted > 30 days
         add_action('ca_cleanup_expired_deletions', function () {
             $this->container->get(\CheapAlarms\Plugin\Services\Estimate\RetentionCleanupService::class)->cleanup();
@@ -199,13 +216,31 @@ class Plugin
                 ->processEvent($eventId);
         }, 10, 1);
 
-        // Register custom cron schedule (must be registered globally, not conditionally)
+        // GHL webhook processing (async, scheduled by GhlWebhookController)
+        add_action('ca_process_ghl_webhook', function (string $webhookId) {
+            $this->container->get(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookProcessor::class)
+                ->processEvent($webhookId);
+        }, 10, 1);
+
+        // Register custom cron schedules (must be registered globally, not conditionally)
         // This ensures WordPress can find the schedule when rescheduling events
         add_filter('cron_schedules', function ($schedules) {
             if (!isset($schedules['ca_every_5_minutes'])) {
                 $schedules['ca_every_5_minutes'] = [
                     'interval' => 300, // 5 minutes
-                    'display' => __('Every 5 Minutes', 'cheapalarms'),
+                    'display'  => __('Every 5 Minutes', 'cheapalarms'),
+                ];
+            }
+            if (!isset($schedules['ca_every_10_minutes'])) {
+                $schedules['ca_every_10_minutes'] = [
+                    'interval' => 600, // 10 minutes
+                    'display'  => __('Every 10 Minutes', 'cheapalarms'),
+                ];
+            }
+            if (!isset($schedules['ca_every_30_minutes'])) {
+                $schedules['ca_every_30_minutes'] = [
+                    'interval' => 1800, // 30 minutes
+                    'display'  => __('Every 30 Minutes', 'cheapalarms'),
                 ];
             }
             return $schedules;
@@ -224,6 +259,74 @@ class Plugin
 
         add_action('ca_retry_failed_webhooks_recurring', function () {
             wp_schedule_single_event(time() + 1, 'ca_retry_failed_webhooks');
+        });
+
+        // Retry failed GHL webhooks (every 5 minutes, uses same schedule)
+        add_action('ca_retry_failed_ghl_webhooks', function () {
+            $processor = $this->container->get(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookProcessor::class);
+            $eventRepo = $this->container->get(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookEventRepository::class);
+            $logger    = $this->container->get(Logger::class);
+
+            $pending = $eventRepo->getPendingEvents(50);
+            foreach ($pending as $event) {
+                $result = $processor->processEvent($event['webhook_id']);
+                if (is_wp_error($result)) {
+                    $logger->warning('GHL webhook retry failed', [
+                        'webhookId'  => $event['webhook_id'],
+                        'error'      => $result->get_error_message(),
+                        'retryCount' => $event['retry_count'],
+                    ]);
+                }
+            }
+        }, 10, 0);
+
+        // Schedule GHL webhook retry job (every 5 minutes)
+        if (!wp_next_scheduled('ca_retry_failed_ghl_webhooks_recurring')) {
+            wp_schedule_event(time() + 300, 'ca_every_5_minutes', 'ca_retry_failed_ghl_webhooks_recurring');
+        }
+
+        add_action('ca_retry_failed_ghl_webhooks_recurring', function () {
+            wp_schedule_single_event(time() + 1, 'ca_retry_failed_ghl_webhooks');
+        });
+
+        // ── ServiceM8 snapshot sync (no webhooks — poll-based) ─────────────
+        // Single-event hook: sync SM8 jobs
+        add_action('ca_sync_sm8_jobs', function () {
+            $this->container->get(Sm8SnapshotSyncService::class)->syncJobs();
+        }, 10, 0);
+
+        // Single-event hook: sync SM8 companies
+        add_action('ca_sync_sm8_companies', function () {
+            $this->container->get(Sm8SnapshotSyncService::class)->syncCompanies();
+        }, 10, 0);
+
+        // Single-event hook: full SM8 sync (jobs + companies)
+        add_action('ca_sync_sm8_all', function () {
+            $this->container->get(Sm8SnapshotSyncService::class)->syncAll();
+        }, 10, 0);
+
+        // Recurring: sync SM8 jobs every 10 minutes (stale tier = 15 min)
+        if (!wp_next_scheduled('ca_sync_sm8_jobs_recurring')) {
+            wp_schedule_event(time() + 600, 'ca_every_10_minutes', 'ca_sync_sm8_jobs_recurring');
+        }
+        add_action('ca_sync_sm8_jobs_recurring', function () {
+            wp_schedule_single_event(time() + 1, 'ca_sync_sm8_jobs');
+        });
+
+        // Recurring: sync SM8 companies every 30 minutes (stale tier = 30 min)
+        if (!wp_next_scheduled('ca_sync_sm8_companies_recurring')) {
+            wp_schedule_event(time() + 1800, 'ca_every_30_minutes', 'ca_sync_sm8_companies_recurring');
+        }
+        add_action('ca_sync_sm8_companies_recurring', function () {
+            wp_schedule_single_event(time() + 1, 'ca_sync_sm8_companies');
+        });
+
+        // Recurring: full SM8 sync daily (jobs + companies — catches anything missed)
+        if (!wp_next_scheduled('ca_sync_sm8_all_daily')) {
+            wp_schedule_event(time() + DAY_IN_SECONDS, 'daily', 'ca_sync_sm8_all_daily');
+        }
+        add_action('ca_sync_sm8_all_daily', function () {
+            wp_schedule_single_event(time() + 1, 'ca_sync_sm8_all');
         });
 
         // Register Xero sync retry handler
@@ -556,7 +659,19 @@ class Plugin
             $this->container->get(\CheapAlarms\Plugin\Services\ServiceM8Client::class),
             $this->container->get(Config::class),
             $this->container->get(Logger::class),
-            $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class)
+            $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class),
+            $this->container->get(Sm8JobSnapshotRepository::class),
+            $this->container->get(Sm8CompanySnapshotRepository::class)
+        ));
+
+        // ServiceM8 snapshot repositories + sync service (local read cache — SM8 has no webhooks)
+        $this->container->set(Sm8JobSnapshotRepository::class, fn () => new Sm8JobSnapshotRepository());
+        $this->container->set(Sm8CompanySnapshotRepository::class, fn () => new Sm8CompanySnapshotRepository());
+        $this->container->set(Sm8SnapshotSyncService::class, fn () => new Sm8SnapshotSyncService(
+            $this->container->get(\CheapAlarms\Plugin\Services\ServiceM8Client::class),
+            $this->container->get(Sm8JobSnapshotRepository::class),
+            $this->container->get(Sm8CompanySnapshotRepository::class),
+            $this->container->get(Logger::class)
         ));
         $this->container->set(\CheapAlarms\Plugin\Services\CustomerService::class, fn () => new \CheapAlarms\Plugin\Services\CustomerService(
             $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
@@ -603,6 +718,23 @@ class Plugin
             $this->container->get(EstimateSnapshotRepository::class),
             $this->container->get(Logger::class)
         ));
+
+        // Invoice snapshot storage (local read cache for GHL invoices).
+        $this->container->set(InvoiceSnapshotRepository::class, fn () => new InvoiceSnapshotRepository());
+        $this->container->set(InvoiceSnapshotSyncService::class, fn () => new InvoiceSnapshotSyncService(
+            $this->container->get(\CheapAlarms\Plugin\Services\InvoiceService::class),
+            $this->container->get(InvoiceSnapshotRepository::class),
+            $this->container->get(Logger::class)
+        ));
+
+        // Contact snapshot storage (local read cache for GHL contacts).
+        $this->container->set(ContactSnapshotRepository::class, fn () => new ContactSnapshotRepository());
+        $this->container->set(ContactSnapshotSyncService::class, fn () => new ContactSnapshotSyncService(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
+            $this->container->get(ContactSnapshotRepository::class),
+            $this->container->get(Logger::class)
+        ));
+
         $this->container->set(\CheapAlarms\Plugin\Services\XeroService::class, fn () => new \CheapAlarms\Plugin\Services\XeroService(
             $this->container->get(Config::class),
             $this->container->get(Logger::class)
@@ -632,6 +764,21 @@ class Plugin
             fn (Container $c) => new \CheapAlarms\Plugin\Services\WebhookRetryService(
                 $c->get(\CheapAlarms\Plugin\Services\WebhookEventRepository::class),
                 $c->get(\CheapAlarms\Plugin\Services\StripeWebhookProcessor::class),
+                $c->get(Logger::class)
+            )
+        );
+
+        // GHL Webhook services
+        $this->container->set(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookEventRepository::class,
+            fn () => new \CheapAlarms\Plugin\Services\Ghl\GhlWebhookEventRepository()
+        );
+
+        $this->container->set(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookProcessor::class,
+            fn (Container $c) => new \CheapAlarms\Plugin\Services\Ghl\GhlWebhookProcessor(
+                $c->get(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookEventRepository::class),
+                $c->get(\CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository::class),
+                $c->get(\CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository::class),
+                $c->get(\CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository::class),
                 $c->get(Logger::class)
             )
         );
@@ -774,10 +921,23 @@ class Plugin
             wp_unschedule_event($timestamp, 'ca_cleanup_expired_deletions');
         }
         
-        // Clear any scheduled single events (more thorough cleanup)
+        // Clear all scheduled hooks (single + recurring)
         wp_clear_scheduled_hook('ca_cleanup_expired_deletions_daily');
         wp_clear_scheduled_hook('ca_cleanup_expired_deletions');
         wp_clear_scheduled_hook('ca_sync_estimate_snapshots');
+        wp_clear_scheduled_hook('ca_sync_invoice_snapshots');
+        wp_clear_scheduled_hook('ca_sync_contact_snapshots');
+        wp_clear_scheduled_hook('ca_retry_failed_webhooks');
+        wp_clear_scheduled_hook('ca_retry_failed_webhooks_recurring');
+        wp_clear_scheduled_hook('ca_retry_failed_ghl_webhooks');
+        wp_clear_scheduled_hook('ca_retry_failed_ghl_webhooks_recurring');
+        wp_clear_scheduled_hook('ca_cleanup_expired_payment_intents');
+        wp_clear_scheduled_hook('ca_sync_sm8_jobs');
+        wp_clear_scheduled_hook('ca_sync_sm8_companies');
+        wp_clear_scheduled_hook('ca_sync_sm8_all');
+        wp_clear_scheduled_hook('ca_sync_sm8_jobs_recurring');
+        wp_clear_scheduled_hook('ca_sync_sm8_companies_recurring');
+        wp_clear_scheduled_hook('ca_sync_sm8_all_daily');
         
         flush_rewrite_rules();
     }

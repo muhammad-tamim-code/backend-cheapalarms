@@ -2,7 +2,9 @@
 
 namespace CheapAlarms\Plugin\Services;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\Config\Config;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Shared\PortalMetaRepository;
 use WP_Error;
@@ -1257,10 +1259,35 @@ class EstimateService
     }
 
     /**
+     * Find a GHL contact ID by email.
+     * Local-first: checks the contact snapshot table first (5-min freshness),
+     * then falls through to GHL API and writes-through on hit.
+     *
      * @return string|WP_Error|null
      */
     private function findContactIdByEmail(string $email, string $locationId)
     {
+        // ── LOCAL-FIRST: try snapshot table ──────────────────────────
+        try {
+            /** @var ContactSnapshotRepository $contactRepo */
+            $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+            $local = $contactRepo->findByEmail($email, $locationId);
+
+            if ($local !== null && !is_wp_error($local)) {
+                $syncedAt = $local['syncedAt'] ?? null;
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                    return $local['contactId'] ?? null;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Local lookup failed – fall through to GHL API
+            $this->logger->warning('Contact snapshot local lookup failed, falling back to GHL', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // ── FALLBACK: GHL API ────────────────────────────────────────
         $response = $this->client->get('/contacts/search', [
             'locationId' => $locationId,
             'query'      => $email,
@@ -1274,6 +1301,13 @@ class EstimateService
         foreach ($contacts as $contact) {
             $contactEmail = $contact['email'] ?? '';
             if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
+                // Write-through: cache this contact locally
+                try {
+                    $contactRepo ??= $this->container->get(ContactSnapshotRepository::class);
+                    $contactRepo->upsertOne($locationId, ContactSnapshotRepository::normalizeFromGhl($contact));
+                } catch (\Throwable $e) {
+                    // Fail silently – read path is unaffected
+                }
                 return $contact['id'] ?? null;
             }
         }

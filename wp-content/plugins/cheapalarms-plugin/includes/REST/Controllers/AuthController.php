@@ -186,24 +186,9 @@ class AuthController implements ControllerInterface
      */
     public function getCurrentUser(WP_REST_Request $request): WP_REST_Response
     {
-        // TEMPORARY: Diagnostic logging for customer redirect loop
-        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-        
-        if ($isDebug) {
-            error_log('[AUTH_ME] Called - has HTTP_COOKIE: ' . (isset($_SERVER['HTTP_COOKIE']) ? 'YES' : 'NO'));
-            error_log('[AUTH_ME] Has $_COOKIE[ca_jwt]: ' . (isset($_COOKIE['ca_jwt']) ? 'YES (length: ' . strlen($_COOKIE['ca_jwt']) . ')' : 'NO'));
-        }
-        
         $user = wp_get_current_user();
         if (!$user || 0 === $user->ID) {
-            if ($isDebug) {
-                error_log('[AUTH_ME] User not found - current_user_id: ' . get_current_user_id());
-            }
             return $this->respond(new WP_Error('unauthorized', __('User not found.', 'cheapalarms'), ['status' => 401]));
-        }
-        
-        if ($isDebug) {
-            error_log('[AUTH_ME] User found - ID: ' . $user->ID . ', roles: ' . implode(', ', $user->roles ?? []));
         }
 
         $roles = $user->roles ?? [];
@@ -225,17 +210,15 @@ class AuthController implements ControllerInterface
             }
         }
 
-        // TEMPORARY: Diagnostic logging for customer redirect loop
-        if ($isDebug) {
-            error_log('[AUTH_ME] User details - hasCustomerRole: ' . ($hasCustomerRole ? 'YES' : 'NO') . ', isAdmin: ' . ($isAdmin ? 'YES' : 'NO') . ', isCustomer: ' . ($isCustomer ? 'YES' : 'NO'));
-            error_log('[AUTH_ME] Capabilities: ' . implode(', ', $caCaps));
-        }
+        // Gravatar URL (WordPress has get_avatar_url built-in)
+        $avatarUrl = get_avatar_url($user->ID, ['size' => 128, 'default' => 'mp']);
 
         $response = new WP_REST_Response([
             'ok'           => true,
             'id'           => $user->ID,
             'email'        => $user->user_email,
             'displayName'  => $user->display_name,
+            'avatar'       => $avatarUrl ?: null,
             'roles'        => array_values($roles),
             'capabilities' => array_values($caCaps),
             'is_admin'     => $isAdmin,

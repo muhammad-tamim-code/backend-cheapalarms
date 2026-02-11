@@ -9,7 +9,7 @@ use function update_option;
 class Schema
 {
     public const OPTION_KEY = 'ca_db_schema_version';
-    public const VERSION    = '2025-01-15-01'; // Updated for webhook events table
+    public const VERSION    = '2026-02-08-04'; // Added ServiceM8 jobs + companies snapshot tables
 
     public static function maybeMigrate(): void
     {
@@ -145,6 +145,152 @@ class Schema
         ) {$charsetCollate};";
         
         dbDelta($webhookSql);
+
+        // Create invoice snapshots table (local read cache for GHL invoices)
+        $invoiceTableName = $wpdb->prefix . 'ca_invoice_snapshots';
+        $invoiceSql = "CREATE TABLE {$invoiceTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            location_id VARCHAR(64) NOT NULL,
+            invoice_id VARCHAR(64) NOT NULL,
+            invoice_number VARCHAR(64) NULL,
+            contact_id VARCHAR(64) NULL,
+            email VARCHAR(190) NULL,
+            name VARCHAR(255) NULL,
+            ghl_status VARCHAR(32) NULL,
+            total DECIMAL(18,2) NULL,
+            amount_paid DECIMAL(18,2) NULL DEFAULT 0,
+            currency VARCHAR(8) NULL DEFAULT 'AUD',
+            due_date DATETIME NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            synced_at DATETIME NOT NULL,
+            raw_json LONGTEXT NULL,
+            deleted_at DATETIME NULL,
+            deleted_by BIGINT(20) UNSIGNED NULL,
+            deletion_reason VARCHAR(255) NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY location_invoice (location_id, invoice_id),
+            KEY idx_location_status (location_id, ghl_status),
+            KEY idx_location_updated (location_id, updated_at),
+            KEY idx_contact_id (contact_id),
+            KEY idx_email (email),
+            KEY idx_deleted_at (deleted_at)
+        ) {$charsetCollate};";
+
+        dbDelta($invoiceSql);
+
+        // Create contact snapshots table (local read cache for GHL contacts)
+        $contactTableName = $wpdb->prefix . 'ca_contact_snapshots';
+        $contactSql = "CREATE TABLE {$contactTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            location_id VARCHAR(64) NOT NULL,
+            contact_id VARCHAR(64) NOT NULL,
+            email VARCHAR(190) NULL,
+            first_name VARCHAR(255) NULL,
+            last_name VARCHAR(255) NULL,
+            phone VARCHAR(64) NULL,
+            company_name VARCHAR(255) NULL,
+            address_line1 VARCHAR(255) NULL,
+            city VARCHAR(128) NULL,
+            state VARCHAR(64) NULL,
+            postal_code VARCHAR(16) NULL,
+            tags TEXT NULL,
+            ghl_date_added DATETIME NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            synced_at DATETIME NOT NULL,
+            raw_json LONGTEXT NULL,
+            deleted_at DATETIME NULL,
+            deleted_by BIGINT(20) UNSIGNED NULL,
+            deletion_reason VARCHAR(255) NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY location_contact (location_id, contact_id),
+            KEY idx_email (email),
+            KEY idx_name (first_name, last_name),
+            KEY idx_location_synced (location_id, synced_at),
+            KEY idx_deleted_at (deleted_at),
+            KEY idx_phone (phone)
+        ) {$charsetCollate};";
+
+        dbDelta($contactSql);
+
+        // Create GHL webhook events table (separate from Stripe webhook events)
+        $ghlWebhookTableName = $wpdb->prefix . 'ca_ghl_webhook_events';
+        $ghlWebhookSql = "CREATE TABLE {$ghlWebhookTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            webhook_id VARCHAR(255) NOT NULL COMMENT 'GHL webhookId – unique per delivery',
+            event_type VARCHAR(100) NOT NULL COMMENT 'GHL event type e.g. ContactCreate, InvoiceUpdate',
+            entity_id VARCHAR(255) NULL COMMENT 'Extracted entity ID (contactId, invoiceId, estimateId)',
+            location_id VARCHAR(64) NULL,
+            payload LONGTEXT NULL COMMENT 'Raw JSON payload for retry/replay',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            processing_started_at DATETIME NULL COMMENT 'When processing started',
+            processed_at DATETIME NULL COMMENT 'NULL = pending, timestamp = processed',
+            retry_count INT UNSIGNED DEFAULT 0,
+            error_message TEXT NULL COMMENT 'Error if processing failed',
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_webhook (webhook_id),
+            KEY idx_event_type (event_type),
+            KEY idx_entity_id (entity_id),
+            KEY idx_processed_at (processed_at),
+            KEY idx_pending (processed_at, processing_started_at) COMMENT 'Find pending/failed events'
+        ) {$charsetCollate};";
+
+        dbDelta($ghlWebhookSql);
+
+        // Create ServiceM8 jobs snapshot table (local read cache — SM8 has no webhooks)
+        $sm8JobsTableName = $wpdb->prefix . 'ca_sm8_jobs';
+        $sm8JobsSql = "CREATE TABLE {$sm8JobsTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            job_uuid VARCHAR(64) NOT NULL,
+            company_uuid VARCHAR(64) NULL,
+            status VARCHAR(32) NULL,
+            job_description TEXT NULL,
+            job_address VARCHAR(512) NULL,
+            generated_job_id VARCHAR(64) NULL,
+            assigned_to_staff_uuid VARCHAR(64) NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            synced_at DATETIME NOT NULL,
+            raw_json LONGTEXT NULL,
+            deleted_at DATETIME NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY idx_job_uuid (job_uuid),
+            KEY idx_company_uuid (company_uuid),
+            KEY idx_status (status),
+            KEY idx_synced_at (synced_at),
+            KEY idx_deleted_at (deleted_at)
+        ) {$charsetCollate};";
+
+        dbDelta($sm8JobsSql);
+
+        // Create ServiceM8 companies snapshot table (local read cache)
+        $sm8CompaniesTableName = $wpdb->prefix . 'ca_sm8_companies';
+        $sm8CompaniesSql = "CREATE TABLE {$sm8CompaniesTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            company_uuid VARCHAR(64) NOT NULL,
+            name VARCHAR(255) NULL,
+            email VARCHAR(190) NULL,
+            phone VARCHAR(64) NULL,
+            address VARCHAR(512) NULL,
+            city VARCHAR(128) NULL,
+            state VARCHAR(64) NULL,
+            postcode VARCHAR(16) NULL,
+            country VARCHAR(64) NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            synced_at DATETIME NOT NULL,
+            raw_json LONGTEXT NULL,
+            deleted_at DATETIME NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY idx_company_uuid (company_uuid),
+            KEY idx_name (name),
+            KEY idx_email (email),
+            KEY idx_synced_at (synced_at),
+            KEY idx_deleted_at (deleted_at)
+        ) {$charsetCollate};";
+
+        dbDelta($sm8CompaniesSql);
     }
 }
 

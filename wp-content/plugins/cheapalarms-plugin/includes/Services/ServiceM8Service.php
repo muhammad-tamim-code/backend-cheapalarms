@@ -2,9 +2,13 @@
 
 namespace CheapAlarms\Plugin\Services;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\Config\Config;
+use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
+use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
 use WP_Error;
 
+use function is_wp_error;
 use function sanitize_email;
 use function sanitize_text_field;
 use function sanitize_textarea_field;
@@ -15,8 +19,59 @@ class ServiceM8Service
         private ServiceM8Client $client,
         private Config $config,
         private Logger $logger,
-        private ?EstimateService $estimateService = null
+        private ?EstimateService $estimateService = null,
+        private ?Sm8JobSnapshotRepository $jobRepo = null,
+        private ?Sm8CompanySnapshotRepository $companyRepo = null
     ) {
+    }
+
+    // ─── Write-through helpers ───────────────────────────────────────
+
+    /**
+     * Write-through: persist a job API response to the local snapshot.
+     * Silently ignores failures so the caller's main operation is never blocked.
+     */
+    private function writeThroughJob(array $jobData): void
+    {
+        if (!$this->jobRepo) {
+            return;
+        }
+        $uuid = $jobData['uuid'] ?? '';
+        if (!$uuid) {
+            return;
+        }
+        try {
+            $record = Sm8JobSnapshotRepository::normalizeFromApi($jobData);
+            $this->jobRepo->upsertOne($record);
+        } catch (\Throwable $e) {
+            $this->logger->warning('SM8 write-through job failed', [
+                'uuid'  => $uuid,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Write-through: persist a company API response to the local snapshot.
+     */
+    private function writeThroughCompany(array $companyData): void
+    {
+        if (!$this->companyRepo) {
+            return;
+        }
+        $uuid = $companyData['uuid'] ?? '';
+        if (!$uuid) {
+            return;
+        }
+        try {
+            $record = Sm8CompanySnapshotRepository::normalizeFromApi($companyData);
+            $this->companyRepo->upsertOne($record);
+        } catch (\Throwable $e) {
+            $this->logger->warning('SM8 write-through company failed', [
+                'uuid'  => $uuid,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -74,11 +129,55 @@ class ServiceM8Service
     /**
      * Get companies (clients)
      *
+     * LOCAL-FIRST: tries snapshot table first, falls back to API.
+     *
      * @param array<string, mixed> $params Query parameters (uuid, name, email)
      * @return array|WP_Error
      */
     public function getCompanies(array $params = [])
     {
+        // ── LOCAL-FIRST + STALE-WHILE-REVALIDATE ────────────────────
+        if ($this->companyRepo) {
+            $filters = [];
+            if (!empty($params['uuid'])) {
+                $filters['uuid'] = sanitize_text_field($params['uuid']);
+            }
+            if (!empty($params['name'])) {
+                $filters['name'] = sanitize_text_field($params['name']);
+            }
+            if (!empty($params['email'])) {
+                $filters['email'] = sanitize_email($params['email']);
+            }
+
+            $hasLocal = $this->companyRepo->hasData();
+            if (!is_wp_error($hasLocal) && $hasLocal) {
+                $local = $this->companyRepo->listAll($filters);
+
+                if (!is_wp_error($local) && !empty($local['items'])) {
+                    $lastSync = $this->companyRepo->lastSyncedAt();
+                    $isFresh  = !is_wp_error($lastSync) && CacheConfig::isFresh($lastSync, CacheConfig::SM8_COMPANY_STALE_SECONDS);
+
+                    // Schedule background re-sync if stale (never block the caller)
+                    if (!$isFresh && !wp_next_scheduled('ca_sync_sm8_companies')) {
+                        wp_schedule_single_event(time() + 1, 'ca_sync_sm8_companies');
+                    }
+
+                    $this->logger->debug('[SM8_CACHE] companies ' . ($isFresh ? 'HIT' : 'STALE'), [
+                        'filters' => $filters,
+                        'count'   => $local['total'],
+                    ]);
+
+                    return [
+                        'ok'          => true,
+                        'companies'   => $local['items'],
+                        'count'       => $local['total'],
+                        '_dataSource' => $isFresh ? 'local' : 'local-stale',
+                    ];
+                }
+            }
+        }
+
+        // ── FALLBACK: ServiceM8 API ─────────────────────────────────
         $query = [];
         if (!empty($params['uuid'])) {
             $query['uuid'] = sanitize_text_field($params['uuid']);
@@ -86,15 +185,46 @@ class ServiceM8Service
         if (!empty($params['name'])) {
             $query['name'] = sanitize_text_field($params['name']);
         }
-        // Note: ServiceM8 API may not support email filter directly, so we'll filter in PHP if needed
 
         $result = $this->client->get('/company.json', $query);
         
         if (is_wp_error($result)) {
+            // On API failure, try stale local data as last resort
+            if ($this->companyRepo) {
+                $filters = [];
+                if (!empty($params['uuid'])) {
+                    $filters['uuid'] = sanitize_text_field($params['uuid']);
+                }
+                if (!empty($params['name'])) {
+                    $filters['name'] = sanitize_text_field($params['name']);
+                }
+                if (!empty($params['email'])) {
+                    $filters['email'] = sanitize_email($params['email']);
+                }
+                $stale = $this->companyRepo->listAll($filters);
+                if (!is_wp_error($stale) && !empty($stale['items'])) {
+                    $this->logger->warning('SM8 API failed, serving stale company data', [
+                        'error' => $result->get_error_message(),
+                    ]);
+                    return [
+                        'ok'          => true,
+                        'companies'   => $stale['items'],
+                        'count'       => $stale['total'],
+                        '_dataSource' => 'local-stale',
+                    ];
+                }
+            }
             return $result;
         }
 
         $companies = is_array($result) ? $result : [$result];
+
+        // Write-through: persist all fetched companies to local cache
+        if ($this->companyRepo) {
+            foreach ($companies as $company) {
+                $this->writeThroughCompany($company);
+            }
+        }
 
         // Filter by email if provided (ServiceM8 API doesn't support email filter)
         if (!empty($params['email'])) {
@@ -106,10 +236,13 @@ class ServiceM8Service
             $companies = array_values($companies); // Re-index array
         }
 
+        $this->logger->debug('[SM8_CACHE] companies MISS (API)', ['count' => count($companies)]);
+
         return [
-            'ok' => true,
-            'companies' => $companies,
-            'count' => count($companies),
+            'ok'          => true,
+            'companies'   => $companies,
+            'count'       => count($companies),
+            '_dataSource' => 'api',
         ];
     }
 
@@ -155,6 +288,11 @@ class ServiceM8Service
         
         if (is_wp_error($result)) {
             return $result;
+        }
+
+        // Write-through: cache new company locally
+        if (is_array($result)) {
+            $this->writeThroughCompany($result);
         }
 
         return [
@@ -222,11 +360,55 @@ class ServiceM8Service
     /**
      * Get jobs
      *
+     * LOCAL-FIRST: tries snapshot table first, falls back to API.
+     *
      * @param array<string, mixed> $params Query parameters (uuid, company_uuid, status)
      * @return array|WP_Error
      */
     public function getJobs(array $params = [])
     {
+        // ── LOCAL-FIRST + STALE-WHILE-REVALIDATE ────────────────────
+        if ($this->jobRepo) {
+            $filters = [];
+            if (!empty($params['uuid'])) {
+                $filters['uuid'] = sanitize_text_field($params['uuid']);
+            }
+            if (!empty($params['company_uuid'])) {
+                $filters['company_uuid'] = sanitize_text_field($params['company_uuid']);
+            }
+            if (!empty($params['status'])) {
+                $filters['status'] = sanitize_text_field($params['status']);
+            }
+
+            $hasLocal = $this->jobRepo->hasData();
+            if (!is_wp_error($hasLocal) && $hasLocal) {
+                $local = $this->jobRepo->listAll($filters);
+
+                if (!is_wp_error($local) && !empty($local['items'])) {
+                    $lastSync = $this->jobRepo->lastSyncedAt();
+                    $isFresh  = !is_wp_error($lastSync) && CacheConfig::isFresh($lastSync, CacheConfig::SM8_JOB_STALE_SECONDS);
+
+                    // Schedule background re-sync if stale (never block the caller)
+                    if (!$isFresh && !wp_next_scheduled('ca_sync_sm8_jobs')) {
+                        wp_schedule_single_event(time() + 1, 'ca_sync_sm8_jobs');
+                    }
+
+                    $this->logger->debug('[SM8_CACHE] jobs ' . ($isFresh ? 'HIT' : 'STALE'), [
+                        'filters' => $filters,
+                        'count'   => $local['total'],
+                    ]);
+
+                    return [
+                        'ok'          => true,
+                        'jobs'        => $local['items'],
+                        'count'       => $local['total'],
+                        '_dataSource' => $isFresh ? 'local' : 'local-stale',
+                    ];
+                }
+            }
+        }
+
+        // ── FALLBACK: ServiceM8 API (no local data) ─────────────────
         $query = [];
         if (!empty($params['uuid'])) {
             $query['uuid'] = sanitize_text_field($params['uuid']);
@@ -241,18 +423,57 @@ class ServiceM8Service
         $result = $this->client->get('/job.json', $query);
         
         if (is_wp_error($result)) {
+            // On API failure, try stale local data as last resort
+            if ($this->jobRepo) {
+                $filters = [];
+                if (!empty($params['uuid'])) {
+                    $filters['uuid'] = sanitize_text_field($params['uuid']);
+                }
+                if (!empty($params['company_uuid'])) {
+                    $filters['company_uuid'] = sanitize_text_field($params['company_uuid']);
+                }
+                if (!empty($params['status'])) {
+                    $filters['status'] = sanitize_text_field($params['status']);
+                }
+                $stale = $this->jobRepo->listAll($filters);
+                if (!is_wp_error($stale) && !empty($stale['items'])) {
+                    $this->logger->warning('SM8 API failed, serving stale job data', [
+                        'error' => $result->get_error_message(),
+                    ]);
+                    return [
+                        'ok'          => true,
+                        'jobs'        => $stale['items'],
+                        'count'       => $stale['total'],
+                        '_dataSource' => 'local-stale',
+                    ];
+                }
+            }
             return $result;
         }
 
+        $jobs = is_array($result) ? $result : [$result];
+
+        // Write-through: persist all fetched jobs to local cache
+        if ($this->jobRepo) {
+            foreach ($jobs as $job) {
+                $this->writeThroughJob($job);
+            }
+        }
+
+        $this->logger->debug('[SM8_CACHE] jobs MISS (API)', ['count' => count($jobs)]);
+
         return [
-            'ok' => true,
-            'jobs' => is_array($result) ? $result : [$result],
-            'count' => is_array($result) ? count($result) : 1,
+            'ok'          => true,
+            'jobs'        => $jobs,
+            'count'       => count($jobs),
+            '_dataSource' => 'api',
         ];
     }
 
     /**
      * Get a single job by UUID
+     *
+     * LOCAL-FIRST: tries snapshot table first, falls back to API.
      *
      * @param string $uuid Job UUID
      * @return array|WP_Error
@@ -263,15 +484,60 @@ class ServiceM8Service
             return new WP_Error('servicem8_validation', 'Job UUID is required', ['status' => 400]);
         }
 
+        // ── LOCAL-FIRST + STALE-WHILE-REVALIDATE ────────────────────
+        if ($this->jobRepo) {
+            $local = $this->jobRepo->getByUuid($uuid);
+            if (!is_wp_error($local)) {
+                $isFresh = CacheConfig::isFresh($local['_snapshotSyncedAt'] ?? null, CacheConfig::SM8_JOB_STALE_SECONDS);
+
+                // Schedule background re-sync if stale (never block the caller)
+                if (!$isFresh && !wp_next_scheduled('ca_sync_sm8_jobs')) {
+                    wp_schedule_single_event(time() + 1, 'ca_sync_sm8_jobs');
+                }
+
+                $this->logger->debug('[SM8_CACHE] job ' . ($isFresh ? 'HIT' : 'STALE'), ['uuid' => $uuid]);
+
+                return [
+                    'ok'          => true,
+                    'job'         => $local,
+                    '_dataSource' => $isFresh ? 'local' : 'local-stale',
+                ];
+            }
+        }
+
+        // ── FALLBACK: ServiceM8 API (no local data) ─────────────────
         $result = $this->client->get('/job/' . sanitize_text_field($uuid) . '.json');
         
         if (is_wp_error($result)) {
+            // On API failure, return stale snapshot if available
+            if ($this->jobRepo) {
+                $stale = $this->jobRepo->getByUuid($uuid);
+                if (!is_wp_error($stale)) {
+                    $this->logger->warning('SM8 API failed, serving stale job', [
+                        'uuid'  => $uuid,
+                        'error' => $result->get_error_message(),
+                    ]);
+                    return [
+                        'ok'          => true,
+                        'job'         => $stale,
+                        '_dataSource' => 'local-stale',
+                    ];
+                }
+            }
             return $result;
         }
 
+        // Write-through
+        if (is_array($result)) {
+            $this->writeThroughJob($result);
+        }
+
+        $this->logger->debug('[SM8_CACHE] job MISS (API)', ['uuid' => $uuid]);
+
         return [
-            'ok' => true,
-            'job' => $result,
+            'ok'          => true,
+            'job'         => $result,
+            '_dataSource' => 'api',
         ];
     }
 
@@ -345,6 +611,11 @@ class ServiceM8Service
             return $result;
         }
 
+        // Write-through: cache new job locally
+        if (is_array($result)) {
+            $this->writeThroughJob($result);
+        }
+
         return [
             'ok' => true,
             'job' => $result,
@@ -411,6 +682,16 @@ class ServiceM8Service
             return $result;
         }
 
+        // Write-through: update local cache with the latest job data.
+        // ServiceM8 PUT may return empty on success; only write-through if we have a full response.
+        if (is_array($result) && !empty($result) && !empty($result['uuid'] ?? '')) {
+            $this->writeThroughJob($result);
+        } elseif ($this->jobRepo) {
+            // API returned empty — schedule a single-event re-fetch so the snapshot stays fresh.
+            // Don't write partial data that would overwrite good cached fields.
+            wp_schedule_single_event(time() + 5, 'ca_sync_sm8_jobs');
+        }
+
         return [
             'ok' => true,
             'job' => $result,
@@ -433,6 +714,11 @@ class ServiceM8Service
         
         if (is_wp_error($result)) {
             return $result;
+        }
+
+        // Write-through: soft-delete from local cache
+        if ($this->jobRepo) {
+            $this->jobRepo->softDelete($uuid);
         }
 
         return [

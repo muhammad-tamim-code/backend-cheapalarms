@@ -2,8 +2,10 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
+use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotSyncService;
@@ -368,16 +370,17 @@ class AdminEstimateController extends AdminController
         if (!is_wp_error($snapshotItems) && is_array($snapshotItems) && count($snapshotItems) > 0) {
             $items = $snapshotItems;
 
-            // Best-effort background refresh if snapshots are stale.
+            // Best-effort background refresh if snapshots are stale (estimates: 3 min tier).
             $lastSyncedAt = $this->snapshotRepo->lastSyncedAt($locationId);
-            $stale = false;
-            if (!is_wp_error($lastSyncedAt) && is_string($lastSyncedAt) && $lastSyncedAt) {
-                $stale = (time() - (int)strtotime($lastSyncedAt)) > (3 * MINUTE_IN_SECONDS);
-            }
+            $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::ESTIMATE_STALE_SECONDS);
             if ($stale && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
                 wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
             }
+
+            error_log('[CheapAlarms][ESTIMATE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . count($snapshotItems));
         } else {
+            error_log('[CheapAlarms][ESTIMATE_CACHE] MISS (GHL fallback)');
+
             // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
             if (!wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
                 wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
@@ -2281,8 +2284,10 @@ class AdminEstimateController extends AdminController
     }
 
     /**
-     * Helper to find contact ID by email (replicates EstimateService logic)
-     * 
+     * Find a GHL contact ID by email.
+     * Local-first: checks the contact snapshot table first (5-min freshness),
+     * then falls through to GHL API and writes-through on hit.
+     *
      * @param string $email
      * @param string $locationId
      * @param \CheapAlarms\Plugin\Services\GhlClient $ghlClient
@@ -2290,6 +2295,25 @@ class AdminEstimateController extends AdminController
      */
     private function findContactIdByEmail(string $email, string $locationId, \CheapAlarms\Plugin\Services\GhlClient $ghlClient)
     {
+        // ── LOCAL-FIRST: try snapshot table ──────────────────────────
+        $contactRepo = null;
+        try {
+            /** @var ContactSnapshotRepository $contactRepo */
+            $contactRepo = $this->container->get(ContactSnapshotRepository::class);
+            $local = $contactRepo->findByEmail($email, $locationId);
+
+            if ($local !== null && !is_wp_error($local)) {
+                $syncedAt = $local['syncedAt'] ?? null;
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                    return $local['contactId'] ?? null;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Local lookup failed – fall through to GHL API
+            error_log('[CheapAlarms][WARN] Contact snapshot lookup failed in AdminEstimateController: ' . $e->getMessage());
+        }
+
+        // ── FALLBACK: GHL API ────────────────────────────────────────
         $response = $ghlClient->get('/contacts/search', [
             'locationId' => $locationId,
             'query'      => $email,
@@ -2303,6 +2327,13 @@ class AdminEstimateController extends AdminController
         foreach ($contacts as $contact) {
             $contactEmail = $contact['email'] ?? '';
             if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
+                // Write-through: cache this contact locally
+                try {
+                    $contactRepo ??= $this->container->get(ContactSnapshotRepository::class);
+                    $contactRepo->upsertOne($locationId, ContactSnapshotRepository::normalizeFromGhl($contact));
+                } catch (\Throwable $e) {
+                    // Fail silently
+                }
                 return $contact['id'] ?? null;
             }
         }
