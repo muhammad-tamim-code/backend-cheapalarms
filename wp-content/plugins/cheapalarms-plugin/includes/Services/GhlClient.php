@@ -408,12 +408,15 @@ class GhlClient
         $body = wp_remote_retrieve_body($response);
 
         if ($code < 200 || $code >= 300) {
-            $this->logger->warning('GHL non-2xx response', [
+            $logContext = [
                 'url' => $url,
                 'code' => $code,
                 'body' => $body,
-                'request' => $requestBody,
-            ]);
+            ];
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $logContext['request'] = is_array($requestBody) ? substr(wp_json_encode($requestBody), 0, 500) : $requestBody;
+            }
+            $this->logger->warning('GHL non-2xx response', $logContext);
             return new WP_Error('ghl_http_error', sprintf('GHL responded with status %d', $code), [
                 'code' => $code,
                 'body' => $body,

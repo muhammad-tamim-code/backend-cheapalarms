@@ -52,6 +52,7 @@ class Plugin
                 'ca_view_estimates'   => true,
                 'ca_invite_customers' => true,
                 'ca_access_portal'    => true,
+                'ca_manage_settings'  => true,
             ],
         ],
         'ca_admin' => [
@@ -447,9 +448,11 @@ class Plugin
             }
         }, 10, 0);
 
-        // Schedule cleanup job (daily at 2 AM)
+        // Schedule cleanup job (daily at 2 AM Australia/Brisbane)
         if (!wp_next_scheduled('ca_cleanup_expired_payment_intents')) {
-            wp_schedule_event(strtotime('tomorrow 2:00'), 'daily', 'ca_cleanup_expired_payment_intents');
+            $tz = new \DateTimeZone('Australia/Brisbane');
+            $dt = new \DateTime('tomorrow 02:00:00', $tz);
+            wp_schedule_event($dt->getTimestamp(), 'daily', 'ca_cleanup_expired_payment_intents');
         }
 
         $this->registerCors();

@@ -231,35 +231,36 @@ class XeroService
      */
     private function refreshAccessToken()
     {
-        // Acquire lock to prevent concurrent refresh attempts
-        $lockKey = self::REFRESH_LOCK_KEY;
-        $lockValue = wp_generate_password(16, false);
-        
-        // Try to acquire lock (set if not exists)
-        $existingLock = get_transient($lockKey);
-        if ($existingLock !== false) {
-            // Another process is refreshing, wait a bit and check if it completed
-            sleep(1);
+        global $wpdb;
+
+        // Atomic lock: only succeeds if lock row doesn't exist
+        $lockKey = '_transient_ca_xero_refresh_lock';
+        $locked = $wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            $lockKey,
+            (string) time()
+        ));
+
+        if (!$locked) {
+            // Another process holds the lock - wait and retry
+            sleep(2);
             $tokens = $this->getTokens();
             if ($tokens && !empty($tokens['access_token'])) {
-                // Check if token was refreshed (expires_at updated)
                 $expiresAt = $tokens['expires_at'] ?? 0;
                 if ($expiresAt > time() + 300) {
-                    // Token was refreshed, return it
-                    return $tokens;
+                    return $tokens; // Other process refreshed, use it
                 }
             }
-            // Still locked, return error
-            return new WP_Error('refresh_in_progress', __('Token refresh is already in progress. Please try again shortly.', 'cheapalarms'), ['status' => 429]);
+            return $this->refreshAccessToken(); // Retry - might get lock now
         }
-        
-        // Acquire lock
-        set_transient($lockKey, $lockValue, self::REFRESH_LOCK_TTL);
+
+        // Acquire transient lock for consistency with delete_transient on release
+        set_transient(self::REFRESH_LOCK_KEY, (string) time(), self::REFRESH_LOCK_TTL);
         
         try {
             $tokens = $this->getTokens();
             if (!$tokens || empty($tokens['refresh_token'])) {
-                delete_transient($lockKey);
+                delete_transient(self::REFRESH_LOCK_KEY);
                 return new WP_Error('no_refresh_token', __('No refresh token available. Please reconnect Xero.', 'cheapalarms'), ['status' => 401]);
             }
 
@@ -280,7 +281,7 @@ class XeroService
             ]);
 
             if (is_wp_error($response)) {
-                delete_transient($lockKey);
+                delete_transient(self::REFRESH_LOCK_KEY);
                 return $response;
             }
 
@@ -292,13 +293,13 @@ class XeroService
                     'status' => $statusCode,
                     'body' => $body,
                 ]);
-                delete_transient($lockKey);
+                delete_transient(self::REFRESH_LOCK_KEY);
                 return new WP_Error('xero_refresh_error', __('Failed to refresh Xero token.', 'cheapalarms'), ['status' => $statusCode]);
             }
 
             $data = json_decode($body, true);
             if (!$data || !isset($data['access_token'])) {
-                delete_transient($lockKey);
+                delete_transient(self::REFRESH_LOCK_KEY);
                 return new WP_Error('xero_refresh_parse_error', __('Invalid response from Xero refresh endpoint.', 'cheapalarms'), ['status' => 500]);
             }
 
@@ -306,7 +307,7 @@ class XeroService
             // Xero uses rotating refresh tokens - a new one is ALWAYS provided
             if (!isset($data['refresh_token']) || empty($data['refresh_token'])) {
                 $this->logger->error('Xero refresh token missing in response', ['data_keys' => array_keys($data)]);
-                delete_transient($lockKey);
+                delete_transient(self::REFRESH_LOCK_KEY);
                 return new WP_Error('xero_refresh_token_missing', __('No refresh token provided in response. Please reconnect Xero.', 'cheapalarms'), ['status' => 500]);
             }
             
@@ -322,12 +323,12 @@ class XeroService
             }
             
             // Release lock
-            delete_transient($lockKey);
+            delete_transient(self::REFRESH_LOCK_KEY);
             
             return $tokens;
         } catch (\Exception $e) {
             // Release lock on error
-            delete_transient($lockKey);
+            delete_transient(self::REFRESH_LOCK_KEY);
             $this->logger->error('Xero token refresh exception', ['error' => $e->getMessage()]);
             return new WP_Error('xero_refresh_exception', __('An error occurred while refreshing the token.', 'cheapalarms'), ['status' => 500]);
         }
@@ -1411,6 +1412,9 @@ class XeroService
         
         if ($encrypted === false) {
             $this->logger->error('Failed to encrypt Xero tokens');
+            if (function_exists('error_log')) {
+                error_log('[CheapAlarms] WARNING: Xero token encryption failed, falling back to base64 encoding. Check OpenSSL configuration.');
+            }
             // Fallback to base64 encoding if encryption fails
             return base64_encode(json_encode($tokens));
         }

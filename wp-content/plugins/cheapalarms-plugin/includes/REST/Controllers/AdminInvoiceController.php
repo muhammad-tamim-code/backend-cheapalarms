@@ -353,8 +353,10 @@ class AdminInvoiceController extends AdminController
             'pageSize' => $pageSize,
         ]);
 
-        // Debug header so we know which path served the data
-        $response->header('X-Data-Source', $dataSource);
+        // Debug header so we know which path served the data (only in debug mode)
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $response->header('X-Data-Source', $dataSource);
+        }
 
         return $response;
     }
@@ -408,7 +410,7 @@ class AdminInvoiceController extends AdminController
             global $wpdb;
             $optionNamePattern = 'ca_portal_meta_%';
             $results = $wpdb->get_results($wpdb->prepare(
-                "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+                "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s LIMIT 1000",
                 $optionNamePattern
             ));
             
@@ -530,7 +532,9 @@ class AdminInvoiceController extends AdminController
             'xeroSync' => $xeroSync, // Xero sync status, errors, retry info
         ]);
 
-        $response->header('X-Data-Source', $dataSource);
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $response->header('X-Data-Source', $dataSource);
+        }
 
         return $response;
     }
@@ -589,7 +593,7 @@ class AdminInvoiceController extends AdminController
         global $wpdb;
         $metaRows = $wpdb->get_results($wpdb->prepare(
             "SELECT option_name, option_value FROM {$wpdb->options} 
-            WHERE option_name LIKE %s",
+            WHERE option_name LIKE %s LIMIT 1000",
             'ca_portal_meta_%'
         ));
         

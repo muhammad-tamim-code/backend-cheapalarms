@@ -99,28 +99,21 @@ class PasswordResetController implements ControllerInterface
             ));
         }
 
-        // Find or create WordPress user by email (auto-provisioning)
+        // Only allow password reset for existing users (no auto-provisioning)
+        // Auto-provisioning on a public endpoint enables mass account creation attacks
         $userId = email_exists($email);
         if (!$userId) {
-            // Auto-provision: Create user with ca_customer role (has ca_access_portal capability)
-            $password = wp_generate_password(20);
-            $userId = wp_create_user($email, $password, $email);
-            if (is_wp_error($userId)) {
-                return $this->respond($userId);
-            }
-            
-            // Set ca_customer role (has ca_access_portal capability)
-            $user = get_user_by('id', $userId);
-            if ($user) {
-                $user->set_role('ca_customer');
-            }
-        } else {
-            // Existing user - ensure they have ca_access_portal capability
-            $user = get_user_by('id', $userId);
-            if ($user && !$user->has_cap('ca_access_portal')) {
-                // Add capability if missing
-                $user->add_cap('ca_access_portal');
-            }
+            // Return a generic message to prevent account enumeration
+            return new WP_REST_Response([
+                'ok'      => true,
+                'message' => 'If an account exists with that email, a password reset link will be sent.',
+            ], 200);
+        }
+
+        // Existing user - ensure they have ca_access_portal capability
+        $user = get_user_by('id', $userId);
+        if ($user && !$user->has_cap('ca_access_portal')) {
+            $user->add_cap('ca_access_portal');
         }
 
         $user = get_user_by('id', $userId);
@@ -178,10 +171,6 @@ class PasswordResetController implements ControllerInterface
 
         // Ensure contact has email (required for messaging)
         $this->updateContactEmail($contactId, $email, $locationId);
-
-        // Small delay to ensure GHL has fully processed the contact creation/update
-        // This helps avoid race conditions where the contact exists but isn't ready for messaging
-        usleep(1000000); // 1 second delay (increased from 0.5s)
 
         // Send email via GHL
         $emailResult = $this->sendPasswordResetEmailViaGhl($contactId, $email, $userId, $user->display_name ?: $user->user_login, $resetUrl, $locationId);

@@ -412,6 +412,17 @@ class PortalService
             $meta['invoice'] = $invoice;
         }
 
+        // Support specialist info from wp_options (configurable via admin settings)
+        $support = [
+            'specialist' => [
+                'name'  => get_option('ca_support_name', 'CheapAlarms Support'),
+                'role'  => get_option('ca_support_role', 'Security Specialist'),
+                'bio'   => get_option('ca_support_bio', 'Your point of contact for installation updates and questions.'),
+                'phone' => get_option('ca_support_phone', ''),
+                'email' => get_option('ca_support_email', get_option('admin_email', '')),
+            ],
+        ];
+
         return [
             'estimateId'   => $estimateId,
             'locationId'   => $locationId, // Include locationId so frontend can use it for GHL sync
@@ -428,6 +439,7 @@ class PortalService
             'revisionHistory' => $meta['revisionHistory'] ?? [], // Full revision history for edit timeline
             'itemsMeta' => $meta['itemsMeta'] ?? [], // Custom item metadata (photoRequired, isCustom)
             'minimumPaymentInfo' => $minimumPaymentInfo, // Include minimum payment calculation for frontend
+            'support'      => $support, // Support specialist info from wp_options
             'isGuestMode'  => $isGuestMode,
             'daysRemaining' => $daysRemaining,
             'canCreateAccount' => $isGuestMode, // Guests can always create account

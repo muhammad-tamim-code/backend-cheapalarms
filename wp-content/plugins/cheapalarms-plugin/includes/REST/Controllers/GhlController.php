@@ -289,7 +289,9 @@ class GhlController extends AdminController
                     'limit'    => $limit,
                     'offset'   => $offset,
                 ]);
-                $response->header('X-Data-Source', $isStale ? 'local-stale' : 'local');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    $response->header('X-Data-Source', $isStale ? 'local-stale' : 'local');
+                }
                 return $response;
             }
 
@@ -383,7 +385,9 @@ class GhlController extends AdminController
             'total'    => $total,
             'limit'    => $limit,
         ]);
-        $response->header('X-Data-Source', 'api');
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $response->header('X-Data-Source', 'api');
+        }
         return $response;
     }
 
@@ -420,14 +424,18 @@ class GhlController extends AdminController
         $header  = isset($_SERVER['HTTP_X_CA_DEV']) ? trim((string) $_SERVER['HTTP_X_CA_DEV']) : '';
         $query   = isset($_GET['__dev']) ? trim((string) $_GET['__dev']) : '';
         $addr    = $_SERVER['REMOTE_ADDR'] ?? '';
+        // SECURITY: Require explicit CA_DEV_BYPASS in wp-config.php. WP_DEBUG alone is not sufficient.
         $isLocal = in_array($addr, ['127.0.0.1', '::1'], true);
-        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-        if ($isLocal && $isDebug && ($header === '1' || $query === '1')) {
+        $isDevBypassEnabled = defined('CA_DEV_BYPASS') && CA_DEV_BYPASS === true;
+
+        if (!$isLocal || !$isDevBypassEnabled) {
+            return false;
+        }
+
+        if ($header === '1' || $query === '1') {
             return true;
         }
-        if ($isLocal && $isDebug && defined('CA_DEV_BYPASS') && CA_DEV_BYPASS) {
-            return true;
-        }
+
         return false;
     }
 }

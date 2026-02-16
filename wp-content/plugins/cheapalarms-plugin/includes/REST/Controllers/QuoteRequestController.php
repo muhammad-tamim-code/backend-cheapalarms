@@ -848,7 +848,6 @@ class QuoteRequestController implements ControllerInterface
                 'contactId' => $contactId,
                 'estimateId' => $estimateId,
                 'locationId' => $effectiveLocationId,
-                'portalUrl' => $portalUrl,
                 'emailSent' => $emailSent,
                 'message' => 'Quote request submitted successfully! Check your email for the portal link.',
             ]);

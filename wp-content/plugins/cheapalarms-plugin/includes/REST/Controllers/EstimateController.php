@@ -598,20 +598,20 @@ class EstimateController implements ControllerInterface
         $query  = isset($_GET['__dev']) ? trim((string) $_GET['__dev']) : '';
         $addr = $_SERVER['REMOTE_ADDR'] ?? '';
         // SECURITY: Never trust Host headers for "local" detection (can be spoofed behind proxies).
-        // Local bypass is ONLY allowed from loopback addresses and ONLY in WP_DEBUG.
+        // Local bypass is ONLY allowed from loopback addresses and ONLY when CA_DEV_BYPASS is
+        // explicitly set in wp-config.php. WP_DEBUG alone is not sufficient (can be left on in prod).
         $isLocal = in_array($addr, ['127.0.0.1', '::1'], true);
-        $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-        
+        $isDevBypassEnabled = defined('CA_DEV_BYPASS') && CA_DEV_BYPASS === true;
+
+        if (!$isLocal || !$isDevBypassEnabled) {
+            return false;
+        }
+
         // Allow if header or query param is set from localhost
-        if ($isLocal && $isDebug && ($header === '1' || $query === '1')) {
+        if ($header === '1' || $query === '1') {
             return true;
         }
-        
-        // Also allow if CA_DEV_BYPASS constant is set (from wp-config.php)
-        if ($isLocal && $isDebug && defined('CA_DEV_BYPASS') && CA_DEV_BYPASS) {
-            return true;
-        }
-        
+
         return false;
     }
 

@@ -224,6 +224,11 @@ class StripeService
      */
     public function getPaymentIntent(string $paymentIntentId)
     {
+        $valid = $this->validatePaymentIntentId($paymentIntentId);
+        if (is_wp_error($valid)) {
+            return $valid;
+        }
+
         $secretKey = $this->config->getStripeSecretKey();
         
         if (empty($secretKey)) {
@@ -295,6 +300,11 @@ class StripeService
      */
     public function refundPaymentIntent(string $paymentIntentId, string $reason = 'requested_by_customer', ?float $amount = null)
     {
+        $valid = $this->validatePaymentIntentId($paymentIntentId);
+        if (is_wp_error($valid)) {
+            return $valid;
+        }
+
         $secretKey = $this->config->getStripeSecretKey();
 
         if (empty($secretKey)) {
@@ -372,6 +382,25 @@ class StripeService
             'amount' => ($data['amount'] ?? 0) / 100,
             'currency' => $data['currency'] ?? 'aud',
         ];
+    }
+
+    /**
+     * Validate that a payment intent ID matches the expected Stripe format.
+     * Prevents path traversal and invalid API calls.
+     *
+     * @param string $paymentIntentId
+     * @return true|WP_Error
+     */
+    private function validatePaymentIntentId(string $paymentIntentId)
+    {
+        if (empty($paymentIntentId) || !preg_match('/^pi_[a-zA-Z0-9_]+$/', $paymentIntentId)) {
+            return new WP_Error(
+                'invalid_payment_intent_id',
+                __('Invalid payment intent ID format.', 'cheapalarms'),
+                ['status' => 400]
+            );
+        }
+        return true;
     }
 }
 

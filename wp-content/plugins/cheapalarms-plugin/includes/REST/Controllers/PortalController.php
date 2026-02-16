@@ -53,7 +53,6 @@ class PortalController implements ControllerInterface
         };
 
         $requireCsrf = function (WP_REST_Request $request) {
-            // Basic CSRF check for cookie-auth POSTs: require X-WP-Nonce header when no inviteToken is used
             $payload = $request->get_json_params();
             if (!is_array($payload)) {
                 $payload = [];
@@ -63,20 +62,26 @@ class PortalController implements ControllerInterface
                 return true; // invite links act as bearer tokens
             }
             
-            // FIX: Ensure user is loaded (triggers JWT authentication if token exists)
-            // This fixes timing issues where JWT auth hasn't run yet
             $this->auth->ensureUserLoaded();
             $user = wp_get_current_user();
             
-            // FIX: Skip nonce check if user is authenticated via JWT or cookie
-            // JWT/Bearer tokens don't need nonces (stateless authentication)
-            // WordPress Application Passwords also don't require nonces
-            // Nonces are only needed for cookie-based authentication to prevent CSRF
             if ($user && $user->ID > 0) {
-                return true; // User authenticated via JWT/cookie - skip nonce check
+                // User is authenticated (JWT from httpOnly cookie).
+                // Require X-Requested-With header to prove this is a same-origin
+                // XHR/fetch call (browsers block cross-origin custom headers by default).
+                // This prevents CSRF via form submissions or navigations.
+                $xrw = $request->get_header('x-requested-with');
+                if (empty($xrw)) {
+                    return $this->respond(new WP_Error(
+                        'missing_csrf_header',
+                        __('Missing X-Requested-With header.', 'cheapalarms'),
+                        ['status' => 403]
+                    ));
+                }
+                return true;
             }
             
-            // Only require nonce for unauthenticated requests
+            // Unauthenticated requests require WP nonce
             $nonce = $request->get_header('x-wp-nonce');
             if (empty($nonce)) {
                 return $this->respond(new WP_Error(
