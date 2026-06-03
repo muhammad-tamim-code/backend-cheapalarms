@@ -3,12 +3,15 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\Config\CacheConfig;
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotSyncService;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceEstimateLinkRepository;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\PortalService;
@@ -21,6 +24,7 @@ use function sanitize_email;
 use function email_exists;
 use function wp_delete_user;
 use function get_user_by;
+use function get_user_meta;
 use function delete_user_meta;
 use function delete_option;
 use function wp_json_encode;
@@ -71,6 +75,21 @@ class AdminEstimateController extends AdminController
                     return $this->respond($authCheck);
                 }
                 return $this->listEstimates($request);
+            },
+        ]);
+
+        // Admin custom quote creation (calculator-style payload, optional send)
+        register_rest_route('ca/v1', '/admin/quotes/custom-create', [
+            'methods'             => 'POST',
+            'permission_callback' => fn () => true,
+            'callback'            => function (WP_REST_Request $request) {
+                $this->ensureUserLoaded();
+                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                if (is_wp_error($authCheck)) {
+                    return $this->respond($authCheck);
+                }
+
+                return $this->createCustomQuote($request);
             },
         ]);
 
@@ -147,6 +166,17 @@ class AdminEstimateController extends AdminController
                 }
                 $locationId = $locationIdResult;
 
+                $config = $this->container->get(Config::class);
+                if (!$config->isGhlFetchAllowed()) {
+                    return $this->respond([
+                        'ok'              => true,
+                        'scheduled'       => false,
+                        'alreadyScheduled'=> false,
+                        'locationId'      => $locationId,
+                        'message'         => __('GHL snapshot import is disabled. Estimates are stored locally when created or updated from this system.', 'cheapalarms'),
+                    ]);
+                }
+
                 $already = wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId]);
                 if (!$already) {
                     wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
@@ -205,6 +235,29 @@ class AdminEstimateController extends AdminController
                     return $this->respond($authCheck);
                 }
                 return $this->syncEstimate($request);
+            },
+            'args'                => [
+                'estimateId' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+            ],
+        ]);
+
+        // Partial admin override of per-item photo flags (photoRequired, isHeading).
+        // Keyed by item name; preserves other itemsMeta fields (isCustom, addedAt).
+        // Used by the admin estimate detail UI to mark bundle parents as headings
+        // and to flip the customer photo-required default for individual lines.
+        register_rest_route('ca/v1', '/admin/estimates/(?P<estimateId>[a-zA-Z0-9]+)/items-meta', [
+            'methods'             => 'POST',
+            'permission_callback' => fn () => true,
+            'callback'            => function (WP_REST_Request $request) {
+                $this->ensureUserLoaded();
+                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                if (is_wp_error($authCheck)) {
+                    return $this->respond($authCheck);
+                }
+                return $this->updateItemsMeta($request);
             },
             'args'                => [
                 'estimateId' => [
@@ -373,34 +426,41 @@ class AdminEstimateController extends AdminController
             // Best-effort background refresh if snapshots are stale (estimates: 3 min tier).
             $lastSyncedAt = $this->snapshotRepo->lastSyncedAt($locationId);
             $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::ESTIMATE_STALE_SECONDS);
-            if ($stale && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
+            $cfg = $this->container->get(Config::class);
+            if ($stale && $cfg->isGhlFetchAllowed() && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
                 wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
             }
 
-            error_log('[CheapAlarms][ESTIMATE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . count($snapshotItems));
+            error_log('[CA][ESTIMATE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . count($snapshotItems));
         } else {
-            error_log('[CheapAlarms][ESTIMATE_CACHE] MISS (GHL fallback)');
+            error_log('[CA][ESTIMATE_CACHE] MISS (GHL fallback)');
 
-            // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
-            if (!wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
-                wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
-            }
-
-            // Build cache key for the full (up to 100) GHL list for this location
-            $cacheKey = "ca_admin_estimates_ghl_full_{$locationId}";
-
-            $result   = get_transient($cacheKey);
-            $cacheHit = ($result !== false);
-
-            if (!$cacheHit) {
-                $result = $this->estimateService->listEstimates($locationId, 100); // legacy ceiling
-                if (is_wp_error($result)) {
-                    return $this->respond($result);
+            $cfg = $this->container->get(Config::class);
+            if (!$cfg->isGhlFetchAllowed()) {
+                error_log('[CA][ESTIMATE_CACHE] MISS — GHL fetch disabled; using local snapshot rows only');
+                $items = (!is_wp_error($snapshotItems) && is_array($snapshotItems)) ? $snapshotItems : [];
+            } else {
+                // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
+                if (!wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
+                    wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
                 }
-                set_transient($cacheKey, $result, 3 * MINUTE_IN_SECONDS);
-            }
 
-            $items = $result['items'] ?? [];
+                // Build cache key for the full (up to 100) GHL list for this location
+                $cacheKey = "ca_admin_estimates_ghl_full_{$locationId}";
+
+                $result   = get_transient($cacheKey);
+                $cacheHit = ($result !== false);
+
+                if (!$cacheHit) {
+                    $result = $this->estimateService->listEstimates($locationId, 100); // legacy ceiling
+                    if (is_wp_error($result)) {
+                        return $this->respond($result);
+                    }
+                    set_transient($cacheKey, $result, 3 * MINUTE_IN_SECONDS);
+                }
+
+                $items = $result['items'] ?? [];
+            }
         }
 
         if (!is_array($items)) {
@@ -653,6 +713,138 @@ class AdminEstimateController extends AdminController
         ]);
     }
 
+    /**
+     * Create a custom/admin quote from calculator-style payload.
+     * Default behavior is draft-like: create and link only, no immediate send.
+     */
+    public function createCustomQuote(WP_REST_Request $request): WP_REST_Response
+    {
+        $body = $request->get_json_params();
+        if (!is_array($body)) {
+            $body = json_decode($request->get_body(), true);
+        }
+        if (!is_array($body)) {
+            $body = [];
+        }
+
+        $email = sanitize_email(
+            $body['contactDetails']['email']
+                ?? $body['contact']['email']
+                ?? $body['email']
+                ?? ''
+        );
+        if ($email === '') {
+            return $this->respond(new WP_Error(
+                'missing_email',
+                __('Customer email is required for custom quote creation.', 'cheapalarms'),
+                ['status' => 400]
+            ));
+        }
+
+        $sendNow = (bool)($body['sendNow'] ?? false);
+        $locationId = sanitize_text_field($body['locationId'] ?? $body['altId'] ?? '');
+        $locationId = $this->locationResolver->resolve($locationId);
+        if ($locationId === null || $locationId === '') {
+            return $this->respond(new WP_Error('missing_location', __('Location ID is required.', 'cheapalarms'), ['status' => 400]));
+        }
+
+        // Ensure required estimate payload fields for GHL.
+        $body['altId'] = $locationId;
+        $body['altType'] = 'location';
+
+        $contactDetails = is_array($body['contactDetails'] ?? null) ? $body['contactDetails'] : [];
+        $contactDetails['email'] = $email;
+        $contactDetails['name'] = sanitize_text_field(
+            $contactDetails['name']
+                ?? trim(((string)($body['firstName'] ?? '')) . ' ' . ((string)($body['lastName'] ?? '')))
+                ?? ''
+        );
+        $contactDetails['firstName'] = sanitize_text_field($contactDetails['firstName'] ?? ($body['firstName'] ?? ''));
+        $contactDetails['lastName'] = sanitize_text_field($contactDetails['lastName'] ?? ($body['lastName'] ?? ''));
+
+        if (empty($contactDetails['id'])) {
+            $ghlClient = $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class);
+            $contactId = $this->findContactIdByEmail($email, $locationId, $ghlClient);
+            if (is_wp_error($contactId)) {
+                return $this->respond($contactId);
+            }
+
+            if (!$contactId) {
+                $createContact = $ghlClient->post('/contacts/', [
+                    'firstName'  => $contactDetails['firstName'] ?? '',
+                    'lastName'   => $contactDetails['lastName'] ?? '',
+                    'email'      => $email,
+                    'locationId' => $locationId,
+                ], 20, $locationId);
+                if (is_wp_error($createContact)) {
+                    return $this->respond($createContact);
+                }
+                $contactId = $createContact['contact']['id'] ?? $createContact['id'] ?? $createContact['contactId'] ?? null;
+            }
+
+            if ($contactId) {
+                $contactDetails['id'] = (string)$contactId;
+            }
+        }
+
+        $body['contactDetails'] = $contactDetails;
+
+        $result = $this->estimateService->createEstimate($body);
+        if (is_wp_error($result) || !($result['ok'] ?? false)) {
+            return $this->respond($result);
+        }
+
+        $created = $result['result'] ?? [];
+        $estimateId = $created['estimate']['id'] ?? $created['id'] ?? $created['_id'] ?? null;
+        if (!$estimateId) {
+            return $this->respond(new WP_Error('estimate_id_missing', __('Estimate created but ID missing in response.', 'cheapalarms'), ['status' => 500]));
+        }
+        $estimateId = (string)$estimateId;
+
+        // Create/link account silently (no invite email blast) so quote appears on dashboard.
+        $userId = email_exists($email);
+        if (!$userId) {
+            $userId = \wp_create_user($email, \wp_generate_password(20), $email);
+            if (is_wp_error($userId)) {
+                return $this->respond($userId);
+            }
+
+            $user = get_user_by('id', $userId);
+            if ($user) {
+                $user->set_role('ca_customer');
+                \wp_update_user([
+                    'ID' => $userId,
+                    'first_name' => $contactDetails['firstName'] ?? '',
+                    'last_name' => $contactDetails['lastName'] ?? '',
+                    'display_name' => trim(($contactDetails['name'] ?? '')),
+                ]);
+            }
+        }
+
+        $linkResult = $this->portalService->linkEstimateToExistingAccount($estimateId, (int)$userId, $locationId);
+        if (is_wp_error($linkResult)) {
+            return $this->respond($linkResult);
+        }
+
+        $sendResult = null;
+        if ($sendNow) {
+            $sendResult = $this->estimateService->sendEstimate($estimateId, $locationId);
+            if (is_wp_error($sendResult)) {
+                return $this->respond($sendResult);
+            }
+        }
+
+        return $this->respond([
+            'ok' => true,
+            'estimateId' => $estimateId,
+            'locationId' => $locationId,
+            'email' => $email,
+            'sendNow' => $sendNow,
+            'sent' => $sendNow ? true : false,
+            'result' => $created,
+        ]);
+    }
+
     public function getEstimate(WP_REST_Request $request): WP_REST_Response
     {
         $estimateId = sanitize_text_field($request->get_param('estimateId'));
@@ -703,6 +895,19 @@ class AdminEstimateController extends AdminController
             ];
         }
 
+        // Same shape as GET /ca/v1/estimate/photos — avoids a second round-trip on admin estimate detail (attachment scrub happens on dedicated photos endpoint).
+        $rawUploads = get_option('ca_estimate_uploads_' . $estimateId, '');
+        $estimatePhotos = [
+            'ok'     => true,
+            'stored' => null,
+        ];
+        if ($rawUploads !== '' && $rawUploads !== false) {
+            $uploadsDecoded = json_decode((string) $rawUploads, true);
+            if (is_array($uploadsDecoded)) {
+                $estimatePhotos['stored'] = $uploadsDecoded;
+            }
+        }
+
         // Build normalized response
         $contact = $estimate['contact'] ?? $estimate['contactDetails'] ?? [];
 
@@ -743,6 +948,7 @@ class AdminEstimateController extends AdminController
                 'itemsMeta'       => $meta['itemsMeta'] ?? [],
             ],
             'linkedInvoice' => $linkedInvoice,
+            'estimatePhotos' => $estimatePhotos,
         ]);
     }
 
@@ -775,6 +981,39 @@ class AdminEstimateController extends AdminController
         // (For now, just return updated data)
 
         return $this->getEstimate($request); // Reuse getEstimate logic
+    }
+
+    /**
+     * Apply admin per-line photo flag overrides.
+     *
+     * Body: { items: [{ name, photoRequired?, isHeading?, maxPhotos? }, ...] }
+     * Each entry is a partial; omitted fields stay as they were.
+     */
+    public function updateItemsMeta(WP_REST_Request $request): WP_REST_Response
+    {
+        $estimateId = sanitize_text_field($request->get_param('estimateId'));
+        if ($estimateId === '') {
+            return $this->respond([
+                'ok'  => false,
+                'err' => 'Missing estimateId',
+            ]);
+        }
+
+        $items = $request->get_param('items');
+        if (!is_array($items)) {
+            return $this->respond([
+                'ok'  => false,
+                'err' => 'Field "items" must be an array of { name, photoRequired?, isHeading?, maxPhotos? }',
+            ]);
+        }
+
+        $ok = $this->portalService->setItemsMetaPartial($estimateId, $items);
+
+        $meta = $this->getPortalMeta($estimateId);
+        return $this->respond([
+            'ok'        => $ok,
+            'itemsMeta' => $meta['itemsMeta'] ?? [],
+        ]);
     }
 
     /**
@@ -932,7 +1171,7 @@ class AdminEstimateController extends AdminController
 
         $estimateId = sanitize_text_field($request->get_param('estimateId'));
         $body = $request->get_json_params() ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $locationId = $this->resolveLocationIdOptional($request) ?: sanitize_text_field($body['locationId'] ?? '');
 
@@ -1327,7 +1566,7 @@ class AdminEstimateController extends AdminController
                 if ($wpdb->last_error) {
                     if (function_exists('error_log')) {
                         error_log(sprintf(
-                            '[CheapAlarms] Database error in bulkRestore: %s',
+                            '[CA] Database error in bulkRestore: %s',
                             $wpdb->last_error
                         ));
                     }
@@ -1392,7 +1631,7 @@ class AdminEstimateController extends AdminController
         $body = $request->get_json_params() ?? [];
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $estimateIds = $body['estimateIds'] ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $requestLocationId = !empty($body['locationId']) ? sanitize_text_field($body['locationId']) : null;
 
         if ($confirm !== 'BULK_DELETE') {
@@ -1447,7 +1686,7 @@ class AdminEstimateController extends AdminController
                     if ($wpdb->last_error) {
                         if (function_exists('error_log')) {
                             error_log(sprintf(
-                                '[CheapAlarms] Database error in bulkDelete: %s',
+                                '[CA] Database error in bulkDelete: %s',
                                 $wpdb->last_error
                             ));
                         }
@@ -1601,7 +1840,7 @@ class AdminEstimateController extends AdminController
             if ($wpdb->last_error) {
                 if (function_exists('error_log')) {
                     error_log(sprintf(
-                        '[CheapAlarms] Database error in deleteEstimateLocal: %s',
+                        '[CA] Database error in deleteEstimateLocal: %s',
                         $wpdb->last_error
                     ));
                 }
@@ -1736,54 +1975,95 @@ class AdminEstimateController extends AdminController
             ];
 
             $ghlClient = $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class);
+            $config = $this->container->get(Config::class);
 
-            // Step 1: Find contact by email
-            // Note: Continue even if contact search fails - estimates/invoices may still exist
-            $contactId = $this->findContactIdByEmail($email, $locationId, $ghlClient);
-            if (is_wp_error($contactId)) {
-                $result['contact']['error'] = $contactId->get_error_message();
-                $logger->warning('Contact search failed, continuing with estimates/invoices deletion', [
-                    'correlationId' => $correlationId,
-                    'email' => $email,
-                    'error' => $contactId->get_error_message(),
-                ]);
-                // Don't return early - continue to delete estimates/invoices that may exist
-                $contactId = null;
-            } else if ($contactId) {
-                $result['contact']['found'] = true;
-                $result['contact']['contactId'] = $contactId;
-            }
-
-            // Step 2 & 3: Find all estimates and invoices
-            // CRITICAL: Search by BOTH contact ID (if exists) AND email directly
-            // This ensures we find everything even if contact was deleted or items are orphaned
             $estimateIds = [];
             $invoiceIds = [];
             $estimateErrors = [];
             $invoiceErrors = [];
 
-            // Method 1: Search by contact ID (faster, if contact exists)
-            if ($contactId) {
-                $estimateResultByContact = $this->findItemIdsByContact($contactId, $locationId, '/invoices/estimate/list', $ghlClient);
-                $invoiceResultByContact = $this->findItemIdsByContact($contactId, $locationId, '/invoices/', $ghlClient);
-                $estimateIds = array_merge($estimateIds, $estimateResultByContact['ids']);
-                $invoiceIds = array_merge($invoiceIds, $invoiceResultByContact['ids']);
-                $estimateErrors = array_merge($estimateErrors, $estimateResultByContact['errors']);
-                $invoiceErrors = array_merge($invoiceErrors, $invoiceResultByContact['errors']);
+            if (!$config->isGhlFetchAllowed()) {
+                // WordPress-only discovery (no GHL list/search GETs)
+                $contactId = $this->findContactIdByEmail($email, $locationId, $ghlClient);
+                if (is_wp_error($contactId)) {
+                    $result['contact']['error'] = $contactId->get_error_message();
+                    $logger->warning('Contact lookup failed (local-only mode), continuing with estimates/invoices deletion', [
+                        'correlationId' => $correlationId,
+                        'email' => $email,
+                        'error' => $contactId->get_error_message(),
+                    ]);
+                    $contactId = null;
+                } elseif ($contactId) {
+                    $result['contact']['found'] = true;
+                    $result['contact']['contactId'] = $contactId;
+                }
+
+                /** @var InvoiceSnapshotRepository $invoiceSnapRepo */
+                $invoiceSnapRepo = $this->container->get(InvoiceSnapshotRepository::class);
+                $estimateIds = $this->snapshotRepo->listEstimateIdsByEmail($locationId, $email);
+                $invoiceIds = $invoiceSnapRepo->listInvoiceIdsByEmail($locationId, $email);
+
+                $wpUser = get_user_by('email', $email);
+                if ($wpUser) {
+                    $metaIds = get_user_meta($wpUser->ID, 'ca_estimate_ids', true);
+                    if (is_array($metaIds)) {
+                        foreach ($metaIds as $eid) {
+                            if ($eid !== null && $eid !== '') {
+                                $estimateIds[] = (string) $eid;
+                            }
+                        }
+                    } elseif (is_string($metaIds) && $metaIds !== '') {
+                        $estimateIds[] = $metaIds;
+                    }
+                }
+
+                $estimateIds = array_values(array_unique(array_filter(array_map('strval', $estimateIds))));
+                $invoiceIds = array_values(array_unique(array_filter(array_map('strval', $invoiceIds))));
+            } else {
+                // Step 1: Find contact by email
+                // Note: Continue even if contact search fails - estimates/invoices may still exist
+                $contactId = $this->findContactIdByEmail($email, $locationId, $ghlClient);
+                if (is_wp_error($contactId)) {
+                    $result['contact']['error'] = $contactId->get_error_message();
+                    $logger->warning('Contact search failed, continuing with estimates/invoices deletion', [
+                        'correlationId' => $correlationId,
+                        'email' => $email,
+                        'error' => $contactId->get_error_message(),
+                    ]);
+                    // Don't return early - continue to delete estimates/invoices that may exist
+                    $contactId = null;
+                } elseif ($contactId) {
+                    $result['contact']['found'] = true;
+                    $result['contact']['contactId'] = $contactId;
+                }
+
+                // Step 2 & 3: Find all estimates and invoices
+                // CRITICAL: Search by BOTH contact ID (if exists) AND email directly
+                // This ensures we find everything even if contact was deleted or items are orphaned
+
+                // Method 1: Search by contact ID (faster, if contact exists)
+                if ($contactId) {
+                    $estimateResultByContact = $this->findItemIdsByContact($contactId, $locationId, '/invoices/estimate/list', $ghlClient);
+                    $invoiceResultByContact = $this->findItemIdsByContact($contactId, $locationId, '/invoices/', $ghlClient);
+                    $estimateIds = array_merge($estimateIds, $estimateResultByContact['ids']);
+                    $invoiceIds = array_merge($invoiceIds, $invoiceResultByContact['ids']);
+                    $estimateErrors = array_merge($estimateErrors, $estimateResultByContact['errors']);
+                    $invoiceErrors = array_merge($invoiceErrors, $invoiceResultByContact['errors']);
+                }
+
+                // Method 2: ALWAYS search by email directly (catches orphaned items)
+                // This is critical - items may exist even if contact doesn't
+                $estimateResultByEmail = $this->findItemIdsByEmail($email, $locationId, '/invoices/estimate/list', $ghlClient);
+                $invoiceResultByEmail = $this->findItemIdsByEmail($email, $locationId, '/invoices/', $ghlClient);
+                $estimateIds = array_merge($estimateIds, $estimateResultByEmail['ids']);
+                $invoiceIds = array_merge($invoiceIds, $invoiceResultByEmail['ids']);
+                $estimateErrors = array_merge($estimateErrors, $estimateResultByEmail['errors']);
+                $invoiceErrors = array_merge($invoiceErrors, $invoiceResultByEmail['errors']);
+
+                // Remove duplicates (items found by both methods)
+                $estimateIds = array_values(array_unique($estimateIds));
+                $invoiceIds = array_values(array_unique($invoiceIds));
             }
-
-            // Method 2: ALWAYS search by email directly (catches orphaned items)
-            // This is critical - items may exist even if contact doesn't
-            $estimateResultByEmail = $this->findItemIdsByEmail($email, $locationId, '/invoices/estimate/list', $ghlClient);
-            $invoiceResultByEmail = $this->findItemIdsByEmail($email, $locationId, '/invoices/', $ghlClient);
-            $estimateIds = array_merge($estimateIds, $estimateResultByEmail['ids']);
-            $invoiceIds = array_merge($invoiceIds, $invoiceResultByEmail['ids']);
-            $estimateErrors = array_merge($estimateErrors, $estimateResultByEmail['errors']);
-            $invoiceErrors = array_merge($invoiceErrors, $invoiceResultByEmail['errors']);
-
-            // Remove duplicates (items found by both methods)
-            $estimateIds = array_values(array_unique($estimateIds));
-            $invoiceIds = array_values(array_unique($invoiceIds));
 
             $result['estimates']['found'] = count($estimateIds);
             $result['estimates']['estimateIds'] = $estimateIds;
@@ -2093,7 +2373,7 @@ class AdminEstimateController extends AdminController
                 $deleteRequest->set_param($idKey, $itemId);
                 $deleteRequest->set_body(wp_json_encode([
                     'confirm' => 'DELETE',
-                    'scope' => 'both', // Delete from both GHL and local
+                    'scope' => 'local', // WP DB is source of truth; GHL delete is opt-in (scope=ghl|both)
                     'locationId' => $locationId,
                 ]));
                 $deleteRequest->set_header('Content-Type', 'application/json');
@@ -2120,7 +2400,7 @@ class AdminEstimateController extends AdminController
                 $deleteRequest->set_param($idKey, $itemId);
                 $deleteRequest->set_body(wp_json_encode([
                     'confirm' => 'DELETE',
-                    'scope' => 'both', // Delete from both GHL and local
+                    'scope' => 'local', // WP DB is source of truth; GHL delete is opt-in (scope=ghl|both)
                     'locationId' => $locationId,
                 ]));
                 $deleteRequest->set_header('Content-Type', 'application/json');
@@ -2162,13 +2442,55 @@ class AdminEstimateController extends AdminController
         global $wpdb;
         $metadataCleaned = 0;
 
-        // Delete portal meta and uploads metadata in a single loop
+        // Invoice→estimate index rows must disappear when portal meta is bulk-deleted
+        $invoiceIdsForLinks = [];
         foreach ($estimateIds as $estimateId) {
-            if (delete_option('ca_portal_meta_' . $estimateId)) {
-                $metadataCleaned++;
+            $raw = get_option('ca_portal_meta_' . $estimateId, false);
+            if ($raw === false || $raw === '') {
+                continue;
             }
-            if (delete_option('ca_estimate_uploads_' . $estimateId)) {
-                $metadataCleaned++;
+            $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (!is_array($decoded)) {
+                continue;
+            }
+            $inv = $decoded['invoice']['id'] ?? null;
+            if (!is_string($inv) || $inv === '') {
+                $ghl = $decoded['invoice']['ghl'] ?? null;
+                if (is_array($ghl) && !empty($ghl['id'])) {
+                    $inv = (string) $ghl['id'];
+                }
+            }
+            if (is_string($inv) && $inv !== '') {
+                $invoiceIdsForLinks[] = $inv;
+            }
+        }
+        if (!empty($invoiceIdsForLinks)) {
+            $this->container->get(InvoiceEstimateLinkRepository::class)
+                ->unlinkMany(array_values(array_unique($invoiceIdsForLinks)));
+        }
+
+        // Batch-delete portal meta + uploads options (avoids N separate delete_option transactions).
+        // Chunk IN-clauses to stay under typical max_allowed_packet limits on huge bulk deletes.
+        if (!empty($estimateIds)) {
+            $optionNames = [];
+            foreach ($estimateIds as $eid) {
+                $optionNames[] = 'ca_portal_meta_' . $eid;
+                $optionNames[] = 'ca_estimate_uploads_' . $eid;
+            }
+            $chunkSize    = 200;
+            $optionChunks = array_chunk($optionNames, $chunkSize);
+            foreach ($optionChunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '%s'));
+                $delOpts      = $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} WHERE option_name IN ($placeholders)",
+                    ...$chunk
+                ));
+                if ($delOpts !== false) {
+                    $metadataCleaned += (int) $delOpts;
+                }
+                foreach ($chunk as $optName) {
+                    wp_cache_delete($optName, 'options');
+                }
             }
         }
 
@@ -2304,13 +2626,18 @@ class AdminEstimateController extends AdminController
 
             if ($local !== null && !is_wp_error($local)) {
                 $syncedAt = $local['syncedAt'] ?? null;
-                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                $fetchAllowed = $this->container->get(Config::class)->isGhlFetchAllowed();
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS) || !$fetchAllowed) {
                     return $local['contactId'] ?? null;
                 }
             }
         } catch (\Throwable $e) {
             // Local lookup failed – fall through to GHL API
-            error_log('[CheapAlarms][WARN] Contact snapshot lookup failed in AdminEstimateController: ' . $e->getMessage());
+            error_log('[CA][WARN] Contact snapshot lookup failed in AdminEstimateController: ' . $e->getMessage());
+        }
+
+        if (!$this->container->get(Config::class)->isGhlFetchAllowed()) {
+            return null;
         }
 
         // ── FALLBACK: GHL API ────────────────────────────────────────

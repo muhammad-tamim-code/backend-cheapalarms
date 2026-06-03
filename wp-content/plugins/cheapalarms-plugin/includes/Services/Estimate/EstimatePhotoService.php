@@ -233,7 +233,7 @@ class EstimatePhotoService
         return [
             'name'              => $normalizer->truncateName($record['name'] ?? $record['title'] ?? 'Estimate'),
             'title'             => $record['title'] ?? 'ESTIMATE',
-            'businessDetails'   => $record['businessDetails'] ?? ['name' => 'Cheap Alarms'],
+            'businessDetails'   => $record['businessDetails'] ?? ['name' => $this->config->getBrandName()],
             'currency'          => $record['currency'] ?? ($record['currencyOptions']['code'] ?? 'USD'),
             'discount'          => $record['discount'] ?? ['type' => 'percentage', 'value' => 0],
             'contactDetails'    => $normalizer->extractContactDetails($record),

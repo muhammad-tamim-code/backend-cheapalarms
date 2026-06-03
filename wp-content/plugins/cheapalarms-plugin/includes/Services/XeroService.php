@@ -928,6 +928,22 @@ class XeroService
     }
 
     /**
+     * @param array<string, mixed> $ghlInvoice
+     */
+    private function resolveInvoiceReference(array $ghlInvoice): string
+    {
+        $custom = $ghlInvoice['xeroReference'] ?? $ghlInvoice['reference'] ?? null;
+        if (is_string($custom)) {
+            $custom = trim($custom);
+            if ($custom !== '') {
+                return mb_substr($custom, 0, 500);
+            }
+        }
+
+        return 'GHL Invoice: ' . ($ghlInvoice['id'] ?? '');
+    }
+
+    /**
      * Create invoice in Xero from GHL invoice data
      * 
      * @param array $ghlInvoice GHL invoice data
@@ -1159,7 +1175,7 @@ class XeroService
             'Date' => $issueDate,
             'DueDate' => $dueDate,
             'InvoiceNumber' => $invoiceNumber,
-            'Reference' => 'GHL Invoice: ' . ($ghlInvoice['id'] ?? ''),
+            'Reference' => $this->resolveInvoiceReference($ghlInvoice),
             'LineItems' => $lineItems,
             'LineAmountTypes' => 'Exclusive', // Required by Xero API - matches TaxType logic
             'Status' => $invoiceStatus, // DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED
@@ -1413,7 +1429,7 @@ class XeroService
         if ($encrypted === false) {
             $this->logger->error('Failed to encrypt Xero tokens');
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] WARNING: Xero token encryption failed, falling back to base64 encoding. Check OpenSSL configuration.');
+                error_log('[CA] WARNING: Xero token encryption failed, falling back to base64 encoding. Check OpenSSL configuration.');
             }
             // Fallback to base64 encoding if encryption fails
             return base64_encode(json_encode($tokens));

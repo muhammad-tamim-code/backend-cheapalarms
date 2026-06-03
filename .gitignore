@@ -7,6 +7,7 @@ wp-config.*.php
 
 # Secrets (plugin-local)
 **/config/secrets.php
+**/config/instance.php
 **/secrets.php
 
 # Runtime logs / caches / uploads

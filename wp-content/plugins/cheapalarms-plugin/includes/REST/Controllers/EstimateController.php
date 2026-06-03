@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\Config\CacheConfig;
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
@@ -41,7 +42,7 @@ class EstimateController implements ControllerInterface
     public function register(): void
     {
         if (function_exists('error_log')) {
-            error_log('[CheapAlarms Plugin] registering EstimateController routes');
+            error_log('[CA Plugin] registering EstimateController routes');
         }
         register_rest_route('ca/v1', '/diag', [
             'methods'             => 'GET',
@@ -158,30 +159,36 @@ class EstimateController implements ControllerInterface
                     // Best-effort background refresh if snapshots are stale (estimates: 3 min tier).
                     $lastSyncedAt = $this->snapshotRepo->lastSyncedAt($locationId);
                     $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::ESTIMATE_STALE_SECONDS);
-                    if ($stale && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
+                    $cfg = $this->container->get(Config::class);
+                    if ($stale && $cfg->isGhlFetchAllowed() && !wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
                         wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
                     }
                 } else {
-                    // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
-                    if (!wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
-                        wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
-                    }
-
-                    // Build cache key for the GHL list
-                    $cacheKey = "ca_estimate_list_ghl_{$locationId}_{$limit}_{$raw}";
-
-                    $result   = get_transient($cacheKey);
-                    $cacheHit = ($result !== false);
-
-                    if (!$cacheHit) {
-                        $result = $this->service->listEstimates($locationId, $limit, $raw);
-                        if (is_wp_error($result)) {
-                            return $this->respond($result, $request);
+                    $cfg = $this->container->get(Config::class);
+                    if (!$cfg->isGhlFetchAllowed()) {
+                        $items = (!is_wp_error($snapshotItems) && is_array($snapshotItems)) ? $snapshotItems : [];
+                    } else {
+                        // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
+                        if (!wp_next_scheduled('ca_sync_estimate_snapshots', [$locationId])) {
+                            wp_schedule_single_event(time() + 1, 'ca_sync_estimate_snapshots', [$locationId]);
                         }
-                        set_transient($cacheKey, $result, 3 * MINUTE_IN_SECONDS);
-                    }
 
-                    $items = $result['items'] ?? [];
+                        // Build cache key for the GHL list
+                        $cacheKey = "ca_estimate_list_ghl_{$locationId}_{$limit}_{$raw}";
+
+                        $result   = get_transient($cacheKey);
+                        $cacheHit = ($result !== false);
+
+                        if (!$cacheHit) {
+                            $result = $this->service->listEstimates($locationId, $limit, $raw);
+                            if (is_wp_error($result)) {
+                                return $this->respond($result, $request);
+                            }
+                            set_transient($cacheKey, $result, 3 * MINUTE_IN_SECONDS);
+                        }
+
+                        $items = $result['items'] ?? [];
+                    }
                 }
 
                 if (!is_array($items)) {
@@ -294,7 +301,7 @@ class EstimateController implements ControllerInterface
                             } else {
                                 // Log error but don't fail estimate creation
                                 if (function_exists('error_log')) {
-                                    error_log('[CheapAlarms][WARNING] Failed to provision account: ' . $provisionResult->get_error_message());
+                                    error_log('[CA][WARNING] Failed to provision account: ' . $provisionResult->get_error_message());
                                 }
                                 $result['accountProvisionError'] = $provisionResult->get_error_message();
                             }
@@ -311,8 +318,8 @@ class EstimateController implements ControllerInterface
                     return $this->respond($result);
                 } catch (Throwable $e) {
                     if (function_exists('error_log')) {
-                        error_log('[CheapAlarms][ERROR] Estimate create exception: ' . $e->getMessage());
-                        error_log('[CheapAlarms][ERROR] Stack trace: ' . $e->getTraceAsString());
+                        error_log('[CA][ERROR] Estimate create exception: ' . $e->getMessage());
+                        error_log('[CA][ERROR] Stack trace: ' . $e->getTraceAsString());
                     }
                     $error = new WP_Error(
                         'estimate_create_exception',
@@ -472,7 +479,7 @@ class EstimateController implements ControllerInterface
                             // Log error but don't fail the request (data is already cleaned up)
                             if (function_exists('error_log')) {
                                 error_log(sprintf(
-                                    '[CheapAlarms] Failed to encode upload data JSON for estimate %s: %s',
+                                    '[CA] Failed to encode upload data JSON for estimate %s: %s',
                                     $estimateId,
                                     json_last_error_msg()
                                 ));

@@ -46,7 +46,7 @@ class Authenticator
     public function ensureConfigured(): void
     {
         if (!$this->config->isConfigured()) {
-            wp_die(__('CheapAlarms plugin is not configured. Please set CA_GHL_TOKEN and CA_LOCATION_ID.', 'cheapalarms'), '', 500);
+            wp_die(__('Portal plugin is not configured. Please set CA_GHL_TOKEN and CA_LOCATION_ID.', 'cheapalarms'), '', 500);
         }
     }
 
@@ -202,7 +202,7 @@ class Authenticator
             // Log rate limit violation for debugging
             if (function_exists('error_log')) {
                 error_log(sprintf(
-                    '[CheapAlarms] Rate limit exceeded: key=%s, identifier=%s, ip=%s, ip_source=%s',
+                    '[CA] Rate limit exceeded: key=%s, identifier=%s, ip=%s, ip_source=%s',
                     $key,
                     $identifier,
                     $ip,
@@ -399,7 +399,7 @@ class Authenticator
         $jsonHeader = wp_json_encode($header);
         if ($jsonHeader === false) {
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Failed to encode JWT header JSON: ' . json_last_error_msg());
+                error_log('[CA] Failed to encode JWT header JSON: ' . json_last_error_msg());
             }
             throw new \RuntimeException('Failed to encode JWT header: ' . json_last_error_msg());
         }
@@ -408,7 +408,7 @@ class Authenticator
         $jsonPayload = wp_json_encode($payload);
         if ($jsonPayload === false) {
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Failed to encode JWT payload JSON: ' . json_last_error_msg());
+                error_log('[CA] Failed to encode JWT payload JSON: ' . json_last_error_msg());
             }
             throw new \RuntimeException('Failed to encode JWT payload: ' . json_last_error_msg());
         }

@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\Services\Shared;
 
+use function do_action;
 use function get_option;
 use function json_decode;
 use function update_option;
@@ -24,7 +25,7 @@ class PortalMetaRepository
             // Log JSON decode errors for debugging
             if (function_exists('error_log')) {
                 error_log(sprintf(
-                    '[CheapAlarms] Failed to decode portal meta for estimate %s: %s',
+                    '[CA] Failed to decode portal meta for estimate %s: %s',
                     $estimateId,
                     json_last_error_msg()
                 ));
@@ -46,14 +47,21 @@ class PortalMetaRepository
             // Log JSON encoding errors for debugging
             if (function_exists('error_log')) {
                 error_log(sprintf(
-                    '[CheapAlarms] Failed to encode portal meta for estimate %s: %s',
+                    '[CA] Failed to encode portal meta for estimate %s: %s',
                     $estimateId,
                     json_last_error_msg()
                 ));
             }
             return false;
         }
-        return update_option('ca_portal_meta_' . $estimateId, $encoded);
+
+        $ok = update_option('ca_portal_meta_' . $estimateId, $encoded);
+
+        // update_option returns false when the value is unchanged. That's not a failure for our
+        // purposes — listeners still want to see the latest meta. Always fire the action.
+        do_action('ca_portal_meta_updated', $estimateId, $meta);
+
+        return $ok;
     }
 
     /**
@@ -103,7 +111,7 @@ class PortalMetaRepository
             if ($wpdb->last_error) {
                 if (function_exists('error_log')) {
                     error_log(sprintf(
-                        '[CheapAlarms] Database error in batchGet: %s (Query: %s)',
+                        '[CA] Database error in batchGet: %s (Query: %s)',
                         $wpdb->last_error,
                         $wpdb->last_query
                     ));
@@ -135,7 +143,7 @@ class PortalMetaRepository
                     // Log error but continue
                     if (function_exists('error_log')) {
                         error_log(sprintf(
-                            '[CheapAlarms] Failed to decode portal meta for estimate %s in batchGet: %s',
+                            '[CA] Failed to decode portal meta for estimate %s in batchGet: %s',
                             $estimateId,
                             json_last_error_msg()
                         ));
@@ -172,54 +180,35 @@ class PortalMetaRepository
 
     /**
      * Find estimate ID that has this invoice ID in its portal meta.
-     * This is a reverse lookup - searches all portal meta options.
      *
-     * @return string|null
+     * Indexed reverse lookup against `wp_ca_invoice_estimate_links`. The index is populated
+     * via the `ca_portal_meta_updated` action (every time portal meta is saved with an
+     * invoice.id) and was backfilled once on plugin bootstrap.
      */
     public function findEstimateIdByInvoiceId(string $invoiceId): ?string
     {
-        global $wpdb;
-
-        // Search all ca_portal_meta_* options for invoice.id match
-        $optionNamePattern = 'ca_portal_meta_%';
-        $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
-            $optionNamePattern
-        ));
-
-        foreach ($results as $row) {
-            $meta = json_decode($row->option_value, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                // Log JSON decode errors but continue searching
-                if (function_exists('error_log')) {
-                    error_log(sprintf(
-                        '[CheapAlarms] Failed to decode portal meta in findEstimateIdByInvoiceId: %s',
-                        json_last_error_msg()
-                    ));
-                }
-                continue;
-            }
-            if (!is_array($meta)) {
-                continue;
-            }
-
-            $metaInvoiceId = $meta['invoice']['id'] ?? null;
-            if ($metaInvoiceId === $invoiceId) {
-                // Extract estimateId from option_name (ca_portal_meta_{estimateId})
-                $estimateId = str_replace('ca_portal_meta_', '', $row->option_name);
-                return $estimateId ?: null;
-            }
+        if ($invoiceId === '') {
+            return null;
         }
 
-        return null;
+        global $wpdb;
+        $table = $wpdb->prefix . 'ca_invoice_estimate_links';
+
+        $val = $wpdb->get_var($wpdb->prepare(
+            "SELECT estimate_id FROM {$table} WHERE invoice_id = %s LIMIT 1",
+            $invoiceId
+        ));
+
+        return is_string($val) && $val !== '' ? $val : null;
     }
 
     /**
      * Batch find estimate IDs by invoice IDs (reverse lookup).
-     * This prevents N+1 queries by fetching all mappings in one query.
+     *
+     * Single indexed IN-clause query against `wp_ca_invoice_estimate_links`.
      *
      * @param string[] $invoiceIds
-     * @return array<string, string> Map of invoiceId => estimateId
+     * @return array<string, string> Map of invoiceId => estimateId (only links that exist)
      */
     public function batchFindEstimateIdsByInvoiceIds(array $invoiceIds): array
     {
@@ -227,69 +216,37 @@ class PortalMetaRepository
             return [];
         }
 
+        $normalized = array_values(array_unique(array_filter(
+            array_map('strval', $invoiceIds),
+            static fn ($v) => $v !== ''
+        )));
+
+        if (empty($normalized)) {
+            return [];
+        }
+
         global $wpdb;
+        $table = $wpdb->prefix . 'ca_invoice_estimate_links';
 
-        // Normalize invoice IDs to strings for consistent lookup
-        $normalizedInvoiceIds = array_map('strval', $invoiceIds);
+        $placeholders = implode(',', array_fill(0, count($normalized), '%s'));
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT invoice_id, estimate_id FROM {$table} WHERE invoice_id IN ($placeholders)",
+            ...$normalized
+        ), ARRAY_A);
 
-        // Search all ca_portal_meta_* options
-        $optionNamePattern = 'ca_portal_meta_%';
-        $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
-            $optionNamePattern
-        ));
-
-        // Check for database errors
-        if ($wpdb->last_error) {
-            if (function_exists('error_log')) {
+        if (!is_array($rows)) {
+            if ($wpdb->last_error && function_exists('error_log')) {
                 error_log(sprintf(
-                    '[CheapAlarms] Database error in batchFindEstimateIdsByInvoiceIds: %s',
+                    '[CA] Database error in batchFindEstimateIdsByInvoiceIds: %s',
                     $wpdb->last_error
                 ));
             }
-            return []; // Return empty map on error
+            return [];
         }
 
-        // Ensure results is an array (get_results can return null on error)
-        if (!is_array($results)) {
-            $results = [];
-        }
-
-        // Build map of invoiceId => estimateId
         $mapping = [];
-        $invoiceIdsSet = array_flip($normalizedInvoiceIds); // Use normalized IDs for fast lookup
-
-        foreach ($results as $row) {
-            $meta = json_decode($row->option_value, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                // Log JSON decode errors but continue searching
-                if (function_exists('error_log')) {
-                    error_log(sprintf(
-                        '[CheapAlarms] Failed to decode portal meta in batchFindEstimateIdsByInvoiceIds: %s',
-                        json_last_error_msg()
-                    ));
-                }
-                continue;
-            }
-            if (!is_array($meta)) {
-                continue;
-            }
-
-            $metaInvoiceId = $meta['invoice']['id'] ?? null;
-            // Normalize to string for consistent lookup
-            if ($metaInvoiceId) {
-                $metaInvoiceId = (string)$metaInvoiceId;
-            }
-            if ($metaInvoiceId && isset($invoiceIdsSet[$metaInvoiceId])) {
-                // Extract estimateId from option_name (ca_portal_meta_{estimateId})
-                $estimateId = str_replace('ca_portal_meta_', '', $row->option_name);
-                // Safety check: verify prefix was actually removed
-                if ($estimateId && $estimateId !== $row->option_name) {
-                    // Normalize to string for consistency (already a string from str_replace, but explicit for clarity)
-                    $estimateId = (string)$estimateId;
-                    $mapping[$metaInvoiceId] = $estimateId;
-                }
-            }
+        foreach ($rows as $row) {
+            $mapping[(string)$row['invoice_id']] = (string)$row['estimate_id'];
         }
 
         return $mapping;
@@ -312,6 +269,10 @@ class PortalMetaRepository
     {
         global $wpdb;
 
+        // Phase 0 — intentional last-resort scan (NOT for hot paths): used only when the indexed
+        // invoice→estimate lookup misses, e.g. manually created GHL invoices not yet linked in portal meta.
+        // Consider contact_snapshot-based narrowing in a future iteration if this becomes frequent.
+
         // Search all ca_portal_meta_* options
         $optionNamePattern = 'ca_portal_meta_%';
         $results = $wpdb->get_results($wpdb->prepare(
@@ -328,7 +289,7 @@ class PortalMetaRepository
                 // Log JSON decode errors but continue searching
                 if (function_exists('error_log')) {
                     error_log(sprintf(
-                        '[CheapAlarms] Failed to decode portal meta in findEstimateIdByContactAndDate: %s',
+                        '[CA] Failed to decode portal meta in findEstimateIdByContactAndDate: %s',
                         json_last_error_msg()
                     ));
                 }

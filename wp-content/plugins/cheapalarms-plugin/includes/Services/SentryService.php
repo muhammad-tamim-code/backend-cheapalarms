@@ -41,7 +41,7 @@ class SentryService
         if (!class_exists('\Sentry\SentrySdk')) {
             // Log warning but don't fail - Sentry is optional
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Sentry SDK not found. Install via: composer require sentry/sentry');
+                error_log('[CA] Sentry SDK not found. Install via: composer require sentry/sentry');
             }
             return;
         }
@@ -60,7 +60,7 @@ class SentryService
         } catch (\Throwable $e) {
             // Don't fail if Sentry initialization fails
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Sentry initialization failed: ' . $e->getMessage());
+                error_log('[CA] Sentry initialization failed: ' . $e->getMessage());
             }
         }
     }

@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\Services\Contact;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\Logger;
 use WP_Error;
@@ -14,7 +15,8 @@ class ContactSnapshotSyncService
     public function __construct(
         private GhlClient $ghlClient,
         private ContactSnapshotRepository $repo,
-        private Logger $logger
+        private Logger $logger,
+        private Config $config,
     ) {
     }
 
@@ -24,10 +26,23 @@ class ContactSnapshotSyncService
      * Uses a distributed lock (transient) to prevent concurrent syncs.
      * GHL contacts API uses cursor-based pagination (startAfterId), not numeric offset.
      *
-     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float}|WP_Error
+     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float, skipped?:string}|WP_Error
      */
     public function syncLocation(string $locationId, int $pageSize = 100, int $maxPages = 100)
     {
+        if (!$this->config->isGhlFetchAllowed()) {
+            $this->logger->info('[CONTACT_SNAPSHOTS] sync skipped — GHL fetch disabled', ['locationId' => $locationId]);
+
+            return [
+                'ok'           => true,
+                'locationId'   => $locationId,
+                'pages'        => 0,
+                'count'        => 0,
+                'durationMs'   => 0.0,
+                'skipped'      => 'ghl_fetch_disabled',
+            ];
+        }
+
         // Distributed lock to prevent concurrent syncs
         $lockKey = 'ca_sync_contact_lock_' . $locationId;
         if (get_transient($lockKey)) {

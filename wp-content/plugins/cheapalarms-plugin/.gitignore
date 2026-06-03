@@ -19,6 +19,7 @@ logs/
 
 # Secrets (should never be committed)
 config/secrets.php
+config/instance.php
 
 # Build artifacts
 *.zip

@@ -142,6 +142,7 @@ class HealthController implements ControllerInterface
         } elseif ($ghlCheck['status'] === 'degraded') {
             $status = $status === 'healthy' ? 'degraded' : $status;
         }
+        // 'skipped' = policy (no GHL GET); do not degrade overall health.
 
         $response = new WP_REST_Response([
             'status' => $status,
@@ -182,6 +183,16 @@ class HealthController implements ControllerInterface
             ];
             // Cache error result for shorter time (30 seconds)
             set_transient(self::GHL_CHECK_CACHE_KEY, $result, 30);
+            return $result;
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            $result = [
+                'status' => 'skipped',
+                'message' => 'GHL GET requests are disabled by policy; connection not probed via API read.',
+            ];
+            set_transient(self::GHL_CHECK_CACHE_KEY, $result, self::GHL_CHECK_CACHE_TTL);
+
             return $result;
         }
 

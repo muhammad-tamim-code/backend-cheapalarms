@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\Services\Estimate;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\Logger;
 use WP_Error;
@@ -14,17 +15,31 @@ class EstimateSnapshotSyncService
     public function __construct(
         private EstimateService $estimateService,
         private EstimateSnapshotRepository $repo,
-        private Logger $logger
+        private Logger $logger,
+        private Config $config,
     ) {
     }
 
     /**
      * Sync ALL estimates for a location into snapshots table.
      *
-     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float}|WP_Error
+     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float, skipped?:string}|WP_Error
      */
     public function syncLocation(string $locationId, int $pageSize = 50, int $maxPages = 200)
     {
+        if (!$this->config->isGhlFetchAllowed()) {
+            $this->logger->info('[ESTIMATE_SNAPSHOTS] sync skipped — GHL fetch disabled', ['locationId' => $locationId]);
+
+            return [
+                'ok'           => true,
+                'locationId'   => $locationId,
+                'pages'        => 0,
+                'count'        => 0,
+                'durationMs'   => 0.0,
+                'skipped'      => 'ghl_fetch_disabled',
+            ];
+        }
+
         $pageSize = max(1, min(100, $pageSize));
         $offset   = '0';
         $pages    = 0;

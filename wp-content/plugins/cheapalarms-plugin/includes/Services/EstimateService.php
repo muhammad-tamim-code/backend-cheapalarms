@@ -43,7 +43,7 @@ class EstimateService
         } catch (\Exception $e) {
             // Log but don't fail - gracefully fall back to GHL
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Failed to get EstimateSnapshotRepository: ' . $e->getMessage());
+                error_log('[CA] Failed to get EstimateSnapshotRepository: ' . $e->getMessage());
             }
             return null;
         }
@@ -57,6 +57,14 @@ class EstimateService
         $locationId = $locationId ?: $this->config->getLocationId();
         if (!$locationId) {
             return new WP_Error('missing_location', __('Location ID is not configured.', 'cheapalarms'));
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            return new WP_Error(
+                'ghl_fetch_disabled',
+                __('GoHighLevel diagnostics require read access. Enable ca_ghl_fetch_allowed, CA_GHL_FETCH_ALLOWED, or secrets ghl_fetch_allowed.', 'cheapalarms'),
+                ['status' => 403]
+            );
         }
 
         $response = $this->client->get('/locations/' . rawurlencode($locationId));
@@ -117,6 +125,15 @@ class EstimateService
     {
         $locationId = $locationId ?: $this->config->getLocationId();
         $limit      = max(1, min(100, $limit));
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            return [
+                'ok'         => true,
+                'locationId' => $locationId,
+                'count'      => 0,
+                'items'      => [],
+            ];
+        }
 
         $out        = [];
         $rawAll     = [];
@@ -234,6 +251,16 @@ class EstimateService
             return new WP_Error('missing_location', __('Location ID is not configured.', 'cheapalarms'));
         }
 
+        if (!$this->config->isGhlFetchAllowed()) {
+            return [
+                'ok'           => true,
+                'locationId'   => $locationId,
+                'items'        => [],
+                'nextOffset'   => null,
+                'raw'          => [],
+            ];
+        }
+
         $limit = max(1, min(100, $limit));
 
         $query = [
@@ -309,7 +336,57 @@ class EstimateService
             $this->appendTermsSafely($newId, $payload['altId'], $noteHtml, $payload['termsNotes'] ?? null);
         }
 
+        // Local write-through: newly created estimates must be immediately readable from
+        // snapshots when ghl_fetch_allowed=false (local-only runtime mode).
+        $snapshotSource = is_array($response['estimate'] ?? null) ? $response['estimate'] : $response;
+        $this->writeThroughEstimateSnapshot((string) $payload['altId'], $snapshotSource);
+
         return ['ok' => true, 'result' => $response];
+    }
+
+    /**
+     * Best-effort write-through of a single estimate into local snapshot storage.
+     * Does not fail creation flow if snapshot write fails.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function writeThroughEstimateSnapshot(string $locationId, array $record): void
+    {
+        $snapshotRepo = $this->getSnapshotRepo();
+        if (!$snapshotRepo || $locationId === '') {
+            return;
+        }
+
+        $estimateId = (string) ($record['id'] ?? $record['_id'] ?? $record['estimateId'] ?? '');
+        if ($estimateId === '') {
+            return;
+        }
+
+        $email =
+            (string) ($record['contact']['email'] ?? '') ?:
+            (string) ($record['contactDetails']['email'] ?? '') ?:
+            (string) ($record['sentTo']['email'][0] ?? '');
+
+        $normalized = [[
+            'id'             => $estimateId,
+            'estimateNumber' => $record['estimateNumber'] ?? null,
+            'email'          => $email,
+            'status'         => $record['estimateStatus'] ?? $record['status'] ?? '',
+            'total'          => (float) ($record['total'] ?? 0),
+            'currency'       => $record['currency'] ?? 'AUD',
+            'createdAt'      => $record['createdAt'] ?? null,
+            'updatedAt'      => $record['updatedAt'] ?? null,
+            'rawJson'        => wp_json_encode($record),
+        ]];
+
+        $res = $snapshotRepo->upsertMany($locationId, $normalized);
+        if (is_wp_error($res)) {
+            $this->logger->warning('Estimate snapshot write-through failed after create', [
+                'estimateId' => $estimateId,
+                'locationId' => $locationId,
+                'error'      => $res->get_error_message(),
+            ]);
+        }
     }
 
     /**
@@ -477,7 +554,7 @@ class EstimateService
         // Ensure businessDetails has a name (required by GHL API)
         $businessDetails = $record['businessDetails'] ?? [];
         if (empty($businessDetails['name'])) {
-            $businessDetails = ['name' => 'Cheap Alarms'];
+            $businessDetails = ['name' => $this->config->getBrandName()];
         }
         
         $invoicePayload = [
@@ -1007,7 +1084,7 @@ class EstimateService
         // Ensure businessDetails has a name (required by GHL API)
         $businessDetails = $record['businessDetails'] ?? [];
         if (empty($businessDetails['name'])) {
-            $businessDetails = ['name' => 'Cheap Alarms'];
+            $businessDetails = ['name' => $this->config->getBrandName()];
         }
         
         $payload = [
@@ -1078,7 +1155,7 @@ class EstimateService
         // Ensure businessDetails has a name (required by GHL API)
         $businessDetails = $record['businessDetails'] ?? [];
         if (empty($businessDetails['name'])) {
-            $businessDetails = ['name' => 'Cheap Alarms'];
+            $businessDetails = ['name' => $this->config->getBrandName()];
         }
         
         $payload = [
@@ -1118,6 +1195,7 @@ class EstimateService
         }
 
         // Try snapshot first (fast DB lookup)
+        $snapshotFailure = null;
         $snapshotRepo = $this->getSnapshotRepo();
         if ($snapshotRepo) {
             $snapshot = $snapshotRepo->getByEstimateId($estimateId, $locationId);
@@ -1125,6 +1203,7 @@ class EstimateService
                 // Found in snapshot, return it (100% same structure as GHL)
                 return $snapshot;
             }
+            $snapshotFailure = $snapshot;
             // Log non-404 errors for monitoring (404 is expected for new estimates)
             $errorCode = $snapshot->get_error_code();
             if ($errorCode !== 'not_found' && function_exists('error_log')) {
@@ -1137,6 +1216,21 @@ class EstimateService
             }
             // If not found (404), continue to GHL API as fallback
             // Other errors (DB errors, parse errors) also fall through to GHL
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            if ($snapshotFailure instanceof WP_Error) {
+                $c = $snapshotFailure->get_error_code();
+                if (in_array($c, ['db_error', 'parse_error', 'no_data', 'bad_request'], true)) {
+                    return $snapshotFailure;
+                }
+            }
+
+            return new WP_Error(
+                'estimate_not_local',
+                __('Estimate is not in local storage and fetching from GoHighLevel is disabled.', 'cheapalarms'),
+                ['status' => 404]
+            );
         }
 
         // Fallback to GHL API if snapshot not available or not found
@@ -1213,6 +1307,21 @@ class EstimateService
      */
     private function findLatestEstimateByEmail(string $email, string $locationId, &$err = null)
     {
+        if (!$this->config->isGhlFetchAllowed()) {
+            $repo = $this->getSnapshotRepo();
+            if ($repo) {
+                $local = $repo->getLatestByEmail($locationId, $email);
+                if (is_wp_error($local)) {
+                    return $local;
+                }
+                if (is_array($local)) {
+                    return $local;
+                }
+            }
+
+            return null;
+        }
+
         $contactId = $this->findContactIdByEmail($email, $locationId);
         if (is_wp_error($contactId)) {
             return $contactId;
@@ -1275,7 +1384,7 @@ class EstimateService
 
             if ($local !== null && !is_wp_error($local)) {
                 $syncedAt = $local['syncedAt'] ?? null;
-                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS) || !$this->config->isGhlFetchAllowed()) {
                     return $local['contactId'] ?? null;
                 }
             }
@@ -1285,6 +1394,10 @@ class EstimateService
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            return null;
         }
 
         // ── FALLBACK: GHL API ────────────────────────────────────────
@@ -1435,7 +1548,7 @@ class EstimateService
         // Ensure businessDetails has a name (required by GHL API)
         $businessDetails = $record['businessDetails'] ?? [];
         if (empty($businessDetails['name'])) {
-            $businessDetails = ['name' => 'Cheap Alarms'];
+            $businessDetails = ['name' => $this->config->getBrandName()];
         }
 
         return [

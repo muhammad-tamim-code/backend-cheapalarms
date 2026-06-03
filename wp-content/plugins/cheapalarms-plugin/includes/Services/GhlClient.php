@@ -25,6 +25,14 @@ class GhlClient
      */
     public function get(string $path, array $query = [], int $timeout = 10, ?string $locationId = null, int $maxRetries = 1)
     {
+        if (!$this->config->isGhlFetchAllowed()) {
+            return new WP_Error(
+                'ghl_fetch_disabled',
+                __('GoHighLevel read requests are disabled. WordPress is the source of truth; enable fetches only if you need legacy GHL import.', 'cheapalarms'),
+                ['status' => 403]
+            );
+        }
+
         $url = self::BASE_URL . $path;
         if ($query) {
             $url .= '?' . http_build_query($query);
@@ -283,9 +291,9 @@ class GhlClient
         $code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
 
-        // 404 = already deleted (idempotent success)
-        if ($code === 404) {
-            $this->logger->info('GHL DELETE: Resource already deleted (404)', [
+        // 404 / 410 = already deleted (idempotent success)
+        if ($code === 404 || $code === 410) {
+            $this->logger->info('GHL DELETE: Resource already deleted', [
                 'url' => $url,
                 'code' => $code,
             ]);
@@ -308,6 +316,26 @@ class GhlClient
                 return ['ok' => true, 'alreadyDeleted' => false];
             }
             return array_merge(['ok' => true, 'alreadyDeleted' => false], is_array($decoded) ? $decoded : []);
+        }
+
+        // GHL sometimes returns 400/422 when the resource no longer exists.
+        // Detect "not found" semantics in the response body and treat as idempotent success.
+        if (in_array($code, [400, 422], true)) {
+            $lowerBody = strtolower($body);
+            if (
+                str_contains($lowerBody, 'not found') ||
+                str_contains($lowerBody, 'not_found') ||
+                str_contains($lowerBody, 'does not exist') ||
+                str_contains($lowerBody, 'invalid') ||
+                str_contains($lowerBody, 'no contact')
+            ) {
+                $this->logger->info('GHL DELETE: Resource not found (treated as already deleted)', [
+                    'url'  => $url,
+                    'code' => $code,
+                    'body' => $body,
+                ]);
+                return ['ok' => true, 'alreadyDeleted' => true];
+            }
         }
 
         // Other status codes = error

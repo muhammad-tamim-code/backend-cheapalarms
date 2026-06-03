@@ -17,6 +17,7 @@ use CheapAlarms\Plugin\Middleware\RequestIdMiddleware;
 use CheapAlarms\Plugin\Middleware\RateLimitHeaderMiddleware;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotSyncService;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceEstimateLinkRepository;
 use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotSyncService;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
@@ -44,7 +45,7 @@ class Plugin
      */
     private const ROLE_DEFINITIONS = [
         'ca_superadmin' => [
-            'label'        => 'CheapAlarms Superadmin',
+            'label'        => 'Portal Superadmin',
             'capabilities' => [
                 'read'                => true,
                 'ca_manage_portal'    => true,
@@ -56,7 +57,7 @@ class Plugin
             ],
         ],
         'ca_admin' => [
-            'label'        => 'CheapAlarms Admin',
+            'label'        => 'Portal Admin',
             'capabilities' => [
                 'read'                => true,
                 'ca_manage_portal'    => true,
@@ -67,7 +68,7 @@ class Plugin
             ],
         ],
         'ca_moderator' => [
-            'label'        => 'CheapAlarms Moderator',
+            'label'        => 'Portal Moderator',
             'capabilities' => [
                 'read'              => true,
                 'ca_view_estimates' => true,
@@ -75,7 +76,7 @@ class Plugin
             ],
         ],
         'ca_support' => [
-            'label'        => 'CheapAlarms Support',
+            'label'        => 'Portal Support',
             'capabilities' => [
                 'read'                => true,
                 'ca_manage_support'   => true,
@@ -83,7 +84,7 @@ class Plugin
             ],
         ],
         'ca_customer' => [
-            'label'        => 'CheapAlarms Customer',
+            'label'        => 'Portal Customer',
             'capabilities' => [
                 'read'             => true,
                 'ca_access_portal' => true,
@@ -120,7 +121,7 @@ class Plugin
     public function bootstrap(): void
     {
         if (function_exists('error_log')) {
-            error_log('[CheapAlarms Plugin] bootstrap executing');
+            error_log('[CA Plugin] bootstrap executing');
         }
         
         // SECURITY: Validate configuration before proceeding
@@ -141,20 +142,20 @@ class Plugin
             // ✅ FIX: Don't call wp_die() during bootstrap - this prevents plugin upload
             // Log error but allow plugin to load (configuration can be added later)
             $missingStr = implode(', ', $missing);
-            error_log('[CheapAlarms] Configuration error: Missing required secrets: ' . $missingStr);
+            error_log('[CA] Configuration error: Missing required secrets: ' . $missingStr);
             
             // ✅ Only block API calls, not plugin loading/activation
             // This allows plugin to be uploaded and activated even if not configured
             add_action('rest_api_init', function() use ($missingStr) {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
                     $message = sprintf(
-                        __('CheapAlarms plugin is not configured. Missing required secrets: %s. Please configure secrets.php or set environment variables.', 'cheapalarms'),
+                        __('Portal plugin is not configured. Missing required secrets: %s. Please configure secrets.php or set environment variables.', 'cheapalarms'),
                         $missingStr
                     );
                     wp_die($message, __('Plugin Configuration Error', 'cheapalarms'), ['response' => 500]);
                 } else {
                     wp_die(
-                        __('CheapAlarms plugin is not properly configured. Please contact the administrator.', 'cheapalarms'),
+                        __('Portal plugin is not properly configured. Please contact the administrator.', 'cheapalarms'),
                         __('Plugin Configuration Error', 'cheapalarms'),
                         ['response' => 500]
                     );
@@ -191,6 +192,23 @@ class Plugin
         add_action('ca_sync_invoice_snapshots', function (string $locationId) {
             $this->container->get(InvoiceSnapshotSyncService::class)->syncLocation($locationId);
         }, 10, 1);
+
+        // Invoice→estimate link write-through. Fires whenever an estimate's portal meta is
+        // saved; if the merged meta carries an invoice.id, we upsert it into the link index.
+        // This is what replaces the old wp_options LIKE-scan reverse lookup.
+        add_action('ca_portal_meta_updated', function (string $estimateId, array $meta) {
+            $invoiceId = $meta['invoice']['id'] ?? null;
+            if (!is_string($invoiceId) || $invoiceId === '') {
+                return;
+            }
+            $locationId = is_string($meta['locationId'] ?? null) ? $meta['locationId'] : null;
+            $this->container->get(InvoiceEstimateLinkRepository::class)->link($invoiceId, $estimateId, $locationId);
+        }, 10, 2);
+
+        // One-time backfill of the link index from existing portal meta.
+        // Runs only when the table is empty (i.e. immediately after the schema migration that
+        // created it). Idempotent — safe to re-run; bounded by N portal-meta rows.
+        $this->maybeBackfillInvoiceEstimateLinks();
 
         // Background sync hook for contact snapshots (WP-Cron).
         add_action('ca_sync_contact_snapshots', function (string $locationId) {
@@ -513,7 +531,7 @@ class Plugin
         } catch (\Throwable $e) {
             // Don't fail if Sentry initialization fails
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Sentry initialization failed: ' . $e->getMessage());
+                error_log('[CA] Sentry initialization failed: ' . $e->getMessage());
             }
         }
     }
@@ -541,7 +559,7 @@ class Plugin
         } catch (\Throwable $e) {
             // Don't fail if request ID initialization fails
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Request ID initialization failed: ' . $e->getMessage());
+                error_log('[CA] Request ID initialization failed: ' . $e->getMessage());
             }
         }
     }
@@ -608,6 +626,32 @@ class Plugin
                 }
             }
         });
+    }
+
+    /**
+     * Run the one-time invoice→estimate link backfill if the index is empty.
+     * Gated on a sentinel option so it does not re-scan wp_options on every request after a
+     * legitimately-empty index (e.g. fresh install with no estimates yet).
+     */
+    private function maybeBackfillInvoiceEstimateLinks(): void
+    {
+        $sentinel = 'ca_invoice_estimate_links_backfilled';
+        if (\get_option($sentinel) === '1') {
+            return;
+        }
+
+        try {
+            $repo  = $this->container->get(InvoiceEstimateLinkRepository::class);
+            $count = $repo->backfillFromPortalMeta();
+            \update_option($sentinel, '1', true);
+            if ($count > 0 && function_exists('error_log')) {
+                error_log(sprintf('[CA] Backfilled %d invoice→estimate links', $count));
+            }
+        } catch (\Throwable $e) {
+            if (function_exists('error_log')) {
+                error_log('[CA] Invoice→estimate link backfill failed: ' . $e->getMessage());
+            }
+        }
     }
 
     private function registerServices(): void
@@ -686,6 +730,10 @@ class Plugin
             $this->container->get(Logger::class),
             $this->container->get(Config::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Services\GhlSignalDispatcher::class, fn () => new \CheapAlarms\Plugin\Services\GhlSignalDispatcher(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalService::class),
+            $this->container->get(Logger::class)
+        ));
         $this->container->set(\CheapAlarms\Plugin\Services\JobLinkService::class, fn () => new \CheapAlarms\Plugin\Services\JobLinkService(
             $this->container->get(Logger::class)
         ));
@@ -715,7 +763,8 @@ class Plugin
         $this->container->set(EstimateSnapshotSyncService::class, fn () => new EstimateSnapshotSyncService(
             $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class),
             $this->container->get(EstimateSnapshotRepository::class),
-            $this->container->get(Logger::class)
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
         ));
         $this->container->set(\CheapAlarms\Plugin\Services\Estimate\RetentionCleanupService::class, fn () => new \CheapAlarms\Plugin\Services\Estimate\RetentionCleanupService(
             $this->container->get(EstimateSnapshotRepository::class),
@@ -727,20 +776,32 @@ class Plugin
         $this->container->set(InvoiceSnapshotSyncService::class, fn () => new InvoiceSnapshotSyncService(
             $this->container->get(\CheapAlarms\Plugin\Services\InvoiceService::class),
             $this->container->get(InvoiceSnapshotRepository::class),
-            $this->container->get(Logger::class)
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
         ));
+
+        // Indexed invoice→estimate reverse lookup (replaces wp_options table-scan).
+        $this->container->set(InvoiceEstimateLinkRepository::class, fn () => new InvoiceEstimateLinkRepository());
 
         // Contact snapshot storage (local read cache for GHL contacts).
         $this->container->set(ContactSnapshotRepository::class, fn () => new ContactSnapshotRepository());
         $this->container->set(ContactSnapshotSyncService::class, fn () => new ContactSnapshotSyncService(
             $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
             $this->container->get(ContactSnapshotRepository::class),
-            $this->container->get(Logger::class)
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
         ));
 
         $this->container->set(\CheapAlarms\Plugin\Services\XeroService::class, fn () => new \CheapAlarms\Plugin\Services\XeroService(
             $this->container->get(Config::class),
             $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\Finance\DirectXeroInvoiceFromEstimateService::class, fn () => new \CheapAlarms\Plugin\Services\Finance\DirectXeroInvoiceFromEstimateService(
+            $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\Estimate\EstimateNormalizer::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\XeroService::class),
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
         ));
         $this->container->set(\CheapAlarms\Plugin\Services\StripeService::class, fn () => new \CheapAlarms\Plugin\Services\StripeService(
             $this->container->get(Config::class),
@@ -759,7 +820,11 @@ class Plugin
             fn (Container $c) => new \CheapAlarms\Plugin\Services\StripeWebhookProcessor(
                 $c->get(\CheapAlarms\Plugin\Services\WebhookEventRepository::class),
                 $c->get(\CheapAlarms\Plugin\Services\Shared\PortalMetaRepository::class),
-                $c->get(Logger::class)
+                $c->get(Logger::class),
+                $c->get(\CheapAlarms\Plugin\Services\XeroService::class),
+                $c->get(Config::class),
+                $c->get(\CheapAlarms\Plugin\Services\EstimateService::class),
+                $c->get(\CheapAlarms\Plugin\Services\GhlSignalDispatcher::class)
             )
         );
         
@@ -791,7 +856,7 @@ class Plugin
     {
         add_action('rest_api_init', function () {
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms Plugin] rest_api_init register controllers');
+                error_log('[CA Plugin] rest_api_init register controllers');
             }
             
             // Ensure request ID is initialized before API calls
@@ -875,7 +940,9 @@ class Plugin
     private function registerCliCommands(): void
     {
         require_once CA_PLUGIN_PATH . 'includes/Commands/RepairPaymentsCommand.php';
+        require_once CA_PLUGIN_PATH . 'includes/Commands/RebuildInvoiceLinksCommand.php';
         \WP_CLI::add_command('cheapalarms repair-payments', \CheapAlarms\Plugin\Commands\RepairPaymentsCommand::class);
+        \WP_CLI::add_command('cheapalarms rebuild-invoice-links', new \CheapAlarms\Plugin\Commands\RebuildInvoiceLinksCommand());
     }
 
     public function container(): Container
@@ -890,7 +957,7 @@ class Plugin
             if (version_compare(PHP_VERSION, '7.4.0', '<')) {
                 throw new \RuntimeException(
                     sprintf(
-                        'CheapAlarms plugin requires PHP 7.4 or higher. You are running PHP %s.',
+                        'Portal plugin requires PHP 7.4 or higher. You are running PHP %s.',
                         PHP_VERSION
                     )
                 );
@@ -903,8 +970,8 @@ class Plugin
         } catch (\Throwable $e) {
             // Log error for debugging, then re-throw to show error to user
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Activation error: ' . $e->getMessage());
-                error_log('[CheapAlarms] Stack trace: ' . $e->getTraceAsString());
+                error_log('[CA] Activation error: ' . $e->getMessage());
+                error_log('[CA] Stack trace: ' . $e->getTraceAsString());
             }
             // Re-throw to show error to user
             throw $e;

@@ -13,7 +13,6 @@ use function add_query_arg;
 use function email_exists;
 use function esc_html;
 use function esc_url;
-use function get_option;
 use function get_password_reset_key;
 use function get_user_by;
 use function rawurlencode;
@@ -154,6 +153,8 @@ class CustomerService
 
         // Render context-aware email template
         $emailTemplate = null;
+        $brandName = $config->getBrandName();
+        $brandTeam = $brandName . ' Team';
         try {
             $emailTemplateService = $this->container->get(\CheapAlarms\Plugin\Services\EmailTemplateService::class);
             $emailData = [
@@ -165,32 +166,32 @@ class CustomerService
             ];
 
             $emailTemplate = $emailTemplateService->renderPortalInviteEmail($userContext, $emailData);
-            $subject = $emailTemplate['subject'] ?? __('Your CheapAlarms portal is ready', 'cheapalarms');
+            $subject = $emailTemplate['subject'] ?? sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
             $body = $emailTemplate['body'] ?? '';
 
             // Fallback if template rendering failed
             if (empty($body)) {
-                error_log('[CheapAlarms][WARNING] Portal invite email template returned empty body, using fallback');
-                $subject = __('Your CheapAlarms portal is ready', 'cheapalarms');
+                error_log('[CA][WARNING] Portal invite email template returned empty body, using fallback');
+                $subject = sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
-                $body .= '<p>' . esc_html(__('We have prepared your CheapAlarms portal. Use the links below to access your portal.', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the links below to access your portal.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Access your portal', 'cheapalarms')) . '</a></p>';
                 if ($resetUrl) {
                     $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
                 }
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($brandTeam) . '</p>';
             }
         } catch (\Exception $e) {
-            error_log('[CheapAlarms][ERROR] Failed to render portal invite email template: ' . $e->getMessage());
+            error_log('[CA][ERROR] Failed to render portal invite email template: ' . $e->getMessage());
             // Fallback to simple email
-            $subject = __('Your CheapAlarms portal is ready', 'cheapalarms');
+            $subject = sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
             $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
-            $body .= '<p>' . esc_html(__('We have prepared your CheapAlarms portal. Use the links below to access your portal.', 'cheapalarms')) . '</p>';
+            $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the links below to access your portal.', 'cheapalarms'), $brandName)) . '</p>';
             $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Access your portal', 'cheapalarms')) . '</a></p>';
             if ($resetUrl) {
                 $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
             }
-            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($brandTeam) . '</p>';
         }
 
         // Send via GHL
@@ -198,15 +199,13 @@ class CustomerService
         if ($ghlContactId) {
             $ghlClient = $this->container->get(GhlClient::class);
             $config = $this->container->get(\CheapAlarms\Plugin\Config\Config::class);
-            $fromEmail = get_option('ghl_from_email', 'quotes@cheapalarms.com.au');
-            
             $payload = [
                 'contactId' => $ghlContactId,
                 'type' => 'Email',
                 'status' => 'pending',
                 'subject' => $subject,
                 'html' => $body,
-                'emailFrom' => $fromEmail,
+                'emailFrom' => $config->getEmailFromHeader(),
             ];
             
             if ($config->getLocationId()) {

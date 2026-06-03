@@ -103,7 +103,13 @@ class PasswordResetController implements ControllerInterface
         // Auto-provisioning on a public endpoint enables mass account creation attacks
         $userId = email_exists($email);
         if (!$userId) {
-            // Return a generic message to prevent account enumeration
+            // SECURITY: Return a generic, account-enumeration-safe message — the
+            // response body does NOT reveal whether the email exists. We still
+            // log a warning server-side so ops can spot real customers who are
+            // silently stuck (e.g. mistyped their email, account never created).
+            $this->logger->warning('Password reset requested for unknown email', [
+                'email' => $email,
+            ]);
             return new WP_REST_Response([
                 'ok'      => true,
                 'message' => 'If an account exists with that email, a password reset link will be sent.',
@@ -131,13 +137,16 @@ class PasswordResetController implements ControllerInterface
             return $this->respond($resetKey);
         }
 
-        // Get frontend URL (Next.js)
-        $frontendUrl = $this->getFrontendUrl();
-        
+        // Get frontend URL (Next.js). Always sourced from Config so this flow
+        // and the quote-request flow stay in lockstep — previously this
+        // controller had a private getFrontendUrl() that produced a different
+        // value (pointing at the WP backend itself when /wp wasn't in the URL).
+        $frontendUrl = $this->config->getFrontendUrl();
+
         // Extract estimateId and locationId from payload (if provided)
         $estimateId = sanitize_text_field($payload['estimateId'] ?? '');
         $locationId = sanitize_text_field($payload['locationId'] ?? '');
-        
+
         $resetUrl = $frontendUrl . '/set-password?key=' . rawurlencode($resetKey) . '&login=' . rawurlencode($user->user_login);
         if ($estimateId) {
             $resetUrl .= '&estimateId=' . rawurlencode($estimateId);
@@ -381,33 +390,6 @@ class PasswordResetController implements ControllerInterface
     }
 
     /**
-     * Get frontend URL (Next.js)
-     */
-    private function getFrontendUrl(): string
-    {
-        // Check for environment variable
-        if (defined('CA_FRONTEND_URL') && CA_FRONTEND_URL) {
-            return rtrim(CA_FRONTEND_URL, '/');
-        }
-
-        $envUrl = getenv('CA_FRONTEND_URL');
-        if ($envUrl && $envUrl !== false) {
-            return rtrim($envUrl, '/');
-        }
-
-        // Fallback: try to infer from WordPress URL
-        $wpUrl = home_url();
-        if (strpos($wpUrl, 'localhost') !== false || strpos($wpUrl, '127.0.0.1') !== false) {
-            // Development: assume Next.js runs on port 3000
-            return 'http://localhost:3000';
-        }
-
-        // Production: assume same domain, different port or subdomain
-        // You may need to adjust this based on your setup
-        return str_replace('/wp', '', $wpUrl);
-    }
-
-    /**
      * Find or create GHL contact by email.
      * Local-first: checks the contact snapshot table first (5-min freshness),
      * then falls through to GHL API and writes-through on hit/create.
@@ -424,7 +406,7 @@ class PasswordResetController implements ControllerInterface
 
             if ($local !== null && !is_wp_error($local)) {
                 $syncedAt = $local['syncedAt'] ?? null;
-                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS) || !$this->config->isGhlFetchAllowed()) {
                     $localContactId = $local['contactId'] ?? null;
                     if (!empty($localContactId)) {
                         return $localContactId;
@@ -440,24 +422,26 @@ class PasswordResetController implements ControllerInterface
         }
 
         // ── GHL API: search for existing contact ─────────────────────
-        $response = $this->ghlClient->get('/contacts/search', [
-            'query' => $email,
-        ], 20, $locationId);
+        if ($this->config->isGhlFetchAllowed()) {
+            $response = $this->ghlClient->get('/contacts/search', [
+                'query' => $email,
+            ], 20, $locationId);
 
-        if (!is_wp_error($response)) {
-            $contacts = $response['contacts'] ?? $response['items'] ?? [];
-            foreach ($contacts as $contact) {
-                $contactEmail = $contact['email'] ?? '';
-                if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
-                    $foundId = $contact['id'] ?? '';
-                    if (!empty($foundId)) {
-                        // Verify contact has email, update if missing
-                        if (empty($contact['email'])) {
-                            $this->updateContactEmail($foundId, $email, $locationId);
+            if (!is_wp_error($response)) {
+                $contacts = $response['contacts'] ?? $response['items'] ?? [];
+                foreach ($contacts as $contact) {
+                    $contactEmail = $contact['email'] ?? '';
+                    if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
+                        $foundId = $contact['id'] ?? '';
+                        if (!empty($foundId)) {
+                            // Verify contact has email, update if missing
+                            if (empty($contact['email'])) {
+                                $this->updateContactEmail($foundId, $email, $locationId);
+                            }
+                            // Write-through: cache this contact locally
+                            $this->writeThroughContact($locationId, $contact);
+                            return $foundId;
                         }
-                        // Write-through: cache this contact locally
-                        $this->writeThroughContact($locationId, $contact);
-                        return $foundId;
                     }
                 }
             }
@@ -587,31 +571,33 @@ class PasswordResetController implements ControllerInterface
                 'email' => $email,
                 'error' => $createResponse->get_error_message(),
             ]);
-            
-            $retryResponse = $this->ghlClient->get('/contacts/search', [
-                'query' => $email,
-            ], 20, $locationId);
-            
-            if (!is_wp_error($retryResponse)) {
-                $contacts = $retryResponse['contacts'] ?? $retryResponse['items'] ?? [];
-                foreach ($contacts as $contact) {
-                    $contactEmail = $contact['email'] ?? '';
-                    if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
-                        $foundId = $contact['id'] ?? '';
-                        if (!empty($foundId)) {
-                            $this->logger->info('Found contact on retry search', [
-                                'email' => $email,
-                                'contactId' => $foundId,
-                            ]);
-                            $this->updateContactEmail($foundId, $email, $locationId);
-                            // Write-through: cache the found contact locally
-                            $this->writeThroughContact($locationId, $contact);
-                            return $foundId;
+
+            if ($this->config->isGhlFetchAllowed()) {
+                $retryResponse = $this->ghlClient->get('/contacts/search', [
+                    'query' => $email,
+                ], 20, $locationId);
+
+                if (!is_wp_error($retryResponse)) {
+                    $contacts = $retryResponse['contacts'] ?? $retryResponse['items'] ?? [];
+                    foreach ($contacts as $contact) {
+                        $contactEmail = $contact['email'] ?? '';
+                        if ($contactEmail && strcasecmp($contactEmail, $email) === 0) {
+                            $foundId = $contact['id'] ?? '';
+                            if (!empty($foundId)) {
+                                $this->logger->info('Found contact on retry search', [
+                                    'email' => $email,
+                                    'contactId' => $foundId,
+                                ]);
+                                $this->updateContactEmail($foundId, $email, $locationId);
+                                // Write-through: cache the found contact locally
+                                $this->writeThroughContact($locationId, $contact);
+                                return $foundId;
+                            }
                         }
                     }
                 }
             }
-            
+
             // If we still can't find it, return the original error
             return $createResponse;
         }
@@ -734,6 +720,8 @@ class PasswordResetController implements ControllerInterface
 
         // Get user context for email personalization
         $userContext = UserContextHelper::getUserContext($userId, $email);
+        $brandName = $this->config->getBrandName();
+        $brandTeam = $brandName . ' Team';
         
         // Render context-aware email template
         $emailTemplate = null;
@@ -745,55 +733,52 @@ class PasswordResetController implements ControllerInterface
             ];
             
             $emailTemplate = $emailTemplateService->renderPasswordResetEmail($userContext, $emailData);
-            $subject = $emailTemplate['subject'] ?? __('Set Your Password - CheapAlarms Portal', 'cheapalarms');
+            $subject = $emailTemplate['subject'] ?? sprintf(__('Set Your Password - %s Portal', 'cheapalarms'), $brandName);
             $html = $emailTemplate['body'] ?? '';
             
             // Fallback if template rendering failed
             if (empty($html)) {
-                error_log('[CheapAlarms][WARNING] Password reset email template returned empty body, using fallback');
-                $subject = __('Set Your Password - CheapAlarms Portal', 'cheapalarms');
+                error_log('[CA][WARNING] Password reset email template returned empty body, using fallback');
+                $subject = sprintf(__('Set Your Password - %s Portal', 'cheapalarms'), $brandName);
                 $html = '<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">';
                 $html .= '<div style="max-width: 600px; margin: 0 auto; padding: 20px;">';
                 $html .= '<h2 style="color: #2563eb;">Set Your Password</h2>';
                 $html .= '<p>Hi ' . esc_html($name) . ',</p>';
-                $html .= '<p>Click the button below to set your password and access your CheapAlarms portal:</p>';
+                $html .= '<p>' . esc_html(sprintf(__('Click the button below to set your password and access your %s portal:', 'cheapalarms'), $brandName)) . '</p>';
                 $html .= '<p style="margin: 30px 0;">';
                 $html .= '<a href="' . esc_url($resetUrl) . '" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Your Password</a>';
                 $html .= '</p>';
                 $html .= '<p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>';
                 $html .= '<p style="color: #666; font-size: 12px; word-break: break-all;">' . esc_html($resetUrl) . '</p>';
                 $html .= '<p style="color: #666; font-size: 14px; margin-top: 30px;">This link will expire in 24 hours.</p>';
-                $html .= '<p style="margin-top: 30px;">Thanks,<br />CheapAlarms Team</p>';
+                $html .= '<p style="margin-top: 30px;">Thanks,<br />' . esc_html($brandTeam) . '</p>';
                 $html .= '</div></body></html>';
             }
         } catch (\Exception $e) {
-            error_log('[CheapAlarms][ERROR] Failed to render password reset email template: ' . $e->getMessage());
+            error_log('[CA][ERROR] Failed to render password reset email template: ' . $e->getMessage());
             // Fallback to simple email
-            $subject = __('Set Your Password - CheapAlarms Portal', 'cheapalarms');
+            $subject = sprintf(__('Set Your Password - %s Portal', 'cheapalarms'), $brandName);
             $html = '<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">';
             $html .= '<div style="max-width: 600px; margin: 0 auto; padding: 20px;">';
             $html .= '<h2 style="color: #2563eb;">Set Your Password</h2>';
             $html .= '<p>Hi ' . esc_html($name) . ',</p>';
-            $html .= '<p>Click the button below to set your password and access your CheapAlarms portal:</p>';
+            $html .= '<p>' . esc_html(sprintf(__('Click the button below to set your password and access your %s portal:', 'cheapalarms'), $brandName)) . '</p>';
             $html .= '<p style="margin: 30px 0;">';
             $html .= '<a href="' . esc_url($resetUrl) . '" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Your Password</a>';
             $html .= '</p>';
             $html .= '<p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>';
             $html .= '<p style="color: #666; font-size: 12px; word-break: break-all;">' . esc_html($resetUrl) . '</p>';
             $html .= '<p style="color: #666; font-size: 14px; margin-top: 30px;">This link will expire in 24 hours.</p>';
-            $html .= '<p style="margin-top: 30px;">Thanks,<br />CheapAlarms Team</p>';
+            $html .= '<p style="margin-top: 30px;">Thanks,<br />' . esc_html($brandTeam) . '</p>';
             $html .= '</div></body></html>';
         }
 
         $text = "Set Your Password\n\n";
         $text .= "Hi {$name},\n\n";
-        $text .= "Click the link below to set your password and access your CheapAlarms portal:\n\n";
+        $text .= sprintf("Click the link below to set your password and access your %s portal:\n\n", $brandName);
         $text .= $resetUrl . "\n\n";
         $text .= "This link will expire in 24 hours.\n\n";
-        $text .= "Thanks,\nCheapAlarms Team";
-
-        // Use exact same pattern as GhlController
-        $effectiveFromEmail = get_option('ghl_from_email', 'quotes@cheapalarms.dev');
+        $text .= "Thanks,\n" . $brandTeam;
 
         $payload = [
             'contactId' => $contactId,
@@ -802,7 +787,7 @@ class PasswordResetController implements ControllerInterface
             'subject' => $subject,
             'html' => !empty($html) ? $html : null,
             'message' => !empty($text) ? $text : null,
-            'emailFrom' => $effectiveFromEmail,
+            'emailFrom' => $this->config->getEmailFromHeader(),
         ];
 
         // Always include locationId (required by GHL API)

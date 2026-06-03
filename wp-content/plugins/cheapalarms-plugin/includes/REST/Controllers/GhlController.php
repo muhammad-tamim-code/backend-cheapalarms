@@ -101,11 +101,9 @@ class GhlController extends AdminController
                     return $this->respond(new WP_Error('bad_request', __('HTML or text content is required.', 'cheapalarms'), ['status' => 400]));
                 }
 
-                $effectiveFromEmail = $fromEmail ?: get_option('ghl_from_email', 'quotes@cheapalarms.dev');
-                
-                // Format email with display name: "CheapAlarms <email@domain.com>"
-                // This ensures email clients show "CheapAlarms" instead of just "quotes" or the email address
-                $effectiveFromEmailWithName = 'CheapAlarms <' . $effectiveFromEmail . '>';
+                $effectiveFromEmailWithName = $fromEmail
+                    ? ($config->getEmailFromName() . ' <' . $fromEmail . '>')
+                    : $config->getEmailFromHeader();
 
                 $payload = [
                     'contactId' => $contactId,
@@ -114,7 +112,7 @@ class GhlController extends AdminController
                     'subject' => $subject,
                     'html' => !empty($html) ? $html : null,
                     'message' => !empty($text) ? $text : null,
-                    'emailFrom' => $effectiveFromEmailWithName, // Format: "CheapAlarms <quotes@cheapalarms.com.au>"
+                    'emailFrom' => $effectiveFromEmailWithName,
                 ];
 
                 if ($config->getLocationId()) {
@@ -273,8 +271,8 @@ class GhlController extends AdminController
                 $lastSynced = $this->contactSnapshotRepo->lastSyncedAt($locationId);
                 $isStale = is_wp_error($lastSynced) || !CacheConfig::isFresh($lastSynced, CacheConfig::CONTACT_LIST_STALE_SECONDS);
 
-                // Schedule background re-sync if stale
-                if ($isStale && !wp_next_scheduled('ca_sync_contact_snapshots', [$locationId])) {
+                // Schedule background re-sync if stale (only when GHL reads are allowed)
+                if ($isStale && $config->isGhlFetchAllowed() && !wp_next_scheduled('ca_sync_contact_snapshots', [$locationId])) {
                     wp_schedule_single_event(time(), 'ca_sync_contact_snapshots', [$locationId]);
                 }
 
@@ -299,6 +297,21 @@ class GhlController extends AdminController
             $this->logger->warning('Contact snapshot listByLocation failed, falling back to GHL', [
                 'error' => $localResult->get_error_message(),
             ]);
+        }
+
+        if (!$config->isGhlFetchAllowed()) {
+            $response = $this->respond([
+                'contacts' => [],
+                'total'    => 0,
+                'limit'    => $limit,
+                'offset'   => $offset,
+                'message'  => __('GoHighLevel list reads are disabled. Contacts appear here only when stored locally (for example from portal activity).', 'cheapalarms'),
+            ]);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $response->header('X-Data-Source', 'fetch-disabled-empty');
+            }
+
+            return $response;
         }
 
         // ── FALLBACK: Fetch from GHL API ─────────────────────────────
@@ -371,7 +384,7 @@ class GhlController extends AdminController
         }
 
         // Schedule full background sync to get all contacts (API only returns first page)
-        if (!wp_next_scheduled('ca_sync_contact_snapshots', [$locationId])) {
+        if ($config->isGhlFetchAllowed() && !wp_next_scheduled('ca_sync_contact_snapshots', [$locationId])) {
             wp_schedule_single_event(time(), 'ca_sync_contact_snapshots', [$locationId]);
         }
 

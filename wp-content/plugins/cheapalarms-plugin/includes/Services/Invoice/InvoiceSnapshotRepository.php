@@ -108,6 +108,36 @@ class InvoiceSnapshotRepository
     }
 
     /**
+     * Invoice IDs in local snapshots whose email column matches (case-insensitive).
+     *
+     * @return list<string>
+     */
+    public function listInvoiceIdsByEmail(string $locationId, string $email): array
+    {
+        global $wpdb;
+
+        if ($locationId === '' || $email === '') {
+            return [];
+        }
+
+        $norm = strtolower(trim($email));
+        $rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT invoice_id FROM {$this->tableName}
+                 WHERE location_id = %s AND deleted_at IS NULL AND LOWER(TRIM(email)) = %s",
+                $locationId,
+                $norm
+            )
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('strval', $rows)));
+    }
+
+    /**
      * List invoices for a location from local DB.
      *
      * @param string|null $status Optional GHL status filter

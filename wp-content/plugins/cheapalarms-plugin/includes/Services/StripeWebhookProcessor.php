@@ -2,8 +2,10 @@
 
 namespace CheapAlarms\Plugin\Services;
 
+use CheapAlarms\Plugin\Config\Config;
 use WP_Error;
 use function current_time;
+use function is_wp_error;
 
 /**
  * Process Stripe webhook events asynchronously
@@ -15,7 +17,11 @@ class StripeWebhookProcessor
     public function __construct(
         private WebhookEventRepository $webhookEventRepo,
         private \CheapAlarms\Plugin\Services\Shared\PortalMetaRepository $portalMetaRepo,
-        private Logger $logger
+        private Logger $logger,
+        private XeroService $xeroService,
+        private Config $config,
+        private EstimateService $estimateService,
+        private GhlSignalDispatcher $ghlSignalDispatcher
     ) {
     }
     
@@ -197,8 +203,150 @@ class StripeWebhookProcessor
             ]),
             'invoice' => $invoiceMeta,
         ]);
-        
+
+        $this->tryRecordXeroPaymentAfterStripeWebhook($estimateId, $paymentIntentId, $amount);
+
+        $freshPayments = $this->portalMetaRepo->get($estimateId)['payment']['payments'] ?? $payments;
+        $matched = is_array($freshPayments) ? ($freshPayments[$paymentIndex] ?? $paymentRecord) : $paymentRecord;
+        $this->dispatchPaymentMilestonesToGhl($estimateId, is_array($matched) ? $matched : $paymentRecord, $totals);
+
         return true;
+    }
+
+    /**
+     * Fire-and-forget GHL tags/notes for deposit vs paid-in-full (paid-in-full wins if both apply).
+     *
+     * @param array<string, mixed> $paymentRecord
+     * @param array<string, mixed> $totals        From computePaymentTotals
+     */
+    private function dispatchPaymentMilestonesToGhl(string $estimateId, array $paymentRecord, array $totals): void
+    {
+        $meta = $this->portalMetaRepo->get($estimateId);
+        $locationId = (string) ($meta['locationId'] ?? '');
+        if ($locationId === '') {
+            $locationId = (string) ($this->config->getLocationId() ?? '');
+        }
+        if ($locationId === '') {
+            $this->logger->info('GHL payment milestone signals skipped: no locationId', [
+                'estimateId' => $estimateId,
+            ]);
+
+            return;
+        }
+
+        $estimate = $this->estimateService->getEstimate([
+            'estimateId' => $estimateId,
+            'locationId' => $locationId,
+        ]);
+
+        if (is_wp_error($estimate)) {
+            $this->logger->warning('GHL payment milestone signals skipped: estimate fetch failed', [
+                'estimateId' => $estimateId,
+                'error'      => $estimate->get_error_message(),
+            ]);
+
+            return;
+        }
+
+        $contact = $estimate['contact'] ?? [];
+        $contactId = (string) ($contact['id'] ?? $contact['_id'] ?? '');
+        if ($contactId === '') {
+            $this->logger->info('GHL payment milestone signals skipped: no contact id', [
+                'estimateId' => $estimateId,
+            ]);
+
+            return;
+        }
+
+        $noteData = [
+            'estimateId'      => $estimateId,
+            'estimateNumber'  => (string) ($estimate['estimateNumber'] ?? $estimateId),
+            'amount'          => (float) ($paymentRecord['amount'] ?? 0),
+            'paymentIntentId' => (string) ($paymentRecord['paymentIntentId'] ?? $paymentRecord['transactionId'] ?? ''),
+        ];
+
+        if (!empty($totals['isFullyPaid'])) {
+            $this->ghlSignalDispatcher->dispatchPaidInFull($contactId, $locationId, $noteData);
+
+            return;
+        }
+
+        if (($paymentRecord['paymentType'] ?? '') === 'deposit') {
+            $this->ghlSignalDispatcher->dispatchDepositPaid($contactId, $locationId, $noteData);
+        }
+    }
+
+    /**
+     * When the receivable exists only in Xero (portal xero_direct), record Stripe payment in Xero
+     * if the synchronous payment confirmation path has not already done so.
+     */
+    private function tryRecordXeroPaymentAfterStripeWebhook(string $estimateId, string $paymentIntentId, float $amount): void
+    {
+        if ($amount <= 0 || $paymentIntentId === '') {
+            return;
+        }
+
+        if (!$this->xeroService->isConnected()) {
+            return;
+        }
+
+        $meta = $this->portalMetaRepo->get($estimateId);
+        $inv = $meta['invoice'] ?? [];
+        if (($inv['source'] ?? '') !== 'xero_direct') {
+            return;
+        }
+
+        $xeroInvoiceId = (string) ($inv['xeroInvoiceId'] ?? '');
+        if ($xeroInvoiceId === '') {
+            return;
+        }
+
+        $paymentBlock = $meta['payment'] ?? [];
+        $payments = $paymentBlock['payments'] ?? [];
+        if (!is_array($payments)) {
+            return;
+        }
+
+        $idx = null;
+        foreach ($payments as $i => $p) {
+            if (!is_array($p)) {
+                continue;
+            }
+            if (($p['paymentIntentId'] ?? '') === $paymentIntentId || ($p['transactionId'] ?? '') === $paymentIntentId) {
+                $idx = $i;
+                break;
+            }
+        }
+
+        if ($idx === null) {
+            return;
+        }
+
+        $row = $payments[$idx];
+        if (!empty($row['xeroPaymentId']) || (!empty($row['xeroSynced']) && $row['xeroSynced'] === true)) {
+            return;
+        }
+
+        $xeroResult = $this->xeroService->recordPayment($xeroInvoiceId, $amount, 'Stripe', $paymentIntentId);
+        if (is_wp_error($xeroResult)) {
+            $this->logger->warning('Stripe webhook: failed to record payment in Xero (xero_direct)', [
+                'estimateId' => $estimateId,
+                'xeroInvoiceId' => $xeroInvoiceId,
+                'paymentIntentId' => $paymentIntentId,
+                'error' => $xeroResult->get_error_message(),
+            ]);
+
+            return;
+        }
+
+        $payments[$idx]['xeroPaymentId'] = $xeroResult['paymentId'] ?? null;
+        $payments[$idx]['xeroSynced'] = true;
+
+        $this->portalMetaRepo->merge($estimateId, [
+            'payment' => array_merge($paymentBlock, [
+                'payments' => $payments,
+            ]),
+        ]);
     }
     
     private function handlePaymentIntentFailed(string $estimateId, string $eventId, array $data): bool|WP_Error
@@ -210,7 +358,9 @@ class StripeWebhookProcessor
         $payments = $payment['payments'] ?? [];
         
         foreach ($payments as $index => $p) {
-            if (($p['paymentIntentId'] ?? '') === $paymentIntentId) {
+            $matchPi = ($p['paymentIntentId'] ?? '') === $paymentIntentId;
+            $matchTxn = ($p['transactionId'] ?? '') === $paymentIntentId;
+            if ($matchPi || $matchTxn) {
                 $payments[$index]['status'] = 'failed';
                 $payments[$index]['stripeEventId'] = $eventId;
                 break;

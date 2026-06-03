@@ -99,6 +99,88 @@ class EstimateSnapshotRepository
     }
 
     /**
+     * Estimate IDs in local snapshots whose email column matches (case-insensitive).
+     *
+     * @return list<string>
+     */
+    public function listEstimateIdsByEmail(string $locationId, string $email): array
+    {
+        global $wpdb;
+
+        if ($locationId === '' || $email === '') {
+            return [];
+        }
+
+        $norm = strtolower(trim($email));
+        $rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT estimate_id FROM {$this->tableName}
+                 WHERE location_id = %s AND deleted_at IS NULL AND LOWER(TRIM(email)) = %s",
+                $locationId,
+                $norm
+            )
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('strval', $rows)));
+    }
+
+    /**
+     * Latest estimate snapshot for an email (by updated_at / created_at), decoded raw_json.
+     *
+     * @return array<string, mixed>|null|WP_Error Null if no row; WP_Error on DB/parse failure.
+     */
+    public function getLatestByEmail(string $locationId, string $email)
+    {
+        global $wpdb;
+
+        if ($locationId === '' || $email === '') {
+            return null;
+        }
+
+        $norm = strtolower(trim($email));
+        $row  = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT raw_json FROM {$this->tableName}
+                 WHERE location_id = %s AND deleted_at IS NULL AND LOWER(TRIM(email)) = %s
+                 ORDER BY COALESCE(updated_at, created_at) DESC
+                 LIMIT 1",
+                $locationId,
+                $norm
+            ),
+            ARRAY_A
+        );
+
+        if ($row === null) {
+            if ($wpdb->last_error) {
+                return new WP_Error('db_error', 'Failed to read estimate snapshot by email', [
+                    'status'  => 500,
+                    'details' => $wpdb->last_error,
+                ]);
+            }
+
+            return null;
+        }
+
+        if (empty($row['raw_json'])) {
+            return null;
+        }
+
+        $decoded = json_decode($row['raw_json'], true);
+        if (!is_array($decoded)) {
+            return new WP_Error('parse_error', 'Failed to parse estimate raw_json', [
+                'status'  => 500,
+                'details' => json_last_error_msg(),
+            ]);
+        }
+
+        return $decoded;
+    }
+
+    /**
      * @param string|null $startDate Optional start date (Y-m-d format)
      * @param string|null $endDate Optional end date (Y-m-d format)
      * @return array<int, array<string, mixed>>|WP_Error

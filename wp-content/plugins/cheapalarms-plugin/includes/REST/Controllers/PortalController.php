@@ -435,17 +435,17 @@ class PortalController implements ControllerInterface
 
                     if (!is_wp_error($localContact) && is_array($localContact)) {
                         $syncedAt = $localContact['_snapshotSyncedAt'] ?? null;
-                        if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS)) {
+                        if (CacheConfig::isFresh($syncedAt, CacheConfig::CONTACT_SEARCH_STALE_SECONDS) || !$config->isGhlFetchAllowed()) {
                             $ghlContact = $localContact;
                         }
                     }
                 } catch (\Throwable $e) {
                     // Local lookup failed – fall through to GHL API
-                    error_log('[CheapAlarms][WARN] Contact snapshot lookup failed in PortalController: ' . $e->getMessage());
+                    error_log('[CA][WARN] Contact snapshot lookup failed in PortalController: ' . $e->getMessage());
                 }
 
                 // ── FALLBACK: GHL API ────────────────────────────────
-                if ($ghlContact === null) {
+                if ($ghlContact === null && $config->isGhlFetchAllowed()) {
                     $ghlContact = $ghlClient->get("/contacts/{$ghlContactId}", [], 25, $locationId);
 
                     if (is_wp_error($ghlContact)) {
@@ -461,7 +461,15 @@ class PortalController implements ControllerInterface
                     }
                 }
 
-                // Get CustomerService and invite
+                if ($ghlContact === null) {
+                    return $this->respond(new WP_Error(
+                        'contact_not_cached',
+                        __('This contact is not in the local database yet and GoHighLevel read is disabled. Create or touch the contact from this system first, or enable GHL fetch temporarily.', 'cheapalarms'),
+                        ['status' => 404]
+                    ));
+                }
+
+                unset($ghlContact['_snapshotSyncedAt']);
                 $customerService = $this->container->get(\CheapAlarms\Plugin\Services\CustomerService::class);
                 $result = $customerService->inviteGhlContactToPortal($ghlContactId, $ghlContact);
                 

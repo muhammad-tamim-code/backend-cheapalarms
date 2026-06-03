@@ -31,6 +31,16 @@ class InvoiceService
             return new WP_Error('missing_location', __('Location ID is required.', 'cheapalarms'), ['status' => 400]);
         }
 
+        if (!$this->config->isGhlFetchAllowed()) {
+            return [
+                'ok'         => true,
+                'locationId' => $locationId,
+                'count'      => 0,
+                'items'      => [],
+                'total'      => 0,
+            ];
+        }
+
         $limit  = max(1, min(100, (int)($filters['limit'] ?? 20)));
         $offset = max(0, (int)($filters['offset'] ?? 0));
 
@@ -107,6 +117,14 @@ class InvoiceService
         $locationId = $locationId ?: $this->config->getLocationId();
         if (!$locationId) {
             return new WP_Error('missing_location', __('Location ID is required.', 'cheapalarms'), ['status' => 400]);
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            return new WP_Error(
+                'invoice_not_local',
+                __('Invoice is not available from GoHighLevel reads (disabled). Use the invoice snapshot in WordPress or enable GHL fetch.', 'cheapalarms'),
+                ['status' => 404]
+            );
         }
 
         // GHL requires altId and altType query params for multi-location accounts
@@ -192,6 +210,15 @@ class InvoiceService
         $locationId = $locationId ?: $this->config->getLocationId();
         if (!$locationId) {
             return new WP_Error('missing_location', __('Location ID is not configured.', 'cheapalarms'));
+        }
+
+        if (!$this->config->isGhlFetchAllowed()) {
+            return [
+                'ok'         => true,
+                'locationId' => $locationId,
+                'items'      => [],
+                'nextOffset' => null,
+            ];
         }
 
         $limit = max(1, min(100, $limit));

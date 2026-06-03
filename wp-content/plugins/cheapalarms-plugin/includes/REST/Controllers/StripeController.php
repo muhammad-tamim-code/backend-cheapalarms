@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Container;
@@ -32,6 +33,22 @@ class StripeController extends AdminController
 
     public function register(): void
     {
+        // Public: Stripe publishable key (safe to expose; used by Next.js when NEXT_PUBLIC_* is unset)
+        register_rest_route('ca/v1', '/stripe/publishable-key', [
+            'methods'             => 'GET',
+            'permission_callback' => '__return_true',
+            'callback'            => function (WP_REST_Request $request) {
+                /** @var Config $config */
+                $config = $this->container->get(Config::class);
+                $key    = $config->getStripePublishableKey();
+
+                return $this->respond([
+                    'ok'             => true,
+                    'publishableKey' => $key !== '' ? $key : null,
+                ], $request);
+            },
+        ]);
+
         // Create payment intent
         register_rest_route('ca/v1', '/stripe/create-payment-intent', [
             'methods' => 'POST',

@@ -116,7 +116,7 @@ class LogController implements ControllerInterface
             if ($fileSize === false) {
                 $error = error_get_last();
                 if (function_exists('error_log') && $error) {
-                    error_log('[CheapAlarms] Failed to get log file size: ' . $error['message']);
+                    error_log('[CA] Failed to get log file size: ' . $error['message']);
                 }
                 return $this->errorResponse(new WP_Error(
                     'log_file_size_check_failed',
@@ -205,7 +205,7 @@ class LogController implements ControllerInterface
         if ($realPath === false) {
             // Can't resolve path - reject for security
             if (function_exists('error_log')) {
-                error_log('[CheapAlarms] Security: Failed to resolve log file path');
+                error_log('[CA] Security: Failed to resolve log file path');
             }
             return null;
         }
@@ -230,7 +230,7 @@ class LogController implements ControllerInterface
             if (!$isWithinContentDir) {
                 // Log security warning but don't expose path
                 if (function_exists('error_log')) {
-                    error_log('[CheapAlarms] Security: WordPress log file path outside WP_CONTENT_DIR rejected');
+                    error_log('[CA] Security: WordPress log file path outside WP_CONTENT_DIR rejected');
                 }
                 return null;
             }
@@ -260,7 +260,7 @@ class LogController implements ControllerInterface
         if ($handle === false) {
             $error = error_get_last();
             if (function_exists('error_log') && $error) {
-                error_log('[CheapAlarms] Failed to open log file: ' . $error['message']);
+                error_log('[CA] Failed to open log file: ' . $error['message']);
             }
             return new WP_Error('file_open_failed', 'Failed to open log file.');
         }
@@ -270,7 +270,7 @@ class LogController implements ControllerInterface
             if (@fseek($handle, 0, SEEK_END) !== 0) {
                 $error = error_get_last();
                 if (function_exists('error_log') && $error) {
-                    error_log('[CheapAlarms] Failed to seek to end of log file: ' . $error['message']);
+                    error_log('[CA] Failed to seek to end of log file: ' . $error['message']);
                 }
                 return new WP_Error('file_seek_failed', 'Failed to read log file.');
             }
@@ -279,7 +279,7 @@ class LogController implements ControllerInterface
             if ($fileSize === false) {
                 $error = error_get_last();
                 if (function_exists('error_log') && $error) {
-                    error_log('[CheapAlarms] Failed to get log file size: ' . $error['message']);
+                    error_log('[CA] Failed to get log file size: ' . $error['message']);
                 }
                 return new WP_Error('file_size_failed', 'Failed to get log file size.');
             }
@@ -305,7 +305,7 @@ class LogController implements ControllerInterface
                 if (@fseek($handle, $position, SEEK_SET) !== 0) {
                     $error = error_get_last();
                     if (function_exists('error_log') && $error) {
-                        error_log('[CheapAlarms] Failed to seek in log file: ' . $error['message']);
+                        error_log('[CA] Failed to seek in log file: ' . $error['message']);
                     }
                     break; // Break on seek failure
                 }
@@ -315,7 +315,7 @@ class LogController implements ControllerInterface
                 if ($chunk === false) {
                     $error = error_get_last();
                     if (function_exists('error_log') && $error) {
-                        error_log('[CheapAlarms] Failed to read log file chunk: ' . $error['message']);
+                        error_log('[CA] Failed to read log file chunk: ' . $error['message']);
                     }
                     break;
                 }

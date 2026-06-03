@@ -2,10 +2,12 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Container;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceEstimateLinkRepository;
 use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\PortalService;
@@ -33,6 +35,24 @@ class AdminInvoiceController extends AdminController
 
     public function register(): void
     {
+        register_rest_route('ca/v1', '/admin/platform', [
+            'methods'             => 'GET',
+            'permission_callback' => fn () => true,
+            'callback'            => function (WP_REST_Request $request) {
+                $this->ensureUserLoaded();
+                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                if (is_wp_error($authCheck)) {
+                    return $this->respond($authCheck);
+                }
+                $config = $this->container->get(Config::class);
+
+                return $this->respond([
+                    'ok' => true,
+                    'xeroDirectInvoicingEnabled' => $config->isXeroDirectInvoicingEnabled(),
+                ]);
+            },
+        ]);
+
         register_rest_route('ca/v1', '/admin/invoices', [
             'methods'             => 'GET',
             'permission_callback' => fn () => true, // Let request through, check auth in callback
@@ -77,6 +97,15 @@ class AdminInvoiceController extends AdminController
                     return $this->respond($locationIdResult);
                 }
                 $locationId = $locationIdResult;
+
+                $config = $this->container->get(Config::class);
+                if (!$config->isGhlFetchAllowed()) {
+                    return $this->respond([
+                        'ok'       => true,
+                        'message'  => __('GHL snapshot import is disabled. Invoice rows are stored locally when created or updated from this system.', 'cheapalarms'),
+                        'already'  => false,
+                    ]);
+                }
 
                 $already = wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId]);
                 if (!$already) {
@@ -235,51 +264,60 @@ class AdminInvoiceController extends AdminController
                 $stale = !is_wp_error($lastSyncedAt) && !CacheConfig::isFresh($lastSyncedAt, CacheConfig::INVOICE_STALE_SECONDS);
                 if ($stale) {
                     $dataSource = 'local-stale';
-                    if (!wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
+                    $cfg = $this->container->get(Config::class);
+                    if ($cfg->isGhlFetchAllowed() && !wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
                         wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
                     }
                 }
 
-                error_log('[CheapAlarms][INVOICE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . $total);
+                error_log('[CA][INVOICE_CACHE] ' . ($stale ? 'STALE' : 'HIT') . ' | count=' . $total);
             }
         }
 
         // === GHL FALLBACK: If no local data, fetch from GHL and populate snapshots ===
         if ($items === null) {
-            error_log('[CheapAlarms][INVOICE_CACHE] MISS (API fallback)');
+            $cfg = $this->container->get(Config::class);
+            if (!$cfg->isGhlFetchAllowed()) {
+                error_log('[CA][INVOICE_CACHE] MISS — GHL fetch disabled; returning empty list');
+                $items = [];
+                $total = 0;
+                $dataSource = 'empty';
+            } else {
+                error_log('[CA][INVOICE_CACHE] MISS (API fallback)');
 
-            // Schedule background sync to populate the snapshot table
-            if (!wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
-                wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
-            }
+                // Schedule background sync to populate the snapshot table
+                if (!wp_next_scheduled('ca_sync_invoice_snapshots', [$locationId])) {
+                    wp_schedule_single_event(time() + 1, 'ca_sync_invoice_snapshots', [$locationId]);
+                }
 
-            // Meanwhile, serve from GHL directly (same as old behavior)
-            $filters = [
-                'limit'  => $pageSize,
-                'offset' => $offset,
-            ];
-            if ($status) {
-                $filters['status'] = $status;
-            }
+                // Meanwhile, serve from GHL directly (same as old behavior)
+                $filters = [
+                    'limit'  => $pageSize,
+                    'offset' => $offset,
+                ];
+                if ($status) {
+                    $filters['status'] = $status;
+                }
 
-            $result = $this->invoiceService->listInvoices($locationId, $filters);
-            if (is_wp_error($result)) {
-                return $this->respond($result);
-            }
+                $result = $this->invoiceService->listInvoices($locationId, $filters);
+                if (is_wp_error($result)) {
+                    return $this->respond($result);
+                }
 
-            $items = $result['items'] ?? [];
-            $total = $result['total'] ?? count($items);
+                $items = $result['items'] ?? [];
+                $total = $result['total'] ?? count($items);
 
-            // Apply search filter for GHL results (local DB handles this in SQL)
-            if ($search) {
-                $items = array_values(array_filter($items, function ($item) use ($search) {
-                    $matches = false;
-                    $matches = $matches || (isset($item['invoiceNumber']) && stripos((string)$item['invoiceNumber'], $search) !== false);
-                    $matches = $matches || (isset($item['contactName']) && stripos($item['contactName'], $search) !== false);
-                    $matches = $matches || (isset($item['contactEmail']) && stripos($item['contactEmail'], $search) !== false);
-                    return $matches;
-                }));
-                $total = count($items);
+                // Apply search filter for GHL results (local DB handles this in SQL)
+                if ($search) {
+                    $items = array_values(array_filter($items, function ($item) use ($search) {
+                        $matches = false;
+                        $matches = $matches || (isset($item['invoiceNumber']) && stripos((string)$item['invoiceNumber'], $search) !== false);
+                        $matches = $matches || (isset($item['contactName']) && stripos($item['contactName'], $search) !== false);
+                        $matches = $matches || (isset($item['contactEmail']) && stripos($item['contactEmail'], $search) !== false);
+                        return $matches;
+                    }));
+                    $total = count($items);
+                }
             }
         }
 
@@ -375,6 +413,20 @@ class AdminInvoiceController extends AdminController
         }
         $locationId = $locationIdResult;
 
+        $xeroDirectEstimateId = $this->resolveXeroDirectEstimateId($invoiceId);
+        if ($xeroDirectEstimateId !== null) {
+            $response = $this->buildXeroDirectInvoiceRestResponse(
+                $invoiceId,
+                $xeroDirectEstimateId,
+                $locationId
+            );
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $response->header('X-Data-Source', 'portal_xero_direct');
+            }
+
+            return $response;
+        }
+
         // === LOCAL-FIRST: Try snapshot table ===
         $dataSource = 'api';
         $invoice = null;
@@ -398,36 +450,11 @@ class AdminInvoiceController extends AdminController
             $this->writeThroughInvoice($locationId, $invoice);
         }
 
-        // Find linked estimate - improved lookup with better error handling
+        // Indexed reverse lookup against wp_ca_invoice_estimate_links.
         $linkedEstimateId = $this->findEstimateIdByInvoiceId($invoiceId);
         $linkedEstimate = null;
         $portalStatus = 'sent';
-        
-        // Try to find estimate ID from portal meta (direct lookup)
-        if (!$linkedEstimateId) {
-            // Fallback: search all portal meta for this invoice ID
-            // This handles cases where the reverse lookup might have failed
-            global $wpdb;
-            $optionNamePattern = 'ca_portal_meta_%';
-            $results = $wpdb->get_results($wpdb->prepare(
-                "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s LIMIT 1000",
-                $optionNamePattern
-            ));
-            
-            foreach ($results as $row) {
-                $meta = json_decode($row->option_value, true);
-                if (!is_array($meta)) {
-                    continue;
-                }
-                
-                $metaInvoiceId = $meta['invoice']['id'] ?? null;
-                if ($metaInvoiceId === $invoiceId) {
-                    $linkedEstimateId = str_replace('ca_portal_meta_', '', $row->option_name);
-                    break;
-                }
-            }
-        }
-        
+
         // Final fallback: Try to match by contact ID and date (for manually created invoices)
         // Only attempt if invoice has contact info and issue date
         $invoiceContact = $invoice['contact'] ?? [];
@@ -530,6 +557,7 @@ class AdminInvoiceController extends AdminController
             'xeroInvoiceId' => $xeroInvoiceId, // Xero invoice ID from portal meta
             'xeroInvoiceNumber' => $xeroInvoiceNumber, // Xero invoice number from portal meta
             'xeroSync' => $xeroSync, // Xero sync status, errors, retry info
+            'xeroInvoiceOnlineUrl' => $this->buildXeroInvoiceOnlineUrl($xeroInvoiceId),
         ]);
 
         if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -550,6 +578,23 @@ class AdminInvoiceController extends AdminController
             return $this->respond($locationIdResult);
         }
         $locationId = $locationIdResult;
+
+        if ($this->resolveXeroDirectEstimateId($invoiceId) !== null) {
+            return $this->respond(new WP_Error(
+                'xero_direct_invoice',
+                __('This invoice was created in Xero from the portal; it is not stored in GoHighLevel, so GHL sync does not apply.', 'cheapalarms'),
+                ['status' => 400]
+            ));
+        }
+
+        $config = $this->container->get(Config::class);
+        if (!$config->isGhlFetchAllowed()) {
+            return $this->respond(new WP_Error(
+                'ghl_fetch_disabled',
+                __('Refreshing this invoice from GoHighLevel is disabled. Local snapshots are updated when invoices are created or changed through this system; enable GHL fetch to pull the latest from GHL.', 'cheapalarms'),
+                ['status' => 400]
+            ));
+        }
 
         // Force re-fetch from GHL (bypasses local snapshot)
         $invoice = $this->invoiceService->getInvoice($invoiceId, $locationId);
@@ -575,6 +620,14 @@ class AdminInvoiceController extends AdminController
         }
         $locationId = $locationIdResult;
 
+        if ($this->resolveXeroDirectEstimateId($invoiceId) !== null) {
+            return $this->respond(new WP_Error(
+                'xero_direct_invoice',
+                __('Send via GoHighLevel is not available for Xero-direct invoices. Customers pay using the customer portal.', 'cheapalarms'),
+                ['status' => 400]
+            ));
+        }
+
         // Get optional send method from request body
         $body = $request->get_json_params();
         $options = $body ?? [];
@@ -584,35 +637,21 @@ class AdminInvoiceController extends AdminController
             return $this->respond($result);
         }
 
-        // Auto-sync invoice to Xero if connected and not already synced (non-blocking)
-        // Find linked estimate ID from invoice metadata
-        $linkedEstimateId = null;
-        $portalMetaRepo = $this->container->get(\CheapAlarms\Plugin\Services\Shared\PortalMetaRepository::class);
-        
-        // Search for estimate linked to this invoice
-        global $wpdb;
-        $metaRows = $wpdb->get_results($wpdb->prepare(
-            "SELECT option_name, option_value FROM {$wpdb->options} 
-            WHERE option_name LIKE %s LIMIT 1000",
-            'ca_portal_meta_%'
-        ));
-        
-        foreach ($metaRows as $row) {
-            $meta = json_decode($row->option_value, true);
-            if (is_array($meta) && isset($meta['invoice']['id']) && $meta['invoice']['id'] === $invoiceId) {
-                // Extract estimate ID from option_name (format: ca_portal_meta_{estimateId})
-                $linkedEstimateId = str_replace('ca_portal_meta_', '', $row->option_name);
-                break;
-            }
-        }
-        
-        // Trigger Xero sync if estimate found and invoice not already synced
+        // Auto-sync invoice to Xero if connected and not already synced.
+        // Indexed reverse lookup (replaces the old wp_options table-scan).
+        $portalMetaRepo  = $this->container->get(\CheapAlarms\Plugin\Services\Shared\PortalMetaRepository::class);
+        $linkedEstimateId = $portalMetaRepo->findEstimateIdByInvoiceId($invoiceId);
+
+        // Trigger Xero sync if estimate found and invoice not already synced (async — do not block admin HTTP response)
         if ($linkedEstimateId) {
             $meta = $portalMetaRepo->get($linkedEstimateId);
             $invoiceMeta = $meta['invoice'] ?? [];
             // Only sync if not already synced
             if (empty($invoiceMeta['xeroInvoiceId'])) {
-                $this->portalService->syncInvoiceToXero($linkedEstimateId, $invoiceId, $locationId);
+                $already = wp_next_scheduled('ca_retry_xero_sync', [$linkedEstimateId, $invoiceId, $locationId]);
+                if (!$already) {
+                    wp_schedule_single_event(time(), 'ca_retry_xero_sync', [$linkedEstimateId, $invoiceId, $locationId]);
+                }
             }
         }
 
@@ -642,7 +681,7 @@ class AdminInvoiceController extends AdminController
 
         $invoiceId = sanitize_text_field($request->get_param('invoiceId'));
         $body = $request->get_json_params() ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $locationId = $this->resolveLocationIdOptional($request) ?: sanitize_text_field($body['locationId'] ?? '');
 
@@ -685,9 +724,19 @@ class AdminInvoiceController extends AdminController
 
         // Step 1: GHL delete (if needed, and first for fail-closed)
         if ($doGhl) {
-            if (empty($locationId)) {
+            if ($this->resolveXeroDirectEstimateId($invoiceId) !== null) {
+                $result['ghl'] = [
+                    'ok' => true,
+                    'skipped' => true,
+                    'reason' => 'xero_direct',
+                ];
+                $logger->info('Skipped GHL delete for Xero-direct invoice (no GHL invoice)', [
+                    'correlationId' => $correlationId,
+                    'invoiceId' => $invoiceId,
+                ]);
+            } elseif (empty($locationId)) {
                 return $this->respond(new WP_Error('missing_location', __('locationId is required for GHL delete.', 'cheapalarms'), ['status' => 400]));
-            }
+            } else {
             $ghlClient = $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class);
             $ghlResult = $ghlClient->delete(
                 '/invoices/' . rawurlencode($invoiceId),
@@ -731,6 +780,7 @@ class AdminInvoiceController extends AdminController
                     'invoiceId' => $invoiceId,
                     'alreadyDeleted' => $result['ghl']['alreadyDeleted'],
                 ]);
+            }
             }
         }
 
@@ -790,7 +840,7 @@ class AdminInvoiceController extends AdminController
         $body = $request->get_json_params() ?? [];
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $invoiceIds = $body['invoiceIds'] ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $requestLocationId = !empty($body['locationId']) ? sanitize_text_field($body['locationId']) : null;
 
         if ($confirm !== 'BULK_DELETE') {
@@ -883,11 +933,14 @@ class AdminInvoiceController extends AdminController
      */
     private function deleteInvoiceLocal(string $invoiceId)
     {
+        $linkRepo = $this->container->get(InvoiceEstimateLinkRepository::class);
+
         // Find linked estimate
         $linkedEstimateId = $this->findEstimateIdByInvoiceId($invoiceId);
 
         if (!$linkedEstimateId) {
-            // Invoice not linked to any estimate = already "deleted" (not present in WP)
+            // Clear orphan index row if any (invoice not linked to any estimate in portal meta / index drift)
+            $linkRepo->unlink($invoiceId);
             return [
                 'ok' => true,
                 'alreadyDeleted' => true,
@@ -898,7 +951,7 @@ class AdminInvoiceController extends AdminController
         // Get portal meta and remove invoice section
         $meta = $this->getPortalMeta($linkedEstimateId);
         if (empty($meta['invoice']['id']) || $meta['invoice']['id'] !== $invoiceId) {
-            // Invoice ID doesn't match or not present = already unlinked
+            $linkRepo->unlink($invoiceId);
             return [
                 'ok' => true,
                 'alreadyDeleted' => true,
@@ -909,6 +962,7 @@ class AdminInvoiceController extends AdminController
         // Remove invoice from meta
         unset($meta['invoice']);
         $this->portalMeta->update($linkedEstimateId, $meta);
+        $linkRepo->unlink($invoiceId);
 
         return [
             'ok' => true,
@@ -952,11 +1006,26 @@ class AdminInvoiceController extends AdminController
         $meta = $this->getPortalMeta($estimateId);
         $invoiceMeta = $meta['invoice'] ?? [];
         
-        // Get invoice from service to get total if not in meta
-        $invoice = $this->invoiceService->getInvoice($invoiceId, '');
         $invoiceTotal = 0;
-        if (!is_wp_error($invoice)) {
-            $invoiceTotal = $invoice['total'] ?? 0;
+        if (($invoiceMeta['source'] ?? '') === 'xero_direct') {
+            $invoiceTotal = (float) ($invoiceMeta['total'] ?? 0);
+        } else {
+            $config = $this->container->get(Config::class);
+            if (!$config->isGhlFetchAllowed()) {
+                $loc = $config->getLocationId();
+                if ($loc) {
+                    $snap = $this->snapshotRepo->getByInvoiceId($invoiceId, $loc);
+                    if (!is_wp_error($snap) && is_array($snap)) {
+                        $norm = $this->normalizeInvoiceFromRaw($snap, $invoiceId);
+                        $invoiceTotal = (float) ($norm['total'] ?? 0);
+                    }
+                }
+            } else {
+                $invoice = $this->invoiceService->getInvoice($invoiceId, '');
+                if (!is_wp_error($invoice)) {
+                    $invoiceTotal = (float) ($invoice['total'] ?? 0);
+                }
+            }
         }
         
         // Calculate deposit amount if percentage (store as fixed value)
@@ -992,6 +1061,154 @@ class AdminInvoiceController extends AdminController
             'depositAmount' => $depositAmount,
             'depositType' => $depositType,
         ]);
+    }
+
+    private function resolveXeroDirectEstimateId(string $invoiceId): ?string
+    {
+        $estimateId = $this->findEstimateIdByInvoiceId($invoiceId);
+        if ($estimateId === null || $estimateId === '') {
+            return null;
+        }
+        $meta = $this->getPortalMeta($estimateId);
+        $inv = $meta['invoice'] ?? [];
+        if (($inv['source'] ?? '') !== 'xero_direct') {
+            return null;
+        }
+        if ((string) ($inv['id'] ?? '') !== $invoiceId) {
+            return null;
+        }
+
+        return $estimateId;
+    }
+
+    /**
+     * Admin invoice detail for portal-only Xero invoices (no GHL record).
+     */
+    private function buildXeroDirectInvoiceRestResponse(string $invoiceId, string $estimateId, string $locationId): WP_REST_Response
+    {
+        $meta = $this->getPortalMeta($estimateId);
+        $invoiceMeta = $meta['invoice'] ?? [];
+
+        $estimateLocationId = !empty($meta['locationId'])
+            ? (string) $meta['locationId']
+            : $locationId;
+
+        $estimateService = $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class);
+        $estimate = $estimateService->getEstimate([
+            'estimateId' => $estimateId,
+            'locationId' => $estimateLocationId,
+        ]);
+
+        $items = [];
+        $contact = [];
+        $subtotal = 0.0;
+        $tax = 0.0;
+        if (!is_wp_error($estimate) && is_array($estimate)) {
+            $contact = [
+                'id' => $estimate['contact']['id'] ?? null,
+                'name' => $estimate['contact']['name'] ?? '',
+                'email' => $estimate['contact']['email'] ?? '',
+                'phone' => $estimate['contact']['phone'] ?? '',
+            ];
+            foreach ($estimate['items'] ?? [] as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $qty = (int) ($row['qty'] ?? 1);
+                $items[] = [
+                    'id' => $row['id'] ?? null,
+                    'name' => (string) ($row['name'] ?? ''),
+                    'description' => (string) ($row['description'] ?? ''),
+                    'qty' => max(1, $qty),
+                    'quantity' => max(1, $qty),
+                    'amount' => (float) ($row['amount'] ?? 0),
+                ];
+            }
+            $subtotal = (float) ($estimate['subtotal'] ?? 0);
+            if ($subtotal <= 0) {
+                $subtotal = 0.0;
+                foreach ($items as $r) {
+                    $subtotal += (float) $r['amount'] * (int) $r['qty'];
+                }
+            }
+            $tax = (float) ($estimate['taxTotal'] ?? 0);
+        }
+
+        $total = (float) ($invoiceMeta['total'] ?? 0);
+        if ($total <= 0 && !is_wp_error($estimate) && is_array($estimate)) {
+            $total = (float) ($estimate['total'] ?? $subtotal + $tax);
+        }
+
+        $linkedEstimate = [
+            'id' => $estimateId,
+            'estimateNumber' => $meta['quote']['number'] ?? $estimateId,
+        ];
+        $portalStatus = $invoiceMeta['status'] ?? ($meta['quote']['status'] ?? 'sent');
+        $payments = [];
+        if (!empty($meta['payment']['payments']) && is_array($meta['payment']['payments'])) {
+            $payments = $meta['payment']['payments'];
+        }
+
+        $calculatedAmountDue = (float) ($invoiceMeta['amountDue'] ?? 0);
+        if ($calculatedAmountDue <= 0 && isset($meta['payment']['remainingBalance'])) {
+            $calculatedAmountDue = (float) $meta['payment']['remainingBalance'];
+        }
+        if ($calculatedAmountDue <= 0 && $total > 0) {
+            $calculatedAmountDue = max(0, $total - (float) ($meta['payment']['totalPaid'] ?? 0));
+        }
+
+        $calculatedStatus = $invoiceMeta['status'] ?? 'draft';
+        $issueDate = $invoiceMeta['createdAt'] ?? null;
+        if (!is_wp_error($estimate) && is_array($estimate) && !$issueDate) {
+            $issueDate = $estimate['createdAt'] ?? null;
+        }
+
+        return $this->respond([
+            'ok' => true,
+            'id' => $invoiceId,
+            'invoiceNumber' => $invoiceMeta['invoiceNumber'] ?? $invoiceMeta['number'] ?? null,
+            'title' => 'INVOICE',
+            'ghlStatus' => $calculatedStatus,
+            'portalStatus' => $portalStatus,
+            'contact' => $contact,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'discount' => 0.0,
+            'total' => $total,
+            'amountDue' => $calculatedAmountDue,
+            'currency' => strtoupper((string) ($invoiceMeta['currency'] ?? 'AUD')),
+            'issueDate' => $issueDate,
+            'dueDate' => $invoiceMeta['dueDate'] ?? null,
+            'createdAt' => (string) ($invoiceMeta['createdAt'] ?? ''),
+            'updatedAt' => '',
+            'payments' => $payments,
+            'linkedEstimate' => $linkedEstimate,
+            'linkedEstimateId' => $estimateId,
+            'xeroInvoiceId' => $invoiceMeta['xeroInvoiceId'] ?? null,
+            'xeroInvoiceNumber' => $invoiceMeta['xeroInvoiceNumber'] ?? null,
+            'xeroSync' => $invoiceMeta['xeroSync'] ?? null,
+            'xeroInvoiceOnlineUrl' => $this->buildXeroInvoiceOnlineUrl($invoiceMeta['xeroInvoiceId'] ?? null),
+            'invoiceSource' => 'xero_direct',
+        ]);
+    }
+
+    /**
+     * Deep link to view the sales invoice in Xero (browser). Only returned for valid UUID-shaped IDs.
+     *
+     * @param string|null $xeroInvoiceId Xero InvoiceID (GUID)
+     */
+    private function buildXeroInvoiceOnlineUrl(?string $xeroInvoiceId): ?string
+    {
+        if (!is_string($xeroInvoiceId)) {
+            return null;
+        }
+        $id = trim($xeroInvoiceId);
+        if ($id === '' || !preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $id)) {
+            return null;
+        }
+
+        return 'https://go.xero.com/AccountsReceivable/View.aspx?invoiceID=' . rawurlencode($id);
     }
 
     // ─── Private helpers for local-first read ──────────────────────────────

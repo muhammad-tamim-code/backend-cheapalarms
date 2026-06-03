@@ -34,6 +34,8 @@ use function wp_update_user;
 use function get_transient;
 use function set_transient;
 use function delete_transient;
+use function wp_next_scheduled;
+use function wp_schedule_single_event;
 
 class PortalService
 {
@@ -415,11 +417,11 @@ class PortalService
         // Support specialist info from wp_options (configurable via admin settings)
         $support = [
             'specialist' => [
-                'name'  => get_option('ca_support_name', 'CheapAlarms Support'),
+                'name'  => $this->config->getSupportName(),
                 'role'  => get_option('ca_support_role', 'Security Specialist'),
                 'bio'   => get_option('ca_support_bio', 'Your point of contact for installation updates and questions.'),
                 'phone' => get_option('ca_support_phone', ''),
-                'email' => get_option('ca_support_email', get_option('admin_email', '')),
+                'email' => get_option('ca_support_email', $this->config->getSupportEmail() ?: get_option('admin_email', '')),
             ],
         ];
 
@@ -790,8 +792,7 @@ class PortalService
                 return;
             }
 
-            // Get signal service
-            $signalService = $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalService::class);
+            $dispatcher = $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalDispatcher::class);
 
             // Prepare note data
             $estimateNumber = $estimate['estimateNumber'] ?? $estimateId;
@@ -803,26 +804,7 @@ class PortalService
                 'invoiceNumber' => null, // Will be updated after invoice creation
             ];
 
-            // Fire-and-forget: Try both updates, log errors, move on
-            $tagResult = $signalService->addAcceptanceTag($contactId, $locationId);
-            if (is_wp_error($tagResult)) {
-                $this->logger->warning('Failed to add GHL acceptance tag', [
-                    'contactId' => $contactId,
-                    'estimateId' => $estimateId,
-                    'locationId' => $locationId,
-                    'error' => $tagResult->get_error_message(),
-                ]);
-            }
-
-            $noteResult = $signalService->addAcceptanceNote($contactId, $locationId, $noteData);
-            if (is_wp_error($noteResult)) {
-                $this->logger->warning('Failed to add GHL acceptance note', [
-                    'contactId' => $contactId,
-                    'estimateId' => $estimateId,
-                    'locationId' => $locationId,
-                    'error' => $noteResult->get_error_message(),
-                ]);
-            }
+            $dispatcher->dispatchEstimateAccepted($contactId, $locationId, $noteData);
 
         } catch (\Exception $e) {
             // Catch any unexpected exceptions - don't let them break acceptance
@@ -832,6 +814,46 @@ class PortalService
                 'exception' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $directResult Output of DirectXeroInvoiceFromEstimateService::createFromEstimate
+     * @param array<string, mixed> $prevInvoice  Existing invoice meta (e.g. deposit settings)
+     * @return array<string, mixed>
+     */
+    private function buildPortalInvoiceMetaFromXeroDirect(string $estimateId, array $directResult, array $prevInvoice): array
+    {
+        $portalUrl = $this->resolvePortalUrl($estimateId);
+        $now = current_time('mysql');
+
+        return [
+            'id' => (string) ($directResult['syntheticInvoiceId'] ?? ''),
+            'number' => $directResult['number'] ?? $directResult['xeroInvoiceNumber'] ?? null,
+            'invoiceNumber' => $directResult['xeroInvoiceNumber'] ?? $directResult['number'] ?? null,
+            'status' => 'pending',
+            'url' => $portalUrl,
+            'total' => (float) ($directResult['total'] ?? 0),
+            'currency' => strtoupper((string) ($directResult['currency'] ?? 'AUD')),
+            'dueDate' => $directResult['dueDate'] ?? null,
+            'createdAt' => $now,
+            'xeroInvoiceId' => $directResult['xeroInvoiceId'] ?? null,
+            'xeroInvoiceNumber' => $directResult['xeroInvoiceNumber'] ?? null,
+            'xeroSync' => [
+                'status' => 'success',
+                'attemptedAt' => $now,
+                'error' => null,
+                'retryCount' => 0,
+                'note' => __('Created via Xero direct invoicing (no GHL invoice).', 'cheapalarms'),
+            ],
+            'source' => 'xero_direct',
+            'depositRequired' => !empty($prevInvoice['depositRequired']),
+            'depositAmount' => $prevInvoice['depositAmount'] ?? null,
+            'depositType' => $prevInvoice['depositType'] ?? null,
+            'raw' => [
+                'xeroDirect' => true,
+                'xero' => $directResult['xeroInvoice'] ?? null,
+            ],
+        ];
     }
 
     /**
@@ -1195,7 +1217,10 @@ class PortalService
             $force = !empty($options['force']);
             unset($options['force']);
 
-            if (!$force && !empty($meta['invoice']['id'])) {
+            $hasInvoiceId = !empty($meta['invoice']['id']);
+            $isXeroDirectExisting = (($meta['invoice']['source'] ?? '') === 'xero_direct');
+            // force=true can re-run GHL invoice creation; Xero-direct cannot be safely replaced here (duplicate ACCREC).
+            if ($hasInvoiceId && (!$force || $isXeroDirectExisting)) {
                 delete_transient($lockKey);
                 return [
                     'invoice' => $meta['invoice'],
@@ -1214,6 +1239,23 @@ class PortalService
             if (($meta['locationId'] ?? '') !== $resolvedLocation) {
                 $this->updateMeta($estimateId, ['locationId' => $resolvedLocation]);
             }
+        }
+
+        if ($this->config->isXeroDirectInvoicingEnabled()) {
+            $direct = $this->container->get(\CheapAlarms\Plugin\Services\Finance\DirectXeroInvoiceFromEstimateService::class);
+            $directResult = $direct->createFromEstimate($estimateId, $resolvedLocation, $options);
+            if (is_wp_error($directResult)) {
+                return $directResult;
+            }
+            $prevInvoice = $meta['invoice'] ?? [];
+            $invoice = $this->buildPortalInvoiceMetaFromXeroDirect($estimateId, $directResult, $prevInvoice);
+            $this->updateMeta($estimateId, ['invoice' => $invoice]);
+            $this->updateGhlNoteWithInvoice($estimateId, $resolvedLocation, $invoice);
+            $this->sendInvoiceReadyEmail($estimateId, $resolvedLocation, $invoice);
+
+            return [
+                'invoice' => $invoice,
+            ];
         }
 
         // Create invoice directly from draft estimate (no need to accept estimate first)
@@ -1287,9 +1329,9 @@ class PortalService
 
         $this->updateMeta($estimateId, ['invoice' => $invoice]);
 
-        // Auto-sync invoice to Xero if connected (non-blocking)
+        // Defer Xero sync to WP-Cron so this request returns quickly (sync remains synchronous on payment confirm when xeroInvoiceId is required inline).
         if (!empty($invoice['id']) && $resolvedLocation) {
-            $this->syncInvoiceToXero($estimateId, $invoice['id'], $resolvedLocation);
+            $this->scheduleDeferredXeroSyncAfterGhlInvoice($estimateId, (string) $invoice['id'], $resolvedLocation, $invoice);
         }
 
         // Update GHL note with invoice information (non-blocking)
@@ -3053,6 +3095,142 @@ class PortalService
     }
 
     /**
+     * Decide if an item name looks like a package / bundle parent.
+     *
+     * Heuristic: case-insensitive match against package-y nouns. Used at
+     * estimate creation time so the customer's photo checklist hides
+     * package parents automatically without admin intervention.
+     */
+    public static function looksLikePackageName(string $name): bool
+    {
+        if ($name === '') {
+            return false;
+        }
+        return (bool)preg_match('/\b(kit|bundle|starter|package|combo)\b/i', $name);
+    }
+
+    /**
+     * Build the initial itemsMeta map for a freshly-created estimate.
+     *
+     * Each item in $items may include hints:
+     *   - isPackage / isHeading (bool) — explicit "this is a heading" signal from the client
+     *   - photoRequired (bool)         — explicit photo policy override
+     *
+     * If no hints are present, the name heuristic decides:
+     *   - looks like a package -> isHeading: true (no photoRequired)
+     *   - otherwise            -> photoRequired: true (default behaviour)
+     *
+     * Returned shape is keyed by item name to match the rest of the codebase
+     * (GHL-assigned item IDs are not stable across edits).
+     *
+     * @param array<int, array> $items
+     * @return array<string, array{photoRequired?: bool, isHeading?: bool, maxPhotos?: int, addedAt: string}>
+     */
+    public function buildInitialItemsMeta(array $items): array
+    {
+        $now = current_time('c');
+        $itemsMeta = [];
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $name = sanitize_text_field((string)($item['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $isHeading = !empty($item['isHeading']) || !empty($item['isPackage']);
+            if (!$isHeading && self::looksLikePackageName($name)) {
+                $isHeading = true;
+            }
+
+            if ($isHeading) {
+                $itemsMeta[$name] = [
+                    'isHeading' => true,
+                    'addedAt'   => $now,
+                ];
+                continue;
+            }
+
+            // Non-heading line: respect explicit override, otherwise default to required.
+            $photoRequired = array_key_exists('photoRequired', $item)
+                ? (bool)$item['photoRequired']
+                : true;
+
+            $itemsMeta[$name] = [
+                'photoRequired' => $photoRequired,
+                'maxPhotos'     => 2,
+                'addedAt'       => $now,
+            ];
+        }
+
+        return $itemsMeta;
+    }
+
+    /**
+     * Apply a partial admin override to itemsMeta, keyed by item name.
+     *
+     * Each entry in $items may carry any of:
+     *   - photoRequired (bool)  — customer must upload a photo for this line
+     *   - isHeading (bool)      — line is a bundle/section header, hide from photo checklist
+     *   - maxPhotos (int)       — 1–3 install-photo slots (device lines only)
+     *
+     * Existing keys (e.g. isCustom, addedAt) on the same name are preserved
+     * because PortalService::updateMeta() deep-merges. To clear a field,
+     * the caller must explicitly send the inverse value.
+     *
+     * @param string $estimateId
+     * @param array<int, array{name?: string, photoRequired?: bool, isHeading?: bool, maxPhotos?: int}> $items
+     */
+    public function setItemsMetaPartial(string $estimateId, array $items): bool
+    {
+        if (empty($items)) {
+            return true;
+        }
+
+        $itemsMetaUpdates = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $name = sanitize_text_field((string)($item['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $entry = [];
+            if (array_key_exists('photoRequired', $item)) {
+                $entry['photoRequired'] = (bool)$item['photoRequired'];
+            }
+            if (array_key_exists('isHeading', $item)) {
+                $entry['isHeading'] = (bool)$item['isHeading'];
+            }
+            if (array_key_exists('maxPhotos', $item)) {
+                $n = (int) $item['maxPhotos'];
+                $entry['maxPhotos'] = max(1, min(3, $n));
+            }
+            if (empty($entry)) {
+                continue;
+            }
+            $entry['updatedAt'] = current_time('c');
+            $itemsMetaUpdates[$name] = $entry;
+        }
+
+        if (empty($itemsMetaUpdates)) {
+            return true;
+        }
+
+        $this->logger->info('Applying admin itemsMeta partial update', [
+            'estimateId' => $estimateId,
+            'count'      => count($itemsMetaUpdates),
+            'fields'     => array_keys((array)reset($itemsMetaUpdates)),
+        ]);
+
+        return $this->updateMeta($estimateId, ['itemsMeta' => $itemsMetaUpdates]);
+    }
+
+    /**
      * Validate invite token with expiration check
      * @return array{valid: bool, reason: string, message: string, expiresAt: ?string}
      */
@@ -3174,6 +3352,8 @@ class PortalService
         $userContext = UserContextHelper::getUserContext($userId, $email, $estimateId);
 
         // Render context-aware email template
+        $brandName = $this->config->getBrandName();
+        $teamName = $this->config->getSupportName();
         $emailTemplate = null;
         try {
             $emailTemplateService = $this->container->get(EmailTemplateService::class);
@@ -3186,38 +3366,38 @@ class PortalService
             ];
 
             $emailTemplate = $emailTemplateService->renderPortalInviteEmail($userContext, $emailData);
-            $subject = $emailTemplate['subject'] ?? ($isResend ? __('CheapAlarms portal invite (resent)', 'cheapalarms') : __('Your CheapAlarms portal is ready', 'cheapalarms'));
+            $subject = $emailTemplate['subject'] ?? ($isResend ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName) : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName));
             $body = $emailTemplate['body'] ?? '';
 
             // Fallback if template rendering failed
             if (empty($body)) {
-                error_log('[CheapAlarms][WARNING] Portal invite email template returned empty body, using fallback');
+                error_log('[CA][WARNING] Portal invite email template returned empty body, using fallback');
                 $subject = $isResend
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
-                $body .= '<p>' . esc_html(__('We have prepared your CheapAlarms portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
                 if ($resetUrl) {
                     $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
                 }
                 $body .= '<p>' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($teamName) . '</p>';
             }
         } catch (\Exception $e) {
-            error_log('[CheapAlarms][ERROR] Failed to render portal invite email template: ' . $e->getMessage());
+            error_log('[CA][ERROR] Failed to render portal invite email template: ' . $e->getMessage());
             // Fallback to simple email
             $subject = $isResend
-                ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
             $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
-            $body .= '<p>' . esc_html(__('We have prepared your CheapAlarms portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms')) . '</p>';
+            $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
             $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
             if ($resetUrl) {
                 $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
             }
             $body .= '<p>' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
-            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($teamName) . '</p>';
         }
 
         // Send via GHL if contactId available (all customer emails must use GHL)
@@ -3306,15 +3486,11 @@ class PortalService
             }
 
             $ghlClient = $this->container->get(GhlClient::class);
-            $fromEmail = get_option('ghl_from_email', 'quotes@cheapalarms.com.au');
-            
-            // Format email with display name: "CheapAlarms <email@domain.com>"
-            // This ensures email clients show "CheapAlarms" instead of just "quotes" or the email address
-            $fromEmailWithName = 'CheapAlarms <' . $fromEmail . '>';
+            $fromEmailWithName = $this->config->getEmailFromHeader();
             
             // Ensure subject is never empty (GHL might use from email as fallback)
             if (empty($subject) || trim($subject) === '') {
-                $subject = __('CheapAlarms Notification', 'cheapalarms');
+                $subject = sprintf(__('%s Notification', 'cheapalarms'), $this->config->getBrandName());
             }
             
             $payload = [
@@ -3323,7 +3499,7 @@ class PortalService
                 'status' => 'pending',
                 'subject' => $subject,
                 'html' => $htmlBody,
-                'emailFrom' => $fromEmailWithName, // Format: "CheapAlarms <quotes@cheapalarms.com.au>"
+                'emailFrom' => $fromEmailWithName,
             ];
             
             if ($this->config->getLocationId()) {
@@ -3501,7 +3677,7 @@ class PortalService
 
             // Fallback if template rendering failed
             if (empty($body)) {
-                error_log('[CheapAlarms][WARNING] Estimate email template returned empty body, using fallback');
+                error_log('[CA][WARNING] Estimate email template returned empty body, using fallback');
                 $subject = $estimateNumber 
                     ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
                     : __('Your estimate is ready', 'cheapalarms');
@@ -3519,10 +3695,10 @@ class PortalService
                     $body .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('set your password to access your account', 'cheapalarms')) . '</a></p>';
                 }
                 $body .= '<p>' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
         } catch (\Exception $e) {
-            error_log('[CheapAlarms][ERROR] Failed to render estimate email template: ' . $e->getMessage());
+            error_log('[CA][ERROR] Failed to render estimate email template: ' . $e->getMessage());
             // Fallback to simple email
             $subject = $estimateNumber 
                 ? sprintf(__('Your estimate #%s is ready', 'cheapalarms'), $estimateNumber)
@@ -3541,7 +3717,7 @@ class PortalService
                 $body .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('set your password to access your account', 'cheapalarms')) . '</a></p>';
             }
             $body .= '<p>' . esc_html(__('This invite link remains active for 7 days. If it expires, contact us and we will resend it.', 'cheapalarms')) . '</p>';
-            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+            $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
         }
 
         // Send via GHL Conversations API
@@ -3641,7 +3817,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Invoice email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Invoice email template returned empty body, using fallback');
                     $subject = __('Your invoice is ready for payment', 'cheapalarms');
                     $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     $body .= '<p>' . esc_html(__('Great news! Your invoice is now ready for payment.', 'cheapalarms')) . '</p>';
@@ -3660,10 +3836,10 @@ class PortalService
                     $body .= '<p>' . esc_html(__('You can also view this invoice and track your project progress in your portal:', 'cheapalarms')) . '</p>';
                     $body .= '<p><a href="' . esc_url($portalUrl) . '">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions about your invoice, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render invoice email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render invoice email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = __('Your invoice is ready for payment', 'cheapalarms');
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
@@ -3683,7 +3859,7 @@ class PortalService
                 $body .= '<p>' . esc_html(__('You can also view this invoice and track your project progress in your portal:', 'cheapalarms')) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions about your invoice, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL instead of wp_mail
@@ -3729,13 +3905,48 @@ class PortalService
     }
 
     /**
-     * Auto-sync invoice to Xero (non-blocking)
-     * Called automatically when GHL invoice is created or during retry
-     * 
+     * Queue Xero invoice sync on the next cron tick (same hook as retries). Skips Xero-direct / synthetic invoice ids.
+     */
+    private function scheduleDeferredXeroSyncAfterGhlInvoice(string $estimateId, string $ghlInvoiceId, string $locationId, array $invoiceRow = []): void
+    {
+        if ($ghlInvoiceId === '' || $locationId === '') {
+            return;
+        }
+
+        if (str_starts_with($ghlInvoiceId, 'ca-xd-') || (($invoiceRow['source'] ?? '') === 'xero_direct')) {
+            return;
+        }
+
+        $hook = 'ca_retry_xero_sync';
+        $args = [$estimateId, $ghlInvoiceId, $locationId];
+
+        if (wp_next_scheduled($hook, $args)) {
+            return;
+        }
+
+        if (wp_schedule_single_event(time(), $hook, $args) === false) {
+            $this->logger->warning('Failed to schedule deferred Xero sync after GHL invoice', [
+                'estimateId'    => $estimateId,
+                'ghlInvoiceId'  => $ghlInvoiceId,
+                'locationId'    => $locationId,
+            ]);
+
+            return;
+        }
+
+        $this->logger->info('Deferred Xero sync scheduled after GHL invoice create', [
+            'estimateId'   => $estimateId,
+            'ghlInvoiceId' => $ghlInvoiceId,
+        ]);
+    }
+
+    /**
+     * Auto-sync invoice to Xero (non-blocking).
+     * Called from WP-Cron (`ca_retry_xero_sync`) and synchronously from payment confirm when an inline Xero id is required.
+     *
      * @param string $estimateId Estimate ID
      * @param string $ghlInvoiceId GHL invoice ID
      * @param string $locationId Location ID
-     * @return void
      */
     public function syncInvoiceToXero(string $estimateId, string $ghlInvoiceId, string $locationId): void
     {
@@ -3768,6 +3979,16 @@ class PortalService
             // Get current meta
             $meta = $this->getMeta($estimateId);
             $invoiceMeta = $meta['invoice'] ?? [];
+
+            if (($invoiceMeta['source'] ?? '') === 'xero_direct' || str_starts_with($ghlInvoiceId, 'ca-xd-')) {
+                delete_transient($lockKey);
+                $this->logger->info('Skipping Xero sync from GHL: invoice is Xero-direct / synthetic id', [
+                    'estimateId' => $estimateId,
+                    'invoiceId' => $ghlInvoiceId,
+                ]);
+
+                return;
+            }
             
             // Check if already synced successfully
             $xeroSync = $invoiceMeta['xeroSync'] ?? [];
@@ -3830,11 +4051,49 @@ class PortalService
                 'estimateId' => $estimateId,
                 'ghlInvoiceId' => $ghlInvoiceId,
             ]);
-            
-            // Fetch invoice from GHL
+
             $invoiceService = $this->container->get(\CheapAlarms\Plugin\Services\InvoiceService::class);
-            $ghlInvoice = $invoiceService->getInvoice($ghlInvoiceId, $locationId);
-            
+            $effectiveLocationId = $locationId ?: $this->config->getLocationId();
+
+            if ($this->config->isGhlFetchAllowed()) {
+                $ghlInvoice = $invoiceService->getInvoice($ghlInvoiceId, $locationId);
+            } else {
+                /** @var \CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository $invoiceSnapRepo */
+                $invoiceSnapRepo = $this->container->get(\CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository::class);
+                $raw = $invoiceSnapRepo->getByInvoiceId($ghlInvoiceId, $effectiveLocationId);
+                if (is_wp_error($raw)) {
+                    $ghlInvoice = $raw;
+                } else {
+                    unset($raw['_snapshotSyncedAt']);
+                    $inv = $raw['invoice'] ?? $raw;
+                    $contact = $inv['contact'] ?? $inv['contactDetails'] ?? [];
+                    $items   = $inv['items'] ?? $inv['lineItems'] ?? $inv['invoiceItems'] ?? [];
+                    if (!is_array($items)) {
+                        $items = [];
+                    }
+                    $ghlInvoice = [
+                        'id'            => $inv['id'] ?? $inv['_id'] ?? $ghlInvoiceId,
+                        'invoiceNumber' => $inv['invoiceNumber'] ?? $inv['number'] ?? null,
+                        'status'        => $inv['status'] ?? 'draft',
+                        'contact'      => [
+                            'id'    => $contact['id'] ?? $contact['contactId'] ?? null,
+                            'name'  => trim($contact['name'] ?? (($contact['firstName'] ?? '') . ' ' . ($contact['lastName'] ?? ''))),
+                            'email' => $contact['email'] ?? '',
+                            'phone' => $contact['phone'] ?? '',
+                        ],
+                        'items'         => $items,
+                        'subtotal'      => (float)($inv['subtotal'] ?? 0),
+                        'tax'           => (float)($inv['tax'] ?? 0),
+                        'discount'      => (float)($inv['discount'] ?? 0),
+                        'total'         => (float)($inv['total'] ?? 0),
+                        'amountDue'     => (float)($inv['amountDue'] ?? $inv['total'] ?? 0),
+                        'currency'      => $inv['currency'] ?? 'AUD',
+                        'issueDate'     => $inv['issueDate'] ?? null,
+                        'dueDate'       => $inv['dueDate'] ?? null,
+                    ];
+                }
+            }
+
             if (is_wp_error($ghlInvoice)) {
                 $errorMessage = $ghlInvoice->get_error_message();
                 $invoiceMeta['xeroSync'] = [
@@ -4176,6 +4435,10 @@ class PortalService
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
             $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
+            $brandName = $this->config->getBrandName();
+            $teamName = $this->config->getSupportName();
+            $brandName = $this->config->getBrandName();
+            $teamName = $this->config->getSupportName();
             
             // Get invoice URL if available
             $meta = $this->getMeta($estimateId);
@@ -4205,7 +4468,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Acceptance email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Acceptance email template returned empty body, using fallback');
                     $subject = __('Thank you for accepting your estimate', 'cheapalarms');
                     $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     $body .= '<p>' . esc_html(sprintf(
@@ -4227,10 +4490,10 @@ class PortalService
                     $body .= '<li>' . esc_html(__('Our team will contact you to schedule installation', 'cheapalarms')) . '</li>';
                     $body .= '</ul>';
                     $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render acceptance email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render acceptance email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = __('Thank you for accepting your estimate', 'cheapalarms');
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
@@ -4253,7 +4516,7 @@ class PortalService
                 $body .= '<li>' . esc_html(__('Our team will contact you to schedule installation', 'cheapalarms')) . '</li>';
                 $body .= '</ul>';
                 $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL instead of wp_mail
@@ -4379,7 +4642,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Booking email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Booking email template returned empty body, using fallback');
                     $subject = __('Your installation has been scheduled', 'cheapalarms');
                     $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     $body .= '<p>' . esc_html(__('Great news! Your installation has been scheduled.', 'cheapalarms')) . '</p>';
@@ -4425,10 +4688,10 @@ class PortalService
                         $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     }
                     $body .= '<p>' . esc_html(__('If you need to reschedule or have any questions, please contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render booking email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render booking email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = __('Your installation has been scheduled', 'cheapalarms');
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
@@ -4475,7 +4738,7 @@ class PortalService
                     $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 }
                 $body .= '<p>' . esc_html(__('If you need to reschedule or have any questions, please contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL
@@ -4642,7 +4905,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Payment email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Payment email template returned empty body, using fallback');
                     $subject = __('Payment confirmed - Thank you!', 'cheapalarms');
                     $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     $body .= '<p>' . esc_html(__('Your payment has been successfully processed!', 'cheapalarms')) . '</p>';
@@ -4672,10 +4935,10 @@ class PortalService
                     $body .= '<p>' . esc_html(__('You can view all details and track progress in your portal:', 'cheapalarms')) . '</p>';
                     $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render payment email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render payment email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = __('Payment confirmed - Thank you!', 'cheapalarms');
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
@@ -4706,7 +4969,7 @@ class PortalService
                 $body .= '<p>' . esc_html(__('You can view all details and track progress in your portal:', 'cheapalarms')) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL
@@ -5056,7 +5319,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Changes requested email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Changes requested email template returned empty body, using fallback');
                     $subject = sprintf(__('Update needed for Estimate #%s', 'cheapalarms'), $estimateNumber);
                     $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     $body .= '<p>' . esc_html(__('We\'ve reviewed your estimate and need a few updates before we can proceed.', 'cheapalarms')) . '</p>';
@@ -5086,10 +5349,10 @@ class PortalService
                     $body .= '<p>' . esc_html(__('You can access your portal and make the updates here:', 'cheapalarms')) . '</p>';
                     $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions or need clarification, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render changes requested email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render changes requested email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = sprintf(__('Update needed for Estimate #%s', 'cheapalarms'), $estimateNumber);
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
@@ -5120,7 +5383,7 @@ class PortalService
                 $body .= '<p>' . esc_html(__('You can access your portal and make the updates here:', 'cheapalarms')) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions or need clarification, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL
@@ -5232,7 +5495,7 @@ class PortalService
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Review completion email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Review completion email template returned empty body, using fallback');
                     $subject = $hasRevision
                         ? __('Your estimate has been reviewed and updated', 'cheapalarms')
                         : __('Your estimate review is complete', 'cheapalarms');
@@ -5269,10 +5532,10 @@ class PortalService
                     $body .= '<p>' . esc_html(__('View your estimate and all details in your portal:', 'cheapalarms')) . '</p>';
                     $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                    $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render review completion email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render review completion email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = $hasRevision
                     ? __('Your estimate has been reviewed and updated', 'cheapalarms')
@@ -5310,7 +5573,7 @@ class PortalService
                 $body .= '<p>' . esc_html(__('View your estimate and all details in your portal:', 'cheapalarms')) . '</p>';
                 $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
-                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html(__('CheapAlarms Team', 'cheapalarms')) . '</p>';
+                $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
 
             // Send via GHL
@@ -5423,7 +5686,7 @@ class PortalService
             // Admin dashboard URL (pointing to Next.js frontend)
             $adminUrl = $this->config->getFrontendUrl() . '/admin/estimates?id=' . $estimateId;
 
-            $subject = sprintf('[CheapAlarms] Customer submitted %d photos for Estimate #%s', $photoCount, $estimateNumber);
+            $subject = sprintf('[%s] Customer submitted %d photos for Estimate #%s', $this->config->getBrandName(), $photoCount, $estimateNumber);
             $headers = ['Content-Type: text/html; charset=UTF-8'];
 
             $body = '<h2>📸 Customer Photos Submitted</h2>';
@@ -5440,7 +5703,7 @@ class PortalService
             $body .= '</ol>';
             $body .= '<p><a href="' . esc_url($adminUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #1EA6DF; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">View Estimate in Admin Panel</a></p>';
             $body .= '<hr>';
-            $body .= '<p style="color: #666; font-size: 12px;">This is an automated notification from CheapAlarms Customer Portal.</p>';
+            $body .= '<p style="color: #666; font-size: 12px;">' . esc_html(sprintf(__('This is an automated notification from %s Customer Portal.', 'cheapalarms'), $this->config->getBrandName())) . '</p>';
 
             $sent = wp_mail($adminEmail, $subject, $body, $headers);
 
@@ -5512,7 +5775,7 @@ class PortalService
             // Admin dashboard URL (pointing to Next.js frontend)
             $adminUrl = $this->config->getFrontendUrl() . '/admin/estimates/' . $estimateId;
 
-            $subject = sprintf('[CheapAlarms] Review Requested for Estimate #%s', $estimateNumber);
+            $subject = sprintf('[%s] Review Requested for Estimate #%s', $this->config->getBrandName(), $estimateNumber);
             $headers = ['Content-Type: text/html; charset=UTF-8'];
 
             $body = '<h2>🔍 Review Requested</h2>';
@@ -5553,7 +5816,7 @@ class PortalService
             $body .= '</ol>';
             $body .= '<p><a href="' . esc_url($adminUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #1EA6DF; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Estimate in Admin Panel</a></p>';
             $body .= '<hr>';
-            $body .= '<p style="color: #666; font-size: 12px;">This is an automated notification from CheapAlarms Customer Portal.</p>';
+            $body .= '<p style="color: #666; font-size: 12px;">' . esc_html(sprintf(__('This is an automated notification from %s Customer Portal.', 'cheapalarms'), $this->config->getBrandName())) . '</p>';
 
             $sent = wp_mail($adminEmail, $subject, $body, $headers);
 
@@ -5883,6 +6146,8 @@ class PortalService
             
             $isSavings = $netChange < 0;
             $isIncrease = $netChange > 0;
+            $brandName = $this->config->getBrandName();
+            $teamName = $this->config->getSupportName();
 
             // Get user ID from email
             $userId = email_exists($email);
@@ -5909,16 +6174,16 @@ class PortalService
 
                 $emailTemplate = $emailTemplateService->renderRevisionEmail($userContext, $emailData);
                 $subject = $emailTemplate['subject'] ?? ($isSavings 
-                    ? sprintf(__('🎉 Great news! Your CheapAlarms estimate has been updated - Save %s %s', 'cheapalarms'), $currency, number_format(abs($netChange), 2))
-                    : __('Your CheapAlarms estimate has been updated', 'cheapalarms'));
+                    ? sprintf(__('🎉 Great news! Your %s estimate has been updated - Save %s %s', 'cheapalarms'), $brandName, $currency, number_format(abs($netChange), 2))
+                    : sprintf(__('Your %s estimate has been updated', 'cheapalarms'), $brandName));
                 $body = $emailTemplate['body'] ?? '';
 
                 // Fallback if template rendering failed
                 if (empty($body)) {
-                    error_log('[CheapAlarms][WARNING] Revision email template returned empty body, using fallback');
+                    error_log('[CA][WARNING] Revision email template returned empty body, using fallback');
                     $subject = $isSavings 
-                        ? sprintf(__('🎉 Great news! Your CheapAlarms estimate has been updated - Save %s %s', 'cheapalarms'), $currency, number_format(abs($netChange), 2))
-                        : __('Your CheapAlarms estimate has been updated', 'cheapalarms');
+                        ? sprintf(__('🎉 Great news! Your %s estimate has been updated - Save %s %s', 'cheapalarms'), $brandName, $currency, number_format(abs($netChange), 2))
+                        : sprintf(__('Your %s estimate has been updated', 'cheapalarms'), $brandName);
                     $body = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
                     $body .= '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                     if ($isSavings) {
@@ -5957,15 +6222,15 @@ class PortalService
                     $body .= '</ol>';
                     $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #1EA6DF, #c95375); color: white; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">View Updated Estimate</a></p>';
                     $body .= '<p style="color: #6b7280; font-size: 14px;">Have questions about the changes? Just reply to this email!</p>';
-                    $body .= '<p>Thanks,<br/>CheapAlarms Team</p>';
+                    $body .= '<p>Thanks,<br/>' . esc_html($teamName) . '</p>';
                     $body .= '</div>';
                 }
             } catch (\Exception $e) {
-                error_log('[CheapAlarms][ERROR] Failed to render revision email template: ' . $e->getMessage());
+                error_log('[CA][ERROR] Failed to render revision email template: ' . $e->getMessage());
                 // Fallback to simple email
                 $subject = $isSavings 
-                    ? sprintf(__('🎉 Great news! Your CheapAlarms estimate has been updated - Save %s %s', 'cheapalarms'), $currency, number_format(abs($netChange), 2))
-                    : __('Your CheapAlarms estimate has been updated', 'cheapalarms');
+                    ? sprintf(__('🎉 Great news! Your %s estimate has been updated - Save %s %s', 'cheapalarms'), $brandName, $currency, number_format(abs($netChange), 2))
+                    : sprintf(__('Your %s estimate has been updated', 'cheapalarms'), $brandName);
                 $body = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
                 $body .= '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
                 if ($isSavings) {
@@ -6004,7 +6269,7 @@ class PortalService
                 $body .= '</ol>';
                 $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #1EA6DF, #c95375); color: white; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">View Updated Estimate</a></p>';
                 $body .= '<p style="color: #6b7280; font-size: 14px;">Have questions about the changes? Just reply to this email!</p>';
-                $body .= '<p>Thanks,<br/>CheapAlarms Team</p>';
+                $body .= '<p>Thanks,<br/>' . esc_html($teamName) . '</p>';
                 $body .= '</div>';
             }
 

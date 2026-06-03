@@ -29,6 +29,7 @@ class EmailTemplateService
     public function renderQuoteRequestEmail(array $context, array $data, ?string $variation = null): array
     {
         $variation = $variation ?? UserContextHelper::detectEmailVariation('quote-request', $context);
+        $brandName = $this->config->getBrandName();
         
         $customerName = $data['customerName'] ?? 'Customer';
         $estimateNumber = $data['estimateNumber'] ?? '';
@@ -48,13 +49,13 @@ class EmailTemplateService
 
         switch ($variation) {
             case 'A': // New Customer, First Quote
-                $subject = __('Welcome! Your CheapAlarms quote is ready', 'cheapalarms');
+                $subject = sprintf(__('Welcome! Your %s quote is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('Welcome to CheapAlarms! We\'re excited to help secure your property.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('Welcome to %s! We\'re excited to help secure your property.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . sprintf(
                     __('We\'ve prepared your personalized quote %s based on your requirements. To access your quote and set up your account, please set a password using the link below.', 'cheapalarms'),
                     '<strong>' . esc_html($estimateNumber) . '</strong>'
@@ -246,6 +247,7 @@ class EmailTemplateService
     public function renderPasswordResetEmail(array $context, array $data, ?string $variation = null): array
     {
         $variation = $variation ?? UserContextHelper::detectEmailVariation('password-reset', $context);
+        $brandName = $this->config->getBrandName();
         
         $customerName = $data['customerName'] ?? 'Customer';
         $resetUrl = $data['resetUrl'] ?? '';
@@ -255,13 +257,13 @@ class EmailTemplateService
         
         switch ($variation) {
             case 'A': // New User, First Time Setting Password
-                $subject = __('Set Your Password - CheapAlarms Portal', 'cheapalarms');
+                $subject = sprintf(__('Set Your Password - %s Portal', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('Welcome to CheapAlarms! To access your portal and view your quote, please set a password for your account.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('Welcome to %s! To access your portal and view your quote, please set a password for your account.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '<p style="margin: 0 0 20px 0; line-height: 1.6;">' . esc_html(__('Click the button below to set your password. This link will expire in 24 hours.', 'cheapalarms')) . '</p>';
                 $body .= '</div>';
                 $ctas = [];
@@ -279,7 +281,7 @@ class EmailTemplateService
 
             case 'B': // Returning User, Password Reset
             default:
-                $subject = __('Reset Your Password - CheapAlarms Portal', 'cheapalarms');
+                $subject = sprintf(__('Reset Your Password - %s Portal', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
@@ -320,6 +322,7 @@ class EmailTemplateService
     public function renderPortalInviteEmail(array $context, array $data, ?string $variation = null): array
     {
         $variation = $variation ?? UserContextHelper::detectEmailVariation('portal-invite', $context);
+        $brandName = $this->config->getBrandName();
         
         $customerName = $data['customerName'] ?? 'Customer';
         $portalUrl = $data['portalUrl'] ?? '';
@@ -335,14 +338,14 @@ class EmailTemplateService
         switch ($variation) {
             case 'A': // New User, No Password, First Quote
                 $subject = $isResend 
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('We have prepared your CheapAlarms portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('We have prepared your %s portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '</div>';
                 $ctas = [];
                 if (!empty($portalUrl)) {
@@ -361,14 +364,14 @@ class EmailTemplateService
 
             case 'B': // New User, Has Password, First Quote
                 $subject = $isResend 
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('Your CheapAlarms portal is ready! You can access your estimate and manage your installation.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('Your %s portal is ready! You can access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '</div>';
                 $ctas = [];
                 if (!empty($portalUrl)) {
@@ -384,8 +387,8 @@ class EmailTemplateService
 
             case 'C': // Returning User, Has Password
                 $subject = $isResend 
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
@@ -407,14 +410,14 @@ class EmailTemplateService
 
             case 'D': // Returning User, No Password
                 $subject = $isResend 
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('We have prepared your CheapAlarms portal. To access it, please set a password for your account.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('We have prepared your %s portal. To access it, please set a password for your account.', 'cheapalarms'), $brandName)) . '</p>';
                 $body .= '</div>';
                 $ctas = [];
                 if (!empty($portalUrl)) {
@@ -434,8 +437,8 @@ class EmailTemplateService
             case 'E': // Customer with Multiple Estimates
             default:
                 $subject = $isResend 
-                    ? __('CheapAlarms portal invite (resent)', 'cheapalarms')
-                    : __('Your CheapAlarms portal is ready', 'cheapalarms');
+                    ? sprintf(__('%s portal invite (resent)', 'cheapalarms'), $brandName)
+                    : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = EmailTemplateHtmlHelper::getEmailHeader();
                 $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
@@ -640,6 +643,7 @@ class EmailTemplateService
     public function renderAcceptanceEmail(array $context, array $data, ?string $variation = null): array
     {
         $variation = $variation ?? UserContextHelper::detectEmailVariation('acceptance', $context);
+        $brandName = $this->config->getBrandName();
         
         $customerName = $data['customerName'] ?? 'Customer';
         $estimateNumber = $data['estimateNumber'] ?? '';
@@ -696,7 +700,7 @@ class EmailTemplateService
                 $body .= '<h2 style="font-size: 20px; font-weight: bold; color: #333333; margin: 0 0 20px 0; line-height: 1.4;">' . esc_html($subject) . '</h2>';
                 $body .= '<div style="color: #333333; font-size: 16px; line-height: 1.6;">';
                 $body .= '<p style="margin: 0 0 15px 0; font-weight: 500;">' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $customerName)) . '</p>';
-                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('Thank you for accepting your estimate! We appreciate your continued trust in CheapAlarms.', 'cheapalarms')) . '</p>';
+                $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(sprintf(__('Thank you for accepting your estimate! We appreciate your continued trust in %s.', 'cheapalarms'), $brandName)) . '</p>';
                 if (!empty($invoiceUrl)) {
                     $body .= '<p style="margin: 0 0 15px 0; line-height: 1.6;">' . esc_html(__('Your invoice has been created and is ready for payment:', 'cheapalarms')) . '</p>';
                 } else {
@@ -1207,11 +1211,12 @@ class EmailTemplateService
         $adminNote = sanitize_text_field($revisionData['adminNote'] ?? '');
         $isSavings = $netChange < 0;
         $isIncrease = $netChange > 0;
+        $brandName = $this->config->getBrandName();
         
         // Subject line
         $subject = $isSavings 
-            ? sprintf(__('🎉 Great news! Your CheapAlarms estimate has been updated - Save %s %s', 'cheapalarms'), $currency, number_format(abs($netChange), 2))
-            : __('Your CheapAlarms estimate has been updated', 'cheapalarms');
+            ? sprintf(__('🎉 Great news! Your %s estimate has been updated - Save %s %s', 'cheapalarms'), $brandName, $currency, number_format(abs($netChange), 2))
+            : sprintf(__('Your %s estimate has been updated', 'cheapalarms'), $brandName);
         
         $body = EmailTemplateHtmlHelper::getEmailHeader();
         $body .= '<div style="padding: 30px 20px; background-color: #ffffff;">';

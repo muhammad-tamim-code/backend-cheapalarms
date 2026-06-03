@@ -132,7 +132,7 @@ abstract class AdminController implements ControllerInterface
 
     /**
      * Find estimate ID that has this invoice ID in its portal meta.
-     * This is a reverse lookup - searches all portal meta options.
+     * Uses the indexed `wp_ca_invoice_estimate_links` table (O(1)), not a wp_options scan.
      *
      * @return string|null
      */
@@ -196,6 +196,13 @@ abstract class AdminController implements ControllerInterface
                 'server_error' => 'An error occurred. Please try again.',
                 'xero_api_error' => 'Payment processing error. Please try again.',
                 'ghl_api_error' => 'Service temporarily unavailable. Please try again.',
+                'ghl_http_error' => 'GoHighLevel rejected the request. Check the API key and Location ID.',
+                'ghl_request_failed' => 'Could not reach GoHighLevel. Check your network and try again.',
+                'ghl_invalid_json' => 'Invalid response from GoHighLevel.',
+                'stripe_http_error' => 'Stripe rejected the request. Check the API keys.',
+                'stripe_request_failed' => 'Could not reach Stripe. Check your network and try again.',
+                'stripe_invalid_json' => 'Invalid response from Stripe.',
+                'invalid_stripe_key' => 'The Stripe key has an unexpected format.',
                 'forbidden' => 'Insufficient privileges.',
                 'invalid_nonce' => 'Invalid security token.',
                 // Email sending errors - user-friendly messages safe for production

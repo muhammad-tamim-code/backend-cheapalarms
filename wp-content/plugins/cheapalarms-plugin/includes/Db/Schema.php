@@ -9,7 +9,7 @@ use function update_option;
 class Schema
 {
     public const OPTION_KEY = 'ca_db_schema_version';
-    public const VERSION    = '2026-02-08-04'; // Added ServiceM8 jobs + companies snapshot tables
+    public const VERSION    = '2026-05-03-01'; // Added invoice→estimate link table (replaces wp_options table-scan)
 
     public static function maybeMigrate(): void
     {
@@ -291,6 +291,25 @@ class Schema
         ) {$charsetCollate};";
 
         dbDelta($sm8CompaniesSql);
+
+        // Invoice → estimate reverse-lookup index.
+        // Replaces the old "SELECT … FROM wp_options WHERE option_name LIKE 'ca_portal_meta_%'"
+        // table scan that runs once per invoice page load.
+        // Each row maps a GHL invoice_id back to the WP estimate_id that owns it.
+        // Populated via the `ca_portal_meta_updated` action (see Plugin::bootstrap).
+        $linksTableName = $wpdb->prefix . 'ca_invoice_estimate_links';
+        $linksSql = "CREATE TABLE {$linksTableName} (
+            invoice_id VARCHAR(64) NOT NULL,
+            estimate_id VARCHAR(64) NOT NULL,
+            location_id VARCHAR(64) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NULL,
+            PRIMARY KEY (invoice_id),
+            KEY idx_estimate_id (estimate_id),
+            KEY idx_location_id (location_id)
+        ) {$charsetCollate};";
+
+        dbDelta($linksSql);
     }
 }
 

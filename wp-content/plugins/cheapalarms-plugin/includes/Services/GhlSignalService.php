@@ -6,6 +6,8 @@ use CheapAlarms\Plugin\Config\Config;
 use WP_Error;
 
 use function sanitize_text_field;
+use function current_time;
+use function __;
 
 /**
  * Service for updating GHL signals (tags, notes) when portal events occur.
@@ -30,53 +32,53 @@ class GhlSignalService
      */
     public function addAcceptanceTag(string $contactId, string $locationId): array|WP_Error
     {
+        return $this->mergePortalTag($contactId, $locationId, 'portal_accepted');
+    }
+
+    /**
+     * Merge a single portal tag onto the GHL contact (fetch-merge-put, with direct-tag fallback).
+     *
+     * @param string $tagName Tag string as stored in GHL (e.g. portal_deposit_paid).
+     */
+    public function mergePortalTag(string $contactId, string $locationId, string $tagName): array|WP_Error
+    {
         $contactId = sanitize_text_field($contactId);
         $locationId = sanitize_text_field($locationId);
+        $tagName = sanitize_text_field($tagName);
 
-        if (!$contactId || !$locationId) {
+        if (!$contactId || !$locationId || $tagName === '') {
             return new WP_Error('missing_params', __('Contact ID and Location ID required.', 'cheapalarms'), ['status' => 400]);
         }
 
-        // GHL API: Add tag to contact
-        // Endpoint: PUT /contacts/{contactId} with tags array
-        // Or: POST /contacts/{contactId}/tags
-        // We'll try PUT first as it's more common
-        
         try {
-            // Get current contact to preserve existing tags
             $currentContact = $this->client->get('/contacts/' . rawurlencode($contactId), [], 25, $locationId);
-            
+
             if (is_wp_error($currentContact)) {
-                // If we can't get current contact, try direct tag add
-                // Some GHL accounts may support POST /contacts/{contactId}/tags
                 $this->logger->warning('Could not fetch contact for tag update, trying direct tag add', [
                     'contactId' => $contactId,
-                    'error' => $currentContact->get_error_message(),
+                    'tag'       => $tagName,
+                    'error'     => $currentContact->get_error_message(),
                 ]);
-                
-                // Try alternative: POST to tags endpoint if available
-                // This is a fallback - may not work in all GHL accounts
-                return $this->addTagDirect($contactId, $locationId);
+
+                return $this->addTagDirect($contactId, $locationId, $tagName);
             }
 
-            // Merge new tag with existing tags
             $existingTags = $currentContact['tags'] ?? [];
             if (!is_array($existingTags)) {
                 $existingTags = [];
             }
 
-            // Check if tag already exists
-            if (in_array('portal_accepted', $existingTags, true)) {
-                $this->logger->info('Tag portal_accepted already exists on contact', [
+            if (in_array($tagName, $existingTags, true)) {
+                $this->logger->info('GHL tag already exists on contact', [
                     'contactId' => $contactId,
+                    'tag'       => $tagName,
                 ]);
+
                 return ['ok' => true, 'result' => $currentContact, 'tagAlreadyExists' => true];
             }
 
-            // Add tag to array
-            $updatedTags = array_merge($existingTags, ['portal_accepted']);
+            $updatedTags = array_merge($existingTags, [$tagName]);
 
-            // Update contact with new tags
             $response = $this->client->put(
                 '/contacts/' . rawurlencode($contactId),
                 ['tags' => $updatedTags],
@@ -86,28 +88,32 @@ class GhlSignalService
             );
 
             if (is_wp_error($response)) {
-                $this->logger->warning('Failed to add GHL acceptance tag', [
-                    'contactId' => $contactId,
-                    'locationId' => $locationId,
-                    'error' => $response->get_error_message(),
-                    'errorData' => $response->get_error_data(),
+                $this->logger->warning('Failed to merge GHL portal tag', [
+                    'contactId'  => $contactId,
+                    'locationId'   => $locationId,
+                    'tag'          => $tagName,
+                    'error'        => $response->get_error_message(),
+                    'errorData'    => $response->get_error_data(),
                 ]);
+
                 return $response;
             }
 
-            $this->logger->info('GHL acceptance tag added successfully', [
-                'contactId' => $contactId,
+            $this->logger->info('GHL portal tag merged successfully', [
+                'contactId'  => $contactId,
                 'locationId' => $locationId,
+                'tag'        => $tagName,
             ]);
 
             return ['ok' => true, 'result' => $response];
-            
         } catch (\Exception $e) {
-            $this->logger->error('Exception adding GHL acceptance tag', [
+            $this->logger->error('Exception merging GHL portal tag', [
                 'contactId' => $contactId,
                 'locationId' => $locationId,
+                'tag'       => $tagName,
                 'exception' => $e->getMessage(),
             ]);
+
             return new WP_Error('ghl_tag_exception', $e->getMessage());
         }
     }
@@ -115,12 +121,12 @@ class GhlSignalService
     /**
      * Fallback method to add tag directly (if GHL supports it).
      */
-    private function addTagDirect(string $contactId, string $locationId): array|WP_Error
+    private function addTagDirect(string $contactId, string $locationId, string $tagName): array|WP_Error
     {
         // Try POST /contacts/{contactId}/tags (may not be available in all GHL accounts)
         $response = $this->client->post(
             '/contacts/' . rawurlencode($contactId) . '/tags',
-            ['tags' => ['portal_accepted']],
+            ['tags' => [$tagName]],
             30,
             $locationId
         );
@@ -172,17 +178,28 @@ class GhlSignalService
 
         $noteBody .= ' ' . __('Portal Status: Accepted (GHL estimate may still show draft status).', 'cheapalarms');
 
+        return $this->postContactTimelineNote($contactId, $locationId, $noteBody);
+    }
+
+    /**
+     * Post a plain-text note to the GHL contact timeline (shared by acceptance + payment milestones).
+     */
+    public function postContactTimelineNote(string $contactId, string $locationId, string $noteBody): array|WP_Error
+    {
+        $contactId = sanitize_text_field($contactId);
+        $locationId = sanitize_text_field($locationId);
+        $noteBody = is_string($noteBody) ? $noteBody : '';
+
+        if (!$contactId || !$locationId || $noteBody === '') {
+            return new WP_Error('missing_params', __('Contact ID, Location ID, and note body required.', 'cheapalarms'), ['status' => 400]);
+        }
+
         try {
-            // GHL API: Add note to contact
-            // Endpoint: POST /contacts/{contactId}/notes
-            // Or: POST /notes/ with contactId in body
-            
             $notePayload = [
-                'body' => $noteBody,
+                'body'      => $noteBody,
                 'contactId' => $contactId,
             ];
 
-            // Try POST /contacts/{contactId}/notes first
             $response = $this->client->post(
                 '/contacts/' . rawurlencode($contactId) . '/notes',
                 $notePayload,
@@ -191,10 +208,9 @@ class GhlSignalService
             );
 
             if (is_wp_error($response)) {
-                // Try alternative endpoint: POST /notes/
                 $this->logger->info('Contact notes endpoint failed, trying general notes endpoint', [
                     'contactId' => $contactId,
-                    'error' => $response->get_error_message(),
+                    'error'     => $response->get_error_message(),
                 ]);
 
                 $response = $this->client->post(
@@ -205,31 +221,30 @@ class GhlSignalService
                 );
 
                 if (is_wp_error($response)) {
-                    $this->logger->warning('Failed to add GHL acceptance note', [
-                        'contactId' => $contactId,
+                    $this->logger->warning('Failed to add GHL timeline note', [
+                        'contactId'  => $contactId,
                         'locationId' => $locationId,
-                        'error' => $response->get_error_message(),
-                        'errorData' => $response->get_error_data(),
+                        'error'      => $response->get_error_message(),
+                        'errorData'  => $response->get_error_data(),
                     ]);
+
                     return $response;
                 }
             }
 
-            $this->logger->info('GHL acceptance note added successfully', [
-                'contactId' => $contactId,
+            $this->logger->info('GHL timeline note added successfully', [
+                'contactId'  => $contactId,
                 'locationId' => $locationId,
-                'estimateId' => $estimateId,
             ]);
 
             return ['ok' => true, 'result' => $response];
-            
         } catch (\Exception $e) {
-            $this->logger->error('Exception adding GHL acceptance note', [
-                'contactId' => $contactId,
+            $this->logger->error('Exception adding GHL timeline note', [
+                'contactId'  => $contactId,
                 'locationId' => $locationId,
-                'estimateId' => $estimateId,
-                'exception' => $e->getMessage(),
+                'exception'  => $e->getMessage(),
             ]);
+
             return new WP_Error('ghl_note_exception', $e->getMessage());
         }
     }

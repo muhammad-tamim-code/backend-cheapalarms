@@ -117,7 +117,7 @@ class UsersController implements ControllerInterface
             if ($wpdb->last_error) {
                 if (function_exists('error_log')) {
                     error_log(sprintf(
-                        '[CheapAlarms] Database error in listUsers: %s',
+                        '[CA] Database error in listUsers: %s',
                         $wpdb->last_error
                     ));
                 }
@@ -229,7 +229,7 @@ class UsersController implements ControllerInterface
 
         $userId = (int) $request->get_param('userId');
         $body = $request->get_json_params() ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $locationId = sanitize_text_field($body['locationId'] ?? '');
 
@@ -404,7 +404,7 @@ class UsersController implements ControllerInterface
         $body = $request->get_json_params() ?? [];
         $confirm = sanitize_text_field($body['confirm'] ?? '');
         $userIds = $body['userIds'] ?? [];
-        $scope = sanitize_text_field($body['scope'] ?? 'both');
+        $scope = sanitize_text_field($body['scope'] ?? 'local');
         $requestLocationId = !empty($body['locationId']) ? sanitize_text_field($body['locationId']) : null;
 
         if ($confirm !== 'BULK_DELETE') {

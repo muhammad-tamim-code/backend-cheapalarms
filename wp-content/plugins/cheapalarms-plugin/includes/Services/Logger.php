@@ -52,7 +52,7 @@ class Logger
     {
         // Always log to error_log as fallback
         $formatted = sprintf(
-            '[CheapAlarms][EXCEPTION] %s: %s in %s:%d',
+            '[CA][EXCEPTION] %s: %s in %s:%d',
             get_class($exception),
             $exception->getMessage(),
             $exception->getFile(),
@@ -105,7 +105,7 @@ class Logger
         
         // Also write plain text format for backward compatibility
         $plainText = sprintf(
-            '[CheapAlarms][%s] %s',
+            '[CA][%s] %s',
             $level,
             $message
         );

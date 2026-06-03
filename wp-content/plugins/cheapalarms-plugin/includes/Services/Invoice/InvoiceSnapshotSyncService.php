@@ -2,6 +2,7 @@
 
 namespace CheapAlarms\Plugin\Services\Invoice;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\Logger;
 use WP_Error;
@@ -14,7 +15,8 @@ class InvoiceSnapshotSyncService
     public function __construct(
         private InvoiceService $invoiceService,
         private InvoiceSnapshotRepository $repo,
-        private Logger $logger
+        private Logger $logger,
+        private Config $config,
     ) {
     }
 
@@ -23,10 +25,23 @@ class InvoiceSnapshotSyncService
      *
      * Uses a distributed lock (transient) to prevent concurrent syncs.
      *
-     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float}|WP_Error
+     * @return array{ok:bool, locationId:string, pages:int, count:int, durationMs:float, skipped?:string}|WP_Error
      */
     public function syncLocation(string $locationId, int $pageSize = 50, int $maxPages = 200)
     {
+        if (!$this->config->isGhlFetchAllowed()) {
+            $this->logger->info('[INVOICE_SNAPSHOTS] sync skipped — GHL fetch disabled', ['locationId' => $locationId]);
+
+            return [
+                'ok'           => true,
+                'locationId'   => $locationId,
+                'pages'        => 0,
+                'count'        => 0,
+                'durationMs'   => 0.0,
+                'skipped'      => 'ghl_fetch_disabled',
+            ];
+        }
+
         // Distributed lock to prevent concurrent syncs
         $lockKey = 'ca_sync_invoice_lock_' . $locationId;
         if (get_transient($lockKey)) {

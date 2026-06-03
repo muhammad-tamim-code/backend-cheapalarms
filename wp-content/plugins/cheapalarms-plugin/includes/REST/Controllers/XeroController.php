@@ -2,9 +2,11 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\REST\Controllers\Base\AdminController;
 use CheapAlarms\Plugin\Services\Container;
+use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\XeroService;
 use WP_Error;
 use WP_REST_Request;
@@ -12,6 +14,7 @@ use WP_REST_Response;
 
 use function sanitize_text_field;
 use function current_time;
+use function is_wp_error;
 
 class XeroController extends AdminController
 {
@@ -204,12 +207,26 @@ class XeroController extends AdminController
             return $this->respond(new WP_Error('missing_invoice_id', __('Invoice ID is required.', 'cheapalarms'), ['status' => 400]));
         }
 
-        // Get invoice from GHL via InvoiceService
-        $invoiceService = $this->container->get(\CheapAlarms\Plugin\Services\InvoiceService::class);
-        $ghlInvoice = $invoiceService->getInvoice($invoiceId, $locationId);
+        $config = $this->container->get(Config::class);
+        $locationId = $locationId ?: $config->getLocationId();
+        if ($locationId === '') {
+            return $this->respond(new WP_Error('missing_location', __('Location ID is required.', 'cheapalarms'), ['status' => 400]));
+        }
 
-        if (is_wp_error($ghlInvoice)) {
-            return $this->respond($ghlInvoice);
+        $invoiceService = $this->container->get(\CheapAlarms\Plugin\Services\InvoiceService::class);
+
+        if (!$config->isGhlFetchAllowed()) {
+            $repo = $this->container->get(InvoiceSnapshotRepository::class);
+            $raw = $repo->getByInvoiceId($invoiceId, $locationId);
+            if (is_wp_error($raw)) {
+                return $this->respond($raw);
+            }
+            $ghlInvoice = $this->invoiceFromSnapshotForXero($raw, $invoiceId);
+        } else {
+            $ghlInvoice = $invoiceService->getInvoice($invoiceId, $locationId);
+            if (is_wp_error($ghlInvoice)) {
+                return $this->respond($ghlInvoice);
+            }
         }
 
         // Extract contact data
@@ -469,6 +486,45 @@ class XeroController extends AdminController
         } finally {
             delete_transient($lockKey);
         }
+    }
+
+    /**
+     * Normalize snapshot raw_json into the flat shape XeroService::createInvoice() expects
+     * (aligned with InvoiceService::getInvoice output).
+     *
+     * @param array<string, mixed> $raw
+     * @return array<string, mixed>
+     */
+    private function invoiceFromSnapshotForXero(array $raw, string $invoiceId): array
+    {
+        unset($raw['_snapshotSyncedAt']);
+        $invoice = $raw['invoice'] ?? $raw;
+        $contact = $invoice['contact'] ?? $invoice['contactDetails'] ?? [];
+        $items   = $invoice['items'] ?? $invoice['lineItems'] ?? $invoice['invoiceItems'] ?? [];
+        if (!is_array($items)) {
+            $items = [];
+        }
+
+        return [
+            'id'            => $invoice['id'] ?? $invoice['_id'] ?? $invoiceId,
+            'invoiceNumber' => $invoice['invoiceNumber'] ?? $invoice['number'] ?? null,
+            'status'        => $invoice['status'] ?? 'draft',
+            'contact'      => [
+                'id'    => $contact['id'] ?? $contact['contactId'] ?? null,
+                'name'  => trim($contact['name'] ?? (($contact['firstName'] ?? '') . ' ' . ($contact['lastName'] ?? ''))),
+                'email' => $contact['email'] ?? '',
+                'phone' => $contact['phone'] ?? '',
+            ],
+            'items'         => $items,
+            'subtotal'      => (float)($invoice['subtotal'] ?? 0),
+            'tax'           => (float)($invoice['tax'] ?? 0),
+            'discount'      => (float)($invoice['discount'] ?? 0),
+            'total'         => (float)($invoice['total'] ?? 0),
+            'amountDue'     => (float)($invoice['amountDue'] ?? $invoice['total'] ?? 0),
+            'currency'      => $invoice['currency'] ?? 'AUD',
+            'issueDate'     => $invoice['issueDate'] ?? null,
+            'dueDate'       => $invoice['dueDate'] ?? null,
+        ];
     }
 }
 

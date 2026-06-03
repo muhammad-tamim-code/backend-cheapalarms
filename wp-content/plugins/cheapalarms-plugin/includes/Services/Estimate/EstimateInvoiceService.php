@@ -10,6 +10,9 @@ use function sanitize_text_field;
 
 /**
  * Handles invoice creation from estimates.
+ *
+ * @deprecated Unused in production paths — {@see \CheapAlarms\Plugin\Services\EstimateService::createInvoiceFromDraftEstimate}
+ *             is the active implementation. Kept for reference / possible CLI experiments; do not wire new callers.
  */
 class EstimateInvoiceService
 {

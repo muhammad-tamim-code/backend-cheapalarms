@@ -3,12 +3,21 @@
  * Example secrets configuration file
  * 
  * Copy this file to secrets.php and fill in your actual values
+ * OR prefer the new portable instance config: config/instance.php
+ * (copy from config/instance.example.php).
  * OR set them as environment variables (recommended for production)
  * 
  * secrets.php is gitignored - never commit real secrets
  */
 
 return [
+    // Branding (portable per business instance)
+    'brand_name'             => 'CheapAlarms',
+    'support_name'           => 'CheapAlarms Support',
+    'support_email'          => 'support@cheapalarms.com.au',
+    'email_from_name'        => 'CheapAlarms',
+    'email_from_address'     => 'quotes@cheapalarms.com.au',
+
     // GHL Integration Credentials
     'ghl_token'              => '', // or set CA_GHL_TOKEN env var
     'ghl_location_id'        => '', // or set CA_LOCATION_ID env var

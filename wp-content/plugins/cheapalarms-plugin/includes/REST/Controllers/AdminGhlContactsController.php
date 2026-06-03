@@ -123,6 +123,8 @@ class AdminGhlContactsController extends AdminController
             0
         );
 
+        $ghlFailed = false;
+
         if (is_wp_error($ghlResult)) {
             $errorData = $ghlResult->get_error_data();
             $result['ghl'] = [
@@ -131,7 +133,7 @@ class AdminGhlContactsController extends AdminController
                 'code' => $ghlResult->get_error_code(),
                 'httpCode' => is_array($errorData) ? ($errorData['code'] ?? null) : null,
             ];
-            $result['ok'] = false;
+            $ghlFailed = true;
 
             $this->logger->warning('GHL contact delete failed', [
                 'correlationId' => $correlationId,
@@ -139,34 +141,31 @@ class AdminGhlContactsController extends AdminController
                 'locationId' => $locationId,
                 'ghlError' => $ghlResult->get_error_message(),
             ]);
+        } else {
+            $result['ghl'] = [
+                'ok' => true,
+                'alreadyDeleted' => $ghlResult['alreadyDeleted'] ?? false,
+            ];
 
-            return $this->respond(new WP_Error(
-                'delete_partial_failure',
-                'Delete operation completed with errors.',
-                ['status' => 500, 'details' => $result]
-            ));
+            $this->logger->info('GHL contact deleted', [
+                'correlationId' => $correlationId,
+                'contactId' => $contactId,
+                'alreadyDeleted' => $result['ghl']['alreadyDeleted'],
+            ]);
         }
 
-        $result['ghl'] = [
-            'ok' => true,
-            'alreadyDeleted' => $ghlResult['alreadyDeleted'] ?? false,
-        ];
-
-        $this->logger->info('GHL contact deleted', [
-            'correlationId' => $correlationId,
-            'contactId' => $contactId,
-            'alreadyDeleted' => $result['ghl']['alreadyDeleted'],
-        ]);
-
-        // Soft-delete the local contact snapshot (fail silently)
+        // Always soft-delete the local snapshot regardless of GHL result.
+        // If the contact is gone from GHL (or GHL is unreachable), we still
+        // want to remove it from the local cache so the UI stays in sync.
         $localDelete = $this->contactSnapshotRepo->softDelete(
             $contactId,
             $locationId,
             $user->ID ?? 0,
-            'Deleted from GHL via admin panel'
+            $ghlFailed
+                ? 'Removed from local cache (GHL delete failed or contact already gone)'
+                : 'Deleted from GHL via admin panel'
         );
         if (is_wp_error($localDelete)) {
-            // Not a critical failure — GHL is the source of truth
             $errorCode = $localDelete->get_error_code();
             if ($errorCode !== 'not_found' && $errorCode !== 'already_deleted') {
                 $this->logger->warning('Contact snapshot soft-delete failed', [
@@ -175,6 +174,13 @@ class AdminGhlContactsController extends AdminController
                     'error'         => $localDelete->get_error_message(),
                 ]);
             }
+        }
+
+        if ($ghlFailed) {
+            // Still return success with a warning — the local snapshot is cleaned up
+            // and the contact was likely already gone from GHL
+            $result['ok'] = true;
+            $result['ghl']['warning'] = 'GHL API returned an error (contact may already be deleted). Local snapshot removed.';
         }
 
         return $this->respond($result);
