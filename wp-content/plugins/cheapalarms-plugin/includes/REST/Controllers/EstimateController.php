@@ -102,7 +102,7 @@ class EstimateController implements ControllerInterface
                     // FIX: Also check if estimate is linked to user via portal metadata
                     // This handles cases where ca_estimate_ids might be out of sync
                     // or where the estimate appears in the user's dashboard
-                    if (current_user_can('ca_access_portal')) {
+                    if ($this->auth->currentUserHasPermission('portal.access')) {
                         $portalMetaRepo = $this->container->get(\CheapAlarms\Plugin\Services\Shared\PortalMetaRepository::class);
                         $meta = $portalMetaRepo->get($estimateId);
                         
@@ -353,7 +353,8 @@ class EstimateController implements ControllerInterface
                 'methods'             => 'POST',
                 'permission_callback' => function (WP_REST_Request $request) {
                     // Allow admins
-                    if ($this->auth->requireCapability('ca_manage_portal')) {
+                    $adminCheck = $this->auth->requireCapability('ca_manage_portal');
+                    if ($adminCheck === true) {
                         return true;
                     }
                     
@@ -413,7 +414,8 @@ class EstimateController implements ControllerInterface
                     // Authenticate via JWT first, then check capabilities
                     $user = $this->getAuthenticatedUser();
                     if ($user) {
-                        return current_user_can('ca_access_portal') || current_user_can('ca_manage_portal');
+                        return $this->auth->currentUserHasPermission('portal.access')
+                            || $this->auth->currentUserHasPermission('admin.access');
                     }
                     // Allow public access - photos are linked to estimateId, not sensitive data
                     return true;

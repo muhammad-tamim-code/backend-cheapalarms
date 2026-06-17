@@ -67,7 +67,7 @@ class AdminSettingsController extends AdminController
                 'methods'             => 'POST',
                 'permission_callback' => fn () => true,
                 'callback'            => function (WP_REST_Request $request) {
-                    $err = $this->requireAdmin();
+                    $err = $this->requireSettings();
                     if ($err) {
                         return $err;
                     }
@@ -79,7 +79,7 @@ class AdminSettingsController extends AdminController
                 'methods'             => 'DELETE',
                 'permission_callback' => fn () => true,
                 'callback'            => function (WP_REST_Request $request) {
-                    $err = $this->requireAdmin();
+                    $err = $this->requireSettings();
                     if ($err) {
                         return $err;
                     }
@@ -107,7 +107,7 @@ class AdminSettingsController extends AdminController
                 'methods'             => 'POST',
                 'permission_callback' => fn () => true,
                 'callback'            => function (WP_REST_Request $request) {
-                    $err = $this->requireAdmin();
+                    $err = $this->requireSettings();
                     if ($err) {
                         return $err;
                     }
@@ -119,7 +119,7 @@ class AdminSettingsController extends AdminController
                 'methods'             => 'DELETE',
                 'permission_callback' => fn () => true,
                 'callback'            => function (WP_REST_Request $request) {
-                    $err = $this->requireAdmin();
+                    $err = $this->requireSettings();
                     if ($err) {
                         return $err;
                     }
@@ -133,7 +133,7 @@ class AdminSettingsController extends AdminController
             'methods'             => 'POST',
             'permission_callback' => fn () => true,
             'callback'            => function (WP_REST_Request $request) {
-                $err = $this->requireAdmin();
+                $err = $this->requireSettings();
                 if ($err) {
                     return $err;
                 }

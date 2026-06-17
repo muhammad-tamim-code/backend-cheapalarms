@@ -518,7 +518,8 @@ class PortalController implements ControllerInterface
                 // Authenticate via JWT first, then check capabilities
                 $user = $this->getAuthenticatedUser();
                 if ($user) {
-                    return current_user_can('ca_access_portal') || current_user_can('ca_manage_portal');
+                    return $this->auth->currentUserHasPermission('portal.access')
+                        || $this->auth->currentUserHasPermission('admin.access');
                 }
                 
                 if (!$estimateId || !$inviteToken) {

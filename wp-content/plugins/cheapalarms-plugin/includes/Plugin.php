@@ -9,6 +9,7 @@ use CheapAlarms\Plugin\Db\Schema;
 use CheapAlarms\Plugin\Frontend\PortalPage;
 use CheapAlarms\Plugin\REST\ApiKernel;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Services\AuthorizationService;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Logger;
 use CheapAlarms\Plugin\Services\SentryService;
@@ -176,6 +177,7 @@ class Plugin
         Schema::maybeMigrate();
         $this->registerRoles();
         $this->registerServices();
+        $this->container->get(AuthorizationService::class)->normalizeLegacyCustomerUsers();
         $this->container->get(Authenticator::class)->boot();
         
         // Register WP-CLI commands
@@ -670,7 +672,11 @@ class Plugin
                 : null;
             return new Logger($sentry);
         });
-        $this->container->set(Authenticator::class, fn () => new Authenticator($this->container->get(Config::class)));
+        $this->container->set(AuthorizationService::class, fn () => new AuthorizationService());
+        $this->container->set(Authenticator::class, fn () => new Authenticator(
+            $this->container->get(Config::class),
+            $this->container->get(AuthorizationService::class)
+        ));
         $this->container->set(ProductRepository::class, fn () => new ProductRepository());
         $this->container->set(\CheapAlarms\Plugin\Services\GhlClient::class, fn () => new \CheapAlarms\Plugin\Services\GhlClient(
             $this->container->get(Config::class),
@@ -928,7 +934,7 @@ class Plugin
     private function registerAdmin(): void
     {
         if (is_admin()) {
-            new UserCapabilities();
+            new UserCapabilities($this->container);
         }
     }
 

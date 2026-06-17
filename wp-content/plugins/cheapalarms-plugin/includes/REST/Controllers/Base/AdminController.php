@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers\Base;
 
 use CheapAlarms\Plugin\REST\Controllers\ControllerInterface;
+use CheapAlarms\Plugin\Services\AuthorizationService;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Shared\LocationResolver;
 use CheapAlarms\Plugin\Services\Shared\PortalMetaRepository;
@@ -10,6 +11,7 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
+use function is_wp_error;
 use function sanitize_text_field;
 use function wp_get_current_user;
 
@@ -37,7 +39,24 @@ abstract class AdminController implements ControllerInterface
     protected function resolveLocationId(WP_REST_Request $request)
     {
         $locationId = sanitize_text_field($request->get_param('locationId') ?? '');
-        return $this->locationResolver->resolveOrError(!empty($locationId) ? $locationId : null);
+        $resolved = $this->locationResolver->resolveOrError(!empty($locationId) ? $locationId : null);
+        if (is_wp_error($resolved)) {
+            return $resolved;
+        }
+
+        $user = wp_get_current_user();
+        if ($user && $user->ID > 0) {
+            $authorization = $this->container->get(AuthorizationService::class);
+            if (!$authorization->userCanAccessLocation($user, $resolved)) {
+                return new WP_Error(
+                    'forbidden',
+                    __('You do not have access to this location.', 'cheapalarms'),
+                    ['status' => 403]
+                );
+            }
+        }
+
+        return $resolved;
     }
 
     /**
@@ -73,40 +92,57 @@ abstract class AdminController implements ControllerInterface
     }
 
     /**
-     * Require admin capability (ca_manage_portal).
-     * Returns WP_REST_Response error if not authorized, null if authorized.
-     * 
-     * Usage in callback:
-     *   $error = $this->requireAdmin();
-     *   if ($error) return $error;
-     * 
+     * Require admin app access.
+     *
      * @return WP_REST_Response|null
      */
     protected function requireAdmin(): ?WP_REST_Response
     {
-        $this->ensureUserLoaded();
-        $auth = $this->container->get(\CheapAlarms\Plugin\REST\Auth\Authenticator::class);
-        $authCheck = $auth->requireCapability('ca_manage_portal');
-        if (is_wp_error($authCheck)) {
-            return $this->respond($authCheck);
-        }
-        return null;
+        return $this->requirePermissionGate('admin.access');
     }
 
     /**
-     * Require view capability (ca_view_estimates).
-     * Returns WP_REST_Response error if not authorized, null if authorized.
-     * 
+     * Require read access to estimates.
+     *
      * @return WP_REST_Response|null
      */
     protected function requireViewer(): ?WP_REST_Response
     {
+        return $this->requirePermissionGate('estimates.view');
+    }
+
+    /**
+     * Owner-only settings mutations.
+     *
+     * @return WP_REST_Response|null
+     */
+    protected function requireSettings(): ?WP_REST_Response
+    {
+        return $this->requirePermissionGate('settings.manage');
+    }
+
+    /**
+     * Destructive admin operations (delete user, delete-by-email, …).
+     *
+     * @return WP_REST_Response|null
+     */
+    protected function requireDestructive(): ?WP_REST_Response
+    {
+        return $this->requirePermissionGate('data.destructive');
+    }
+
+    /**
+     * @return WP_REST_Response|null
+     */
+    protected function requirePermissionGate(string $permission): ?WP_REST_Response
+    {
         $this->ensureUserLoaded();
         $auth = $this->container->get(\CheapAlarms\Plugin\REST\Auth\Authenticator::class);
-        $authCheck = $auth->requireCapability('ca_view_estimates');
+        $authCheck = $auth->requirePermission($permission);
         if (is_wp_error($authCheck)) {
             return $this->respond($authCheck);
         }
+
         return null;
     }
 

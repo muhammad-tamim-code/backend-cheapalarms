@@ -259,7 +259,7 @@ class HealthController implements ControllerInterface
             return false;
         }
 
-        return current_user_can('ca_manage_portal');
+        return $this->auth->currentUserHasPermission('admin.access');
     }
 
     /**

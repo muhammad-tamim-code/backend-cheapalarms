@@ -229,17 +229,17 @@ class Config
     {
         $override = $this->fromOverrides('upload_allowed_origins');
         if (is_array($override) && !empty($override)) {
-            return $this->sanitizeOrigins($override);
+            return $this->sanitizeOrigins($this->mergeCoreOrigins($override));
         }
 
         $value = $this->getEnv('CA_UPLOAD_ALLOWED_ORIGINS', '');
         if (is_array($value)) {
-            return $this->sanitizeOrigins($value);
+            return $this->sanitizeOrigins($this->mergeCoreOrigins($value));
         }
         if (is_string($value) && $value !== '') {
-            return $this->sanitizeOrigins(array_map('trim', explode(',', $value)));
+            return $this->sanitizeOrigins($this->mergeCoreOrigins(array_map('trim', explode(',', $value))));
         }
-        return $this->sanitizeOrigins([site_url()]);
+        return $this->sanitizeOrigins($this->getCoreOrigins());
     }
 
     /**
@@ -249,17 +249,17 @@ class Config
     {
         $override = $this->fromOverrides('api_allowed_origins');
         if (is_array($override) && !empty($override)) {
-            return $this->sanitizeOrigins($override);
+            return $this->sanitizeOrigins($this->mergeCoreOrigins($override));
         }
 
         $value = $this->getEnv('CA_API_ALLOWED_ORIGINS', '');
         if (is_array($value)) {
-            return $this->sanitizeOrigins($value);
+            return $this->sanitizeOrigins($this->mergeCoreOrigins($value));
         }
         if (is_string($value) && $value !== '') {
-            return $this->sanitizeOrigins(array_map('trim', explode(',', $value)));
+            return $this->sanitizeOrigins($this->mergeCoreOrigins(array_map('trim', explode(',', $value))));
         }
-        return $this->sanitizeOrigins([site_url()]);
+        return $this->sanitizeOrigins($this->getCoreOrigins());
     }
 
     public function getJwtSecret(): string
@@ -311,9 +311,8 @@ class Config
 
     public function getFrontendUrl(): string
     {
-        // Canonical resolution order: secrets.php override → env/constant → hardcoded
-        // production default. Always returned without a trailing slash so callers
-        // can safely append paths with or without trailingslashit().
+        // Canonical resolution order: instance.php / secrets.php → env → default.
+        // Edit cheapalarms.instance.json at repo root, then run scripts/sync-instance-config.mjs.
         $url = $this->fromOverrides('frontend_url')
             ?: $this->getEnv('CA_FRONTEND_URL', 'https://headless-cheapalarms.vercel.app');
 
@@ -360,7 +359,17 @@ class Config
 
     public function getXeroRedirectUri(): string
     {
-        return $this->fromOverrides('xero_redirect_uri') ?: $this->getEnv('CA_XERO_REDIRECT_URI', $this->defaults['xero_redirect_uri']);
+        $override = $this->fromOverrides('xero_redirect_uri');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_XERO_REDIRECT_URI', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return $this->getFrontendUrl() . '/xero/callback';
     }
 
     public function getXeroSalesAccountCode(): string
@@ -474,6 +483,45 @@ class Config
     private function fromOverrides(string $key)
     {
         return $this->overrides[$key] ?? null;
+    }
+
+    /**
+     * WordPress site + Next.js portal — always allowed for CORS when lists are built.
+     *
+     * @return string[]
+     */
+    private function getCoreOrigins(): array
+    {
+        $origins = [];
+        $site = rtrim((string) site_url(), '/');
+        if ($site !== '') {
+            $origins[] = $site;
+        }
+
+        $frontend = $this->getFrontendUrl();
+        if ($frontend !== '') {
+            $origins[] = $frontend;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $origins = array_merge($origins, [
+                'http://localhost',
+                'http://localhost:3000',
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+            ]);
+        }
+
+        return $origins;
+    }
+
+    /**
+     * @param string[] $origins
+     * @return string[]
+     */
+    private function mergeCoreOrigins(array $origins): array
+    {
+        return array_values(array_unique(array_merge($origins, $this->getCoreOrigins())));
     }
 
     /**

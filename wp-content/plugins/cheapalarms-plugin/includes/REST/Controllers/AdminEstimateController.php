@@ -197,9 +197,9 @@ class AdminEstimateController extends AdminController
             'permission_callback' => fn () => true,
             'callback'            => function (WP_REST_Request $request) {
                 $this->ensureUserLoaded();
-                $authCheck = $this->auth->requireCapability('ca_manage_portal');
-                if (is_wp_error($authCheck)) {
-                    return $this->respond($authCheck);
+                $err = $this->requireDestructive();
+                if ($err) {
+                    return $err;
                 }
                 return $this->deleteByEmail($request);
             },
@@ -824,6 +824,15 @@ class AdminEstimateController extends AdminController
         $linkResult = $this->portalService->linkEstimateToExistingAccount($estimateId, (int)$userId, $locationId);
         if (is_wp_error($linkResult)) {
             return $this->respond($linkResult);
+        }
+
+        $itemHints = is_array($body['itemHints'] ?? null) ? $body['itemHints'] : [];
+        if ($itemHints === [] && is_array($body['items'] ?? null)) {
+            $itemHints = $body['items'];
+        }
+        if ($itemHints !== []) {
+            $initialItemsMeta = $this->portalService->buildInitialItemsMeta($itemHints);
+            $this->portalService->updateMeta($estimateId, ['itemsMeta' => $initialItemsMeta]);
         }
 
         $sendResult = null;

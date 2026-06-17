@@ -1,29 +1,24 @@
-# WordPress repo ignore rules (production-safe)
+# Backend repo: track ONLY wp-content/plugins/cheapalarms-plugin — nothing else.
+# WordPress core and all other wp-content are intentionally untracked.
 
-# Core config (environment-specific)
-wp-config.php
-wp-config.*.php
-*.local.php
+# 1) Ignore everything at the repo root...
+/*
 
-# Secrets (plugin-local)
-**/config/secrets.php
-**/config/instance.php
+# 2) ...then walk back down ONLY to the plugin folder.
+!/.gitignore
+!/wp-content
+/wp-content/*
+!/wp-content/plugins
+/wp-content/plugins/*
+!/wp-content/plugins/cheapalarms-plugin
+
+# 3) Never commit real secrets / per-instance config (defense in depth;
+#    the plugin's own .gitignore also covers these).
+wp-content/plugins/cheapalarms-plugin/config/secrets.php
+wp-content/plugins/cheapalarms-plugin/config/instance.php
 **/secrets.php
 
-# Runtime logs / caches / uploads
-wp-content/debug.log
-wp-content/cache/
-wp-content/upgrade/
-wp-content/uploads/
-
-# Local DB artifacts (e.g. SQLite dev plugins)
-wp-content/database/*.sqlite
-wp-content/database/*.db
-wp-content/database/.ht.sqlite
-
-# OS/editor noise
-.DS_Store
-Thumbs.db
-*.swp
-
-
+# 4) Build artifacts / vendor (also covered by the plugin .gitignore).
+wp-content/plugins/cheapalarms-plugin/vendor/
+wp-content/plugins/cheapalarms-plugin/*.zip
+wp-content/plugins/*.zip

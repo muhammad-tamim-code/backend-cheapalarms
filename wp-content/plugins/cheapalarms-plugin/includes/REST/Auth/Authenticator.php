@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Auth;
 
 use CheapAlarms\Plugin\Config\Config;
+use CheapAlarms\Plugin\Services\AuthorizationService;
 use WP_Error;
 use WP_REST_Request;
 use WP_User;
@@ -31,8 +32,10 @@ class Authenticator
 {
     private ?WP_Error $lastAuthError = null;
 
-    public function __construct(private Config $config)
-    {
+    public function __construct(
+        private Config $config,
+        private AuthorizationService $authorization
+    ) {
     }
 
     public function boot(): void
@@ -97,16 +100,45 @@ class Authenticator
 
     public function requireCapability(string $capability): bool|WP_Error
     {
-        // FIX: Ensure JWT authentication before checking capabilities
-        // This ensures JWT tokens are processed even in permission_callbacks
-        // This is critical because permission_callbacks run before callbacks,
-        // and we need JWT auth to work reliably in all contexts
+        $permission = AuthorizationService::LEGACY_CAP_TO_PERMISSION[$capability] ?? null;
+        if ($permission !== null) {
+            return $this->requirePermission($permission);
+        }
+
         $userId = $this->authenticateViaJwt();
         if ($userId && $userId > 0) {
             wp_set_current_user($userId);
         }
-        
-        if (current_user_can($capability) || current_user_can('manage_options')) {
+
+        $user = wp_get_current_user();
+        if ($user && $user->ID > 0 && ($user->has_cap($capability) || $user->has_cap('manage_options'))) {
+            return true;
+        }
+
+        return new WP_Error('forbidden', __('Insufficient privileges.', 'cheapalarms'), ['status' => 403]);
+    }
+
+    public function currentUserHasPermission(string $permission): bool
+    {
+        $userId = $this->authenticateViaJwt();
+        if ($userId && $userId > 0) {
+            wp_set_current_user($userId);
+        }
+
+        $user = wp_get_current_user();
+
+        return $user && $user->ID > 0 && $this->authorization->can($user, $permission);
+    }
+
+    public function requirePermission(string $permission): bool|WP_Error
+    {
+        $userId = $this->authenticateViaJwt();
+        if ($userId && $userId > 0) {
+            wp_set_current_user($userId);
+        }
+
+        $user = wp_get_current_user();
+        if ($user && $user->ID > 0 && $this->authorization->can($user, $permission)) {
             return true;
         }
 
@@ -115,7 +147,7 @@ class Authenticator
 
     public function requireAdmin(): bool|WP_Error
     {
-        return $this->requireCapability('ca_manage_portal');
+        return $this->requirePermission('admin.access');
     }
 
     public function publicAllowed(): bool
@@ -140,17 +172,20 @@ class Authenticator
         $issuedAt = time();
         $ttl      = $this->config->getJwtTtlSeconds();
         $expires  = $issuedAt + $ttl;
-        $caps = array_values(array_filter(array_keys($user->allcaps ?? []), static fn ($cap) => str_starts_with($cap, 'ca_')));
+        $resolved = $this->authorization->resolveForUser($user);
+        $legacyCaps = array_values(array_filter(array_keys($user->allcaps ?? []), static fn ($cap) => str_starts_with($cap, 'ca_')));
 
         $payload  = [
-            'iss'        => site_url(),
-            'sub'        => (string) $user->ID,
-            'iat'        => $issuedAt,
-            'exp'        => $expires,
-            'email'      => $user->user_email,
-            'display'    => $user->display_name,
-            'roles'      => array_values($user->roles ?? []),
-            'capabilities' => $caps,
+            'iss'           => site_url(),
+            'sub'           => (string) $user->ID,
+            'iat'           => $issuedAt,
+            'exp'           => $expires,
+            'email'         => $user->user_email,
+            'display'       => $user->display_name,
+            'role_key'      => $resolved['role_key'],
+            'roles'         => $resolved['legacy_roles'],
+            'permissions'   => $resolved['permissions'],
+            'capabilities'  => $legacyCaps,
         ];
 
         return [
@@ -158,11 +193,16 @@ class Authenticator
             'expires_at'  => $expires,
             'expires_in'  => $ttl,
             'user'        => [
-                'id'          => (int) $user->ID,
-                'email'       => $user->user_email,
-                'displayName' => $user->display_name,
-                'roles'       => array_values($user->roles ?? []),
-                'capabilities'=> $caps,
+                'id'            => (int) $user->ID,
+                'email'         => $user->user_email,
+                'displayName'   => $user->display_name,
+                'role_key'      => $resolved['role_key'],
+                'role_label'    => $resolved['role_label'],
+                'roles'         => $resolved['legacy_roles'],
+                'permissions'   => $resolved['permissions'],
+                'capabilities'  => $legacyCaps,
+                'is_admin'      => $resolved['is_admin'],
+                'is_customer'   => $resolved['is_customer'],
             ],
         ];
     }

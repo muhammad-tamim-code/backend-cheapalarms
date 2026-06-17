@@ -12,6 +12,7 @@ use CheapAlarms\Plugin\REST\Controllers\ServiceM8Controller;
 use CheapAlarms\Plugin\REST\Controllers\GhlController;
 use CheapAlarms\Plugin\REST\Controllers\AdminGhlContactsController;
 use CheapAlarms\Plugin\REST\Controllers\UsersController;
+use CheapAlarms\Plugin\REST\Controllers\RolesController;
 use CheapAlarms\Plugin\REST\Controllers\AdminEstimateController;
 use CheapAlarms\Plugin\REST\Controllers\AdminInvoiceController;
 use CheapAlarms\Plugin\REST\Controllers\AdminSettingsController;
@@ -42,6 +43,7 @@ class ApiKernel
             new ServiceM8Controller($this->container),
             new GhlController($this->container),
             new UsersController($this->container),
+            new RolesController($this->container),
             new AdminEstimateController($this->container),
             new AdminInvoiceController($this->container),
             new AdminSettingsController($this->container),

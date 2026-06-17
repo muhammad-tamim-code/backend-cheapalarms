@@ -116,10 +116,10 @@ class PasswordResetController implements ControllerInterface
             ], 200);
         }
 
-        // Existing user - ensure they have ca_access_portal capability
+        // Existing user - ensure portal customer role
         $user = get_user_by('id', $userId);
-        if ($user && !$user->has_cap('ca_access_portal')) {
-            $user->add_cap('ca_access_portal');
+        if ($user && !in_array('ca_customer', $user->roles, true)) {
+            $user->set_role('ca_customer');
         }
 
         $user = get_user_by('id', $userId);
@@ -326,14 +326,8 @@ class PasswordResetController implements ControllerInterface
         // Set new password
         reset_password($user, $newPassword);
 
-        // Ensure user has ca_access_portal capability
-        if (!$user->has_cap('ca_access_portal')) {
-            // If user doesn't have the capability, add it or set ca_customer role
-            if (!in_array('ca_customer', $user->roles, true)) {
-                $user->set_role('ca_customer');
-            } else {
-                $user->add_cap('ca_access_portal');
-            }
+        if (!in_array('ca_customer', $user->roles, true) && !$user->has_cap('ca_manage_portal')) {
+            $user->set_role('ca_customer');
         }
 
         // Link user to estimate if estimateId is provided

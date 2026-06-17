@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Services\AuthorizationService;
 use CheapAlarms\Plugin\Services\Container;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -46,7 +47,7 @@ class UsersController implements ControllerInterface
                 // FIX: Use ensureUserLoaded() which now uses authenticateViaJwt()
                 $this->auth->ensureUserLoaded();
 
-                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                $authCheck = $this->auth->requirePermission('data.destructive');
                 if (is_wp_error($authCheck)) {
                     return $this->errorResponse($authCheck);
                 }
@@ -65,7 +66,7 @@ class UsersController implements ControllerInterface
                 // FIX: Use ensureUserLoaded() which now uses authenticateViaJwt()
                 $this->auth->ensureUserLoaded();
 
-                $authCheck = $this->auth->requireCapability('ca_manage_portal');
+                $authCheck = $this->auth->requirePermission('data.destructive');
                 if (is_wp_error($authCheck)) {
                     return $this->errorResponse($authCheck);
                 }
@@ -131,12 +132,14 @@ class UsersController implements ControllerInterface
             }
         }
 
+        $authorization = $this->container->get(AuthorizationService::class);
+
         // PHASE 3: Process users with pre-fetched data
         $formatted = [];
         foreach ($users as $user) {
             // Use pre-fetched ghl_contact_id instead of get_user_meta()
             $ghlContactId = $ghlContactIdMap[$user->ID] ?? null;
-            $hasPortal = user_can($user, 'ca_access_portal');
+            $hasPortal = $authorization->can($user, 'portal.access');
 
             $formatted[] = [
                 'id' => $user->ID,

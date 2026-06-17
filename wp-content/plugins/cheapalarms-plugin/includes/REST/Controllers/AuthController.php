@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin\REST\Controllers;
 
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Services\AuthorizationService;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\PortalService;
 use WP_Error;
@@ -191,16 +192,8 @@ class AuthController implements ControllerInterface
             return $this->respond(new WP_Error('unauthorized', __('User not found.', 'cheapalarms'), ['status' => 401]));
         }
 
-        $roles = $user->roles ?? [];
-
-        $hasAdminRole = in_array('administrator', $roles, true)
-            || in_array('ca_admin', $roles, true)
-            || in_array('ca_superadmin', $roles, true);
-        $hasAdminCap = current_user_can('ca_manage_portal');
-        $isAdmin = $hasAdminRole || $hasAdminCap;
-
-        $hasCustomerRole = in_array('ca_customer', $roles, true) || in_array('customer', $roles, true);
-        $isCustomer = $hasCustomerRole && !$isAdmin;
+        $authorization = $this->container->get(AuthorizationService::class);
+        $resolved = $authorization->resolveForUser($user);
 
         $allCaps = $user->allcaps ?? [];
         $caCaps = [];
@@ -210,19 +203,22 @@ class AuthController implements ControllerInterface
             }
         }
 
-        // Gravatar URL (WordPress has get_avatar_url built-in)
         $avatarUrl = get_avatar_url($user->ID, ['size' => 128, 'default' => 'mp']);
 
         $response = new WP_REST_Response([
-            'ok'           => true,
-            'id'           => $user->ID,
-            'email'        => $user->user_email,
-            'displayName'  => $user->display_name,
-            'avatar'       => $avatarUrl ?: null,
-            'roles'        => array_values($roles),
-            'capabilities' => array_values($caCaps),
-            'is_admin'     => $isAdmin,
-            'is_customer'  => $isCustomer,
+            'ok'            => true,
+            'id'            => $user->ID,
+            'email'         => $user->user_email,
+            'displayName'   => $user->display_name,
+            'avatar'        => $avatarUrl ?: null,
+            'role_key'      => $resolved['role_key'],
+            'role_label'    => $resolved['role_label'],
+            'roles'         => $resolved['legacy_roles'],
+            'permissions'   => $resolved['permissions'],
+            'capabilities'  => array_values($caCaps),
+            'is_admin'               => $resolved['is_admin'],
+            'is_customer'            => $resolved['is_customer'],
+            'allowed_location_ids'   => $resolved['allowed_location_ids'],
         ]);
 
         $response->header('Cache-Control', 'no-store, private');

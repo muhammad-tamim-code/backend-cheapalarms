@@ -1,52 +1,73 @@
 # Production Configuration Checklist
 
+## Domain layout
+
+| Host | Role |
+|------|------|
+| `https://cheapalarms.com.au` | WordPress + `cheapalarms-plugin` (REST API, marketing, calculators) |
+| `https://portal.cheapalarms.com.au` | Next.js customer + admin portal (Vercel or host) |
+
 ## ⚠️ CRITICAL: Before Deploying to Production
 
-### WordPress Configuration (`wp-config.php`)
+### WordPress (`cheapalarms.com.au`)
 
-Ensure these settings are correct in production:
+**Settings → General**
+
+- WordPress Address (URL): `https://cheapalarms.com.au`
+- Site Address (URL): `https://cheapalarms.com.au`
+
+**`wp-config.php`**
 
 ```php
-// Debug mode MUST be disabled in production
 define('WP_DEBUG', false);
 define('WP_DEBUG_LOG', false);
 define('WP_DEBUG_DISPLAY', false);
-
-// SECURITY: Development bypass MUST be disabled or removed
-// Option 1: Remove the line entirely
-// Option 2: Set to false
 define('CA_DEV_BYPASS', false);
-
-// OR make it conditional (recommended):
-define('CA_DEV_BYPASS', defined('WP_DEBUG') && WP_DEBUG);
+// Or: define('CA_DEV_BYPASS', defined('WP_DEBUG') && WP_DEBUG);
 ```
 
-### Plugin Secrets (`config/secrets.php`)
+### Plugin config (`config/instance.php` or `config/secrets.php` on server)
 
-Required secrets that must be configured:
-- ✅ `ghl_token` - GoHighLevel API token
-- ✅ `ghl_location_id` - GoHighLevel location ID
-- ✅ `upload_shared_secret` - HMAC secret for file uploads
+| Key | Production value |
+|-----|------------------|
+| `frontend_url` | `https://portal.cheapalarms.com.au` |
+| `api_allowed_origins` | `https://portal.cheapalarms.com.au`, `https://cheapalarms.com.au` |
+| `upload_allowed_origins` | same as above |
+| `xero_redirect_uri` | `https://portal.cheapalarms.com.au/xero/callback` |
+| `ghl_token`, `ghl_location_id`, `upload_shared_secret`, `jwt_secret` | Required — plugin won't start without GHL + upload secret |
 
-**The plugin will fail to start if these are missing.**
+Copy from `config/instance.example.php` if starting fresh.
 
-### CORS Configuration
+### Next.js portal (`portal.cheapalarms.com.au`)
 
-- ✅ Localhost origins are automatically removed in production (when `WP_DEBUG = false`)
-- ✅ Only production URLs should be in `api_allowed_origins` and `upload_allowed_origins`
-- ✅ To allow localhost in production (not recommended), set `CA_ALLOW_LOCALHOST_CORS=true` env var
+**Vercel → Environment Variables**
+
+| Name | Value |
+|------|-------|
+| `NEXT_PUBLIC_WP_URL` | `https://cheapalarms.com.au/wp-json` |
+| `NEXT_PUBLIC_GHL_LOCATION_ID` | Your GHL location ID |
+| `NODE_ENV` | `production` |
+
+Redeploy after changing env vars.
+
+### Third-party dashboards
+
+- **Stripe** — webhook URL on `https://portal.cheapalarms.com.au/api/...`
+- **Xero** — redirect URI `https://portal.cheapalarms.com.au/xero/callback`
+
+### CORS
+
+- Localhost origins are stripped in production when `WP_DEBUG = false`
+- To allow localhost in production (not recommended): `CA_ALLOW_LOCALHOST_CORS=true`
 
 ### Verification
 
-After deployment, verify:
-1. Plugin loads without errors
-2. API endpoints respond (check `/wp-json/ca/v1/health`)
-3. CORS works from production frontend
-4. No localhost in CORS allowed origins
-5. Error messages are generic (not detailed)
+1. `curl https://cheapalarms.com.au/wp-json/ca/v1/health`
+2. Login at `https://portal.cheapalarms.com.au/admin`
+3. Submit test quote — email links point to `portal.cheapalarms.com.au`
+4. Photo upload from portal — no CORS errors in browser console
+5. Xero connect from admin settings
 
 ---
 
-**Last Updated:** 2025-01-XX
-**Version:** 2.0.0
-
+**Last Updated:** 2026-06-03
