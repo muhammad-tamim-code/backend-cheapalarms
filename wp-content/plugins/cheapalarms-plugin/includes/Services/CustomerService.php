@@ -175,7 +175,7 @@ class CustomerService
                 $subject = sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
                 $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the links below to access your portal.', 'cheapalarms'), $brandName)) . '</p>';
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Access your portal', 'cheapalarms')) . '</a></p>';
+                $body .= '<p>' . EmailTemplateHtmlHelper::inlineCtaButton($config, $portalUrl, __('Access your portal', 'cheapalarms')) . '</p>';
                 if ($resetUrl) {
                     $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
                 }
@@ -187,7 +187,7 @@ class CustomerService
             $subject = sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
             $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
             $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the links below to access your portal.', 'cheapalarms'), $brandName)) . '</p>';
-            $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Access your portal', 'cheapalarms')) . '</a></p>';
+            $body .= '<p>' . EmailTemplateHtmlHelper::inlineCtaButton($config, $portalUrl, __('Access your portal', 'cheapalarms')) . '</p>';
             if ($resetUrl) {
                 $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
             }

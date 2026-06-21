@@ -18,6 +18,12 @@
 return [
     // Branding (portable per business instance)
     'brand_name'             => 'CheapAlarms',
+    'brand_tagline'          => 'Your Security Partner',
+    'brand_primary_color'    => '#171717',
+    'brand_accent_color'     => '#1EA6DF',
+    // Optional absolute logo URLs (default: {frontend_url}/brand/logo-horizontal.png)
+    // 'brand_logo_horizontal' => 'https://portal.example.com/brand/logo-horizontal.png',
+    // 'brand_logo_mark'       => 'https://portal.example.com/brand/logo-mark.png',
     'support_name'           => 'CheapAlarms Support',
     'support_email'          => 'support@cheapalarms.com.au',
     'email_from_name'        => 'CheapAlarms',

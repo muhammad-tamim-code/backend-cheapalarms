@@ -28,6 +28,11 @@ class Config
         'stripe_secret_key'      => '',
         'stripe_webhook_secret'  => '',
         'brand_name'             => 'CheapAlarms',
+        'brand_tagline'          => 'Your Security Partner',
+        'brand_primary_color'    => '#171717',
+        'brand_accent_color'     => '#1EA6DF',
+        'brand_logo_horizontal'  => '',
+        'brand_logo_mark'        => '',
         'support_name'           => '',
         'support_email'          => '',
         'email_from_name'        => '',
@@ -69,6 +74,81 @@ class Config
         }
 
         return (string) $this->defaults['brand_name'];
+    }
+
+    public function getBrandTagline(): string
+    {
+        $override = $this->fromOverrides('brand_tagline');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_BRAND_TAGLINE', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return (string) $this->defaults['brand_tagline'];
+    }
+
+    public function getBrandPrimaryColor(): string
+    {
+        $override = $this->fromOverrides('brand_primary_color');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_BRAND_PRIMARY_COLOR', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return (string) $this->defaults['brand_primary_color'];
+    }
+
+    public function getBrandAccentColor(): string
+    {
+        $override = $this->fromOverrides('brand_accent_color');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_BRAND_ACCENT_COLOR', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return (string) $this->defaults['brand_accent_color'];
+    }
+
+    public function getBrandLogoHorizontalUrl(): string
+    {
+        $override = $this->fromOverrides('brand_logo_horizontal');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_BRAND_LOGO_HORIZONTAL', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return rtrim($this->getFrontendUrl(), '/') . '/brand/logo-horizontal.png';
+    }
+
+    public function getBrandLogoMarkUrl(): string
+    {
+        $override = $this->fromOverrides('brand_logo_mark');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_BRAND_LOGO_MARK', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return rtrim($this->getFrontendUrl(), '/') . '/brand/logo-mark.png';
     }
 
     public function getSupportName(): string

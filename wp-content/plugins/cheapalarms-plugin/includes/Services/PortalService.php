@@ -13,6 +13,7 @@ use function current_time;
 use function __;
 use function esc_html;
 use function esc_url;
+use function esc_attr;
 use function email_exists;
 use function get_option;
 use function get_user_meta;
@@ -3391,7 +3392,7 @@ class PortalService
                     : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
                 $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
                 $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
                 if ($resetUrl) {
                     $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
                 }
@@ -3406,7 +3407,7 @@ class PortalService
                 : sprintf(__('Your %s portal is ready', 'cheapalarms'), $brandName);
             $body = '<p>' . esc_html(sprintf(__('Hi %s,', 'cheapalarms'), $name)) . '</p>';
             $body .= '<p>' . esc_html(sprintf(__('We have prepared your %s portal. Use the secure links below to access your estimate and manage your installation.', 'cheapalarms'), $brandName)) . '</p>';
-            $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
+            $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('Open your portal', 'cheapalarms')) . '</a></p>';
             if ($resetUrl) {
                 $body .= '<p><a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('Set your password', 'cheapalarms')) . '</a></p>';
             }
@@ -3704,7 +3705,7 @@ class PortalService
                 } else {
                     $body .= '<p>' . esc_html(__('Your estimate is ready for review. Click the button below to view your estimate and manage your installation:', 'cheapalarms')) . '</p>';
                 }
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('View Your Estimate', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('View Your Estimate', 'cheapalarms')) . '</a></p>';
                 if ($resetUrl) {
                     $body .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('set your password to access your account', 'cheapalarms')) . '</a></p>';
                 }
@@ -3726,7 +3727,7 @@ class PortalService
             } else {
                 $body .= '<p>' . esc_html(__('Your estimate is ready for review. Click the button below to view your estimate and manage your installation:', 'cheapalarms')) . '</p>';
             }
-            $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('View Your Estimate', 'cheapalarms')) . '</a></p>';
+            $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('View Your Estimate', 'cheapalarms')) . '</a></p>';
             if ($resetUrl) {
                 $body .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($resetUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('set your password to access your account', 'cheapalarms')) . '</a></p>';
             }
@@ -3841,7 +3842,7 @@ class PortalService
                         $formattedDate = date_i18n(get_option('date_format'), strtotime($dueDate));
                         $body .= '<p>' . esc_html(sprintf(__('Due Date: %s', 'cheapalarms'), $formattedDate)) . '</p>';
                     }
-                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('Payment Options:', 'cheapalarms')) . '</p>';
                     $body .= '<ul>';
                     $body .= '<li>' . esc_html(__('Click the button above to pay online securely', 'cheapalarms')) . '</li>';
@@ -3864,7 +3865,7 @@ class PortalService
                     $formattedDate = date_i18n(get_option('date_format'), strtotime($dueDate));
                     $body .= '<p>' . esc_html(sprintf(__('Due Date: %s', 'cheapalarms'), $formattedDate)) . '</p>';
                 }
-                $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('Payment Options:', 'cheapalarms')) . '</p>';
                 $body .= '<ul>';
                 $body .= '<li>' . esc_html(__('Click the button above to pay online securely', 'cheapalarms')) . '</li>';
@@ -4491,7 +4492,7 @@ class PortalService
                     )) . '</p>';
                     if ($invoiceUrl) {
                         $body .= '<p>' . esc_html(__('Your invoice has been created and is ready for payment:', 'cheapalarms')) . '</p>';
-                        $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
+                        $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
                     } else {
                         $body .= '<p>' . esc_html(__('We\'re preparing your invoice and will send it to you shortly.', 'cheapalarms')) . '</p>';
                     }
@@ -4517,7 +4518,7 @@ class PortalService
                 )) . '</p>';
                 if ($invoiceUrl) {
                     $body .= '<p>' . esc_html(__('Your invoice has been created and is ready for payment:', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config) . '">' . esc_html(__('View & Pay Invoice', 'cheapalarms')) . '</a></p>';
                 } else {
                     $body .= '<p>' . esc_html(__('We\'re preparing your invoice and will send it to you shortly.', 'cheapalarms')) . '</p>';
                 }
@@ -4682,7 +4683,7 @@ class PortalService
                             $formattedTime = $scheduledTime;
                         }
                     }
-                    $body .= '<div style="background-color: #f0f9ff; border-left: 4px solid #c95375; padding: 16px; margin: 20px 0;">';
+                    $body .= '<div style="background-color: #f0f9ff; border-left: 4px solid ' . esc_attr(EmailTemplateHtmlHelper::getPrimaryColor($this->config)) . '; padding: 16px; margin: 20px 0;">';
                     $body .= '<p style="margin: 0 0 8px 0;"><strong>' . esc_html(__('Installation Details:', 'cheapalarms')) . '</strong></p>';
                     if ($formattedDate) {
                         $body .= '<p style="margin: 4px 0;">📅 <strong>' . esc_html(__('Date:', 'cheapalarms')) . '</strong> ' . esc_html($formattedDate) . '</p>';
@@ -4696,10 +4697,10 @@ class PortalService
                     $body .= '</div>';
                     if ($invoiceUrl) {
                         $body .= '<p>' . esc_html(__('Next step: Complete your payment to finalize everything.', 'cheapalarms')) . '</p>';
-                        $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Complete Payment', 'cheapalarms')) . '</a></p>';
+                        $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Complete Payment', 'cheapalarms')) . '</a></p>';
                     } else {
                         $body .= '<p>' . esc_html(__('You can complete your payment and view all details in your portal:', 'cheapalarms')) . '</p>';
-                        $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                        $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     }
                     $body .= '<p>' . esc_html(__('If you need to reschedule or have any questions, please contact us.', 'cheapalarms')) . '</p>';
                     $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
@@ -4732,7 +4733,7 @@ class PortalService
                         $formattedTime = $scheduledTime;
                     }
                 }
-                $body .= '<div style="background-color: #f0f9ff; border-left: 4px solid #c95375; padding: 16px; margin: 20px 0;">';
+                $body .= '<div style="background-color: #f0f9ff; border-left: 4px solid ' . esc_attr(EmailTemplateHtmlHelper::getPrimaryColor($this->config)) . '; padding: 16px; margin: 20px 0;">';
                 $body .= '<p style="margin: 0 0 8px 0;"><strong>' . esc_html(__('Installation Details:', 'cheapalarms')) . '</strong></p>';
                 if ($formattedDate) {
                     $body .= '<p style="margin: 4px 0;">📅 <strong>' . esc_html(__('Date:', 'cheapalarms')) . '</strong> ' . esc_html($formattedDate) . '</p>';
@@ -4746,10 +4747,10 @@ class PortalService
                 $body .= '</div>';
                 if ($invoiceUrl) {
                     $body .= '<p>' . esc_html(__('Next step: Complete your payment to finalize everything.', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Complete Payment', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($invoiceUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Complete Payment', 'cheapalarms')) . '</a></p>';
                 } else {
                     $body .= '<p>' . esc_html(__('You can complete your payment and view all details in your portal:', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 }
                 $body .= '<p>' . esc_html(__('If you need to reschedule or have any questions, please contact us.', 'cheapalarms')) . '</p>';
                 $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
@@ -4928,7 +4929,7 @@ class PortalService
                     $body .= '<p style="margin: 4px 0;">💰 <strong>' . esc_html(__('Amount Paid:', 'cheapalarms')) . '</strong> ' . esc_html($currency . ' $' . $formattedAmount) . '</p>';
                     if ($isPartialPayment) {
                         $body .= '<p style="margin: 4px 0;">📊 <strong>' . esc_html(__('Total Paid:', 'cheapalarms')) . '</strong> ' . esc_html($currency . ' $' . $formattedTotalPaid) . ' ' . esc_html(sprintf(__('of %s', 'cheapalarms'), $currency . ' $' . $formattedInvoiceTotal)) . '</p>';
-                        $body .= '<p style="margin: 4px 0;">💳 <strong>' . esc_html(__('Remaining Balance:', 'cheapalarms')) . '</strong> <strong style="color: #c95375;">' . esc_html($currency . ' $' . $formattedRemainingBalance) . '</strong></p>';
+                        $body .= '<p style="margin: 4px 0;">💳 <strong>' . esc_html(__('Remaining Balance:', 'cheapalarms')) . '</strong> <strong style="color: ' . esc_attr(EmailTemplateHtmlHelper::getPrimaryColor($this->config)) . ';">' . esc_html($currency . ' $' . $formattedRemainingBalance) . '</strong></p>';
                     }
                     if ($payment['transactionId'] ?? null) {
                         $body .= '<p style="margin: 4px 0;">📄 <strong>' . esc_html(__('Transaction ID:', 'cheapalarms')) . '</strong> ' . esc_html($payment['transactionId']) . '</p>';
@@ -4947,7 +4948,7 @@ class PortalService
                     }
                     $body .= '<p>' . esc_html(__('We\'ll be in touch soon with installation details and any final preparations needed.', 'cheapalarms')) . '</p>';
                     $body .= '<p>' . esc_html(__('You can view all details and track progress in your portal:', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                     $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
@@ -4962,7 +4963,7 @@ class PortalService
                 $body .= '<p style="margin: 4px 0;">💰 <strong>' . esc_html(__('Amount Paid:', 'cheapalarms')) . '</strong> ' . esc_html($currency . ' $' . $formattedAmount) . '</p>';
                 if ($isPartialPayment) {
                     $body .= '<p style="margin: 4px 0;">📊 <strong>' . esc_html(__('Total Paid:', 'cheapalarms')) . '</strong> ' . esc_html($currency . ' $' . $formattedTotalPaid) . ' ' . esc_html(sprintf(__('of %s', 'cheapalarms'), $currency . ' $' . $formattedInvoiceTotal)) . '</p>';
-                    $body .= '<p style="margin: 4px 0;">💳 <strong>' . esc_html(__('Remaining Balance:', 'cheapalarms')) . '</strong> <strong style="color: #c95375;">' . esc_html($currency . ' $' . $formattedRemainingBalance) . '</strong></p>';
+                    $body .= '<p style="margin: 4px 0;">💳 <strong>' . esc_html(__('Remaining Balance:', 'cheapalarms')) . '</strong> <strong style="color: ' . esc_attr(EmailTemplateHtmlHelper::getPrimaryColor($this->config)) . ';">' . esc_html($currency . ' $' . $formattedRemainingBalance) . '</strong></p>';
                 }
                 if ($payment['transactionId'] ?? null) {
                     $body .= '<p style="margin: 4px 0;">📄 <strong>' . esc_html(__('Transaction ID:', 'cheapalarms')) . '</strong> ' . esc_html($payment['transactionId']) . '</p>';
@@ -4981,7 +4982,7 @@ class PortalService
                 }
                 $body .= '<p>' . esc_html(__('We\'ll be in touch soon with installation details and any final preparations needed.', 'cheapalarms')) . '</p>';
                 $body .= '<p>' . esc_html(__('You can view all details and track progress in your portal:', 'cheapalarms')) . '</p>';
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                 $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
@@ -5361,7 +5362,7 @@ class PortalService
                     }
                     $body .= '</ul>';
                     $body .= '<p>' . esc_html(__('You can access your portal and make the updates here:', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions or need clarification, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                     $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
@@ -5395,7 +5396,7 @@ class PortalService
                 }
                 $body .= '</ul>';
                 $body .= '<p>' . esc_html(__('You can access your portal and make the updates here:', 'cheapalarms')) . '</p>';
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('Open Your Portal', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions or need clarification, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                 $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
@@ -5544,7 +5545,7 @@ class PortalService
                     $body .= '<li>' . esc_html(__('Schedule your installation', 'cheapalarms')) . '</li>';
                     $body .= '</ul>';
                     $body .= '<p>' . esc_html(__('View your estimate and all details in your portal:', 'cheapalarms')) . '</p>';
-                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
+                    $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
                     $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                     $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
                 }
@@ -5585,7 +5586,7 @@ class PortalService
                 $body .= '<li>' . esc_html(__('Schedule your installation', 'cheapalarms')) . '</li>';
                 $body .= '</ul>';
                 $body .= '<p>' . esc_html(__('View your estimate and all details in your portal:', 'cheapalarms')) . '</p>';
-                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
+                $body .= '<p><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::primaryButtonStyle($this->config, 'margin: 16px 0;') . '">' . esc_html(__('View Updated Estimate', 'cheapalarms')) . '</a></p>';
                 $body .= '<p>' . esc_html(__('If you have any questions, please don\'t hesitate to contact us.', 'cheapalarms')) . '</p>';
                 $body .= '<p>' . esc_html(__('Thanks,', 'cheapalarms')) . '<br />' . esc_html($this->config->getSupportName()) . '</p>';
             }
@@ -5809,7 +5810,7 @@ class PortalService
                 if ($photosSubmitted) {
                     $body .= '<p style="color: #1EA6DF; font-weight: bold;">✓ Customer has submitted photos for review</p>';
                 } else {
-                    $body .= '<p style="color: #c95375; font-weight: bold;">⚠ Photos uploaded but not yet submitted</p>';
+                    $body .= '<p style="color: ' . esc_attr(EmailTemplateHtmlHelper::getPrimaryColor($this->config)) . '; font-weight: bold;">⚠ Photos uploaded but not yet submitted</p>';
                 }
             } else {
                 $body .= '<p><strong>Photos required:</strong> No</p>';
@@ -6234,7 +6235,7 @@ class PortalService
                     }
                     $body .= '<li>We\'ll then create your invoice and schedule installation</li>';
                     $body .= '</ol>';
-                    $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #1EA6DF, #c95375); color: white; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">View Updated Estimate</a></p>';
+                    $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::gradientButtonStyle($this->config) . '">View Updated Estimate</a></p>';
                     $body .= '<p style="color: #6b7280; font-size: 14px;">Have questions about the changes? Just reply to this email!</p>';
                     $body .= '<p>Thanks,<br/>' . esc_html($teamName) . '</p>';
                     $body .= '</div>';
@@ -6281,7 +6282,7 @@ class PortalService
                 }
                 $body .= '<li>We\'ll then create your invoice and schedule installation</li>';
                 $body .= '</ol>';
-                $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #1EA6DF, #c95375); color: white; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">View Updated Estimate</a></p>';
+                $body .= '<p style="text-align: center; margin: 32px 0;"><a href="' . esc_url($portalUrl) . '" style="' . EmailTemplateHtmlHelper::gradientButtonStyle($this->config) . '">View Updated Estimate</a></p>';
                 $body .= '<p style="color: #6b7280; font-size: 14px;">Have questions about the changes? Just reply to this email!</p>';
                 $body .= '<p>Thanks,<br/>' . esc_html($teamName) . '</p>';
                 $body .= '</div>';

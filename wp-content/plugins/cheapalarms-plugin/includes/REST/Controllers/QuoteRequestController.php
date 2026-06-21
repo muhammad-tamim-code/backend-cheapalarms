@@ -2,13 +2,14 @@
 
 namespace CheapAlarms\Plugin\REST\Controllers;
 
+use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Config\CacheConfig;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\PortalService;
-use CheapAlarms\Plugin\Config\Config;
+use CheapAlarms\Plugin\Services\EmailTemplateHtmlHelper;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -830,7 +831,7 @@ class QuoteRequestController implements ControllerInterface
                     $message = '<p>' . $greeting . '</p>';
                     $message .= '<p>' . esc_html(__('We have prepared your quote. Click the button below to set your password and access your estimate:', 'cheapalarms')) . '</p>';
                     if ($resetUrl) {
-                        $message .= '<p><a href="' . esc_url($resetUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Set Your Password', 'cheapalarms')) . '</a></p>';
+                        $message .= '<p>' . EmailTemplateHtmlHelper::inlineCtaButton($this->config, $resetUrl, __('Set Your Password', 'cheapalarms')) . '</p>';
                     }
                     if ($portalUrl) {
                         $message .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($portalUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('see your estimate as a guest', 'cheapalarms')) . '</a></p>';
@@ -845,7 +846,7 @@ class QuoteRequestController implements ControllerInterface
                 $message = '<p>' . $greeting . '</p>';
                 $message .= '<p>' . esc_html(__('We have prepared your quote. Click the button below to set your password and access your estimate:', 'cheapalarms')) . '</p>';
                 if ($resetUrl) {
-                    $message .= '<p><a href="' . esc_url($resetUrl) . '" style="display: inline-block; padding: 12px 24px; background-color: #c95375; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' . esc_html(__('Set Your Password', 'cheapalarms')) . '</a></p>';
+                    $message .= '<p>' . EmailTemplateHtmlHelper::inlineCtaButton($this->config, $resetUrl, __('Set Your Password', 'cheapalarms')) . '</p>';
                 }
                 if ($portalUrl) {
                     $message .= '<p style="margin-top: 16px; color: #64748b; font-size: 14px;">' . esc_html(__('or', 'cheapalarms')) . ' <a href="' . esc_url($portalUrl) . '" style="color: #2fb6c9; text-decoration: underline;">' . esc_html(__('see your estimate as a guest', 'cheapalarms')) . '</a></p>';
