@@ -39,6 +39,9 @@ final class CacheConfig
     /** Contacts (single search by email/id): same tier as contact list. */
     public const CONTACT_SEARCH_STALE_SECONDS = 600; // 10 minutes
 
+    /** GHL product catalog (includes prices synced in background). */
+    public const PRODUCT_LIST_STALE_SECONDS = 1800; // 30 minutes
+
     // ── ServiceM8 Entities ───────────────────────────────────────────
 
     /** SM8 Jobs: operational data, not directly customer-facing. */

@@ -23,6 +23,8 @@ use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotSyncService;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotSyncService;
+use CheapAlarms\Plugin\Services\Product\ProductSnapshotRepository;
+use CheapAlarms\Plugin\Services\Product\ProductSnapshotSyncService;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8SnapshotSyncService;
@@ -216,6 +218,25 @@ class Plugin
         add_action('ca_sync_contact_snapshots', function (string $locationId) {
             $this->container->get(ContactSnapshotSyncService::class)->syncLocation($locationId);
         }, 10, 1);
+
+        // GHL product catalog + prices → local snapshots (chunked price batches).
+        add_action('ca_sync_product_snapshots', function (string $locationId) {
+            $this->container->get(ProductSnapshotSyncService::class)->startSync($locationId);
+        }, 10, 1);
+
+        add_action('ca_sync_product_price_batch', function (string $locationId, int $offset, int $batchSize) {
+            $this->container->get(ProductSnapshotSyncService::class)->syncPriceBatch($locationId, $offset, $batchSize);
+        }, 10, 3);
+
+        if (!wp_next_scheduled('ca_sync_product_snapshots_daily')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'ca_sync_product_snapshots_daily');
+        }
+        add_action('ca_sync_product_snapshots_daily', function () {
+            $locationId = $this->container->get(Config::class)->getLocationId();
+            if ($locationId !== '' && !wp_next_scheduled('ca_sync_product_snapshots', [$locationId])) {
+                wp_schedule_single_event(time() + 1, 'ca_sync_product_snapshots', [$locationId]);
+            }
+        });
 
         // Retention cleanup job (daily) - permanently delete estimates soft-deleted > 30 days
         add_action('ca_cleanup_expired_deletions', function () {
@@ -798,6 +819,14 @@ class Plugin
             $this->container->get(Config::class)
         ));
 
+        $this->container->set(ProductSnapshotRepository::class, fn () => new ProductSnapshotRepository());
+        $this->container->set(ProductSnapshotSyncService::class, fn () => new ProductSnapshotSyncService(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
+            $this->container->get(ProductSnapshotRepository::class),
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
+        ));
+
         $this->container->set(\CheapAlarms\Plugin\Services\XeroService::class, fn () => new \CheapAlarms\Plugin\Services\XeroService(
             $this->container->get(Config::class),
             $this->container->get(Logger::class)
@@ -1003,6 +1032,9 @@ class Plugin
         wp_clear_scheduled_hook('ca_sync_estimate_snapshots');
         wp_clear_scheduled_hook('ca_sync_invoice_snapshots');
         wp_clear_scheduled_hook('ca_sync_contact_snapshots');
+        wp_clear_scheduled_hook('ca_sync_product_snapshots');
+        wp_clear_scheduled_hook('ca_sync_product_price_batch');
+        wp_clear_scheduled_hook('ca_sync_product_snapshots_daily');
         wp_clear_scheduled_hook('ca_retry_failed_webhooks');
         wp_clear_scheduled_hook('ca_retry_failed_webhooks_recurring');
         wp_clear_scheduled_hook('ca_retry_failed_ghl_webhooks');

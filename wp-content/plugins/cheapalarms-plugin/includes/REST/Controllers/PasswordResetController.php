@@ -352,7 +352,8 @@ class PasswordResetController implements ControllerInterface
         // Issue token for auto-login
         $token = null;
         try {
-            $token = $this->authenticator->issueToken($user);
+            // Long-lived session after first password set (same as "Remember me" on login).
+            $token = $this->authenticator->issueToken($user, true);
             if (!$token || is_wp_error($token)) {
                 // Log error but don't fail password reset
                 error_log('[Password Reset] Failed to issue token: ' . (is_wp_error($token) ? $token->get_error_message() : 'Token is null'));

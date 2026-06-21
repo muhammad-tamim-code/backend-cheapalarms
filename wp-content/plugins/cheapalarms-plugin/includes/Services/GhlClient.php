@@ -23,9 +23,13 @@ class GhlClient
      * @param string|null $locationId Optional location ID to pass as header
      * @param int $maxRetries Maximum number of retry attempts for transient errors
      */
-    public function get(string $path, array $query = [], int $timeout = 10, ?string $locationId = null, int $maxRetries = 1)
+    public function get(string $path, array $query = [], int $timeout = 10, ?string $locationId = null, int $maxRetries = 1, bool $bypassFetchGuard = false)
     {
-        if (!$this->config->isGhlFetchAllowed()) {
+        // The fetch guard exists because estimates/invoices/contacts are mirrored
+        // into WP snapshot tables, so live GHL reads are disabled. Products are NOT
+        // snapshotted (no local mirror), so callers reading the product catalog may
+        // opt out of the guard via $bypassFetchGuard.
+        if (!$bypassFetchGuard && !$this->config->isGhlFetchAllowed()) {
             return new WP_Error(
                 'ghl_fetch_disabled',
                 __('GoHighLevel read requests are disabled. WordPress is the source of truth; enable fetches only if you need legacy GHL import.', 'cheapalarms'),

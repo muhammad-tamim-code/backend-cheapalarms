@@ -17,7 +17,8 @@ class Config
         'upload_allowed_origins' => [],
         'api_allowed_origins'    => [],
         'jwt_secret'             => '',
-        'jwt_ttl_seconds'        => 3600,
+        'jwt_ttl_seconds'          => 3600,
+        'jwt_remember_ttl_seconds' => 2592000, // 30 days when "Remember me" is checked
         'xero_client_id'         => '',
         'xero_client_secret'     => '',
         'xero_redirect_uri'      => '',
@@ -294,6 +295,20 @@ class Config
 
         $env = (int) $this->getEnv('CA_JWT_TTL_SECONDS', $this->defaults['jwt_ttl_seconds']);
         return max(60, $env);
+    }
+
+    public function getJwtRememberTtlSeconds(): int
+    {
+        $override = $this->fromOverrides('jwt_remember_ttl_seconds');
+        if ($override !== null) {
+            return max(3600, (int) $override);
+        }
+
+        $env = (int) $this->getEnv(
+            'CA_JWT_REMEMBER_TTL_SECONDS',
+            $this->defaults['jwt_remember_ttl_seconds']
+        );
+        return max(3600, $env);
     }
 
     /**

@@ -9,7 +9,7 @@ use function update_option;
 class Schema
 {
     public const OPTION_KEY = 'ca_db_schema_version';
-    public const VERSION    = '2026-05-03-01'; // Added invoice→estimate link table (replaces wp_options table-scan)
+    public const VERSION    = '2026-06-20-01'; // Product snapshots (GHL catalog + prices local cache)
 
     public static function maybeMigrate(): void
     {
@@ -310,6 +310,30 @@ class Schema
         ) {$charsetCollate};";
 
         dbDelta($linksSql);
+
+        // GHL product catalog + prices (local read cache for Quick Quote — avoids per-product GHL price calls).
+        $productTableName = $wpdb->prefix . 'ca_product_snapshots';
+        $productSql = "CREATE TABLE {$productTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            location_id VARCHAR(64) NOT NULL,
+            product_id VARCHAR(64) NOT NULL,
+            name VARCHAR(255) NOT NULL DEFAULT '',
+            sku VARCHAR(128) NULL,
+            description TEXT NULL,
+            image TEXT NULL,
+            price_amount DECIMAL(18,2) NULL,
+            price_currency VARCHAR(8) NULL DEFAULT 'AUD',
+            price_id VARCHAR(64) NULL,
+            product_type VARCHAR(32) NULL,
+            synced_at DATETIME NOT NULL,
+            raw_json LONGTEXT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY location_product (location_id, product_id),
+            KEY idx_location_name (location_id, name),
+            KEY idx_location_synced (location_id, synced_at)
+        ) {$charsetCollate};";
+
+        dbDelta($productSql);
     }
 }
 

@@ -148,7 +148,8 @@ class AuthController implements ControllerInterface
                     ));
                 }
 
-                $token = $this->authenticator->issueToken($user);
+                $remember = !empty($payload['remember']);
+                $token = $this->authenticator->issueToken($user, $remember);
 
                 return new WP_REST_Response([
                     'ok'          => true,

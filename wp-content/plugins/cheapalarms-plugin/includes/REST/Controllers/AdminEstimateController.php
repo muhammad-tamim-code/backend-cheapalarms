@@ -21,6 +21,7 @@ use WP_REST_Response;
 
 use function sanitize_text_field;
 use function sanitize_email;
+use function sanitize_textarea_field;
 use function email_exists;
 use function wp_delete_user;
 use function get_user_by;
@@ -28,6 +29,11 @@ use function get_user_meta;
 use function delete_user_meta;
 use function delete_option;
 use function wp_json_encode;
+use function gmdate;
+use function strtotime;
+use function mb_substr;
+use function str_starts_with;
+use function ltrim;
 
 class AdminEstimateController extends AdminController
 {
@@ -789,7 +795,12 @@ class AdminEstimateController extends AdminController
 
         $body['contactDetails'] = $contactDetails;
 
-        $result = $this->estimateService->createEstimate($body);
+        $estimatePayload = $this->buildCustomQuoteGhlPayload($body, $locationId, $contactDetails);
+        if (is_wp_error($estimatePayload)) {
+            return $this->respond($estimatePayload);
+        }
+
+        $result = $this->estimateService->createEstimate($estimatePayload);
         if (is_wp_error($result) || !($result['ok'] ?? false)) {
             return $this->respond($result);
         }
@@ -2675,6 +2686,155 @@ class AdminEstimateController extends AdminController
         }
 
         return null;
+    }
+
+    /**
+     * Build a GHL-compliant estimate create payload for admin custom quotes.
+     *
+     * @param array<string, mixed> $body
+     * @param array<string, mixed> $contactDetails
+     * @return array<string, mixed>|WP_Error
+     */
+    private function buildCustomQuoteGhlPayload(array $body, string $locationId, array $contactDetails)
+    {
+        $config = $this->container->get(Config::class);
+        $brandName = $config->getBrandName();
+
+        $items = [];
+        foreach ($body['items'] ?? [] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $name = sanitize_text_field((string)($item['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $amount = (float)($item['amount'] ?? 0);
+            if ($amount < 0) {
+                continue;
+            }
+            $description = (string)($item['description'] ?? '');
+            $imageUrl = (string)($item['image'] ?? '');
+            $items[] = [
+                'name'        => $name,
+                'description' => $this->buildGhlItemDescription($description, $imageUrl),
+                'currency'    => 'AUD',
+                'amount'      => $amount,
+                'qty'         => max(1, (int)($item['qty'] ?? $item['quantity'] ?? 1)),
+                'type'        => (string)($item['type'] ?? 'one_time'),
+            ];
+        }
+
+        if ($items === []) {
+            return new WP_Error(
+                'invalid_items',
+                __('Add at least one valid line item.', 'cheapalarms'),
+                ['status' => 400]
+            );
+        }
+
+        $contactName = trim((string)($contactDetails['name'] ?? ''));
+        $firstName = trim((string)($contactDetails['firstName'] ?? ''));
+        $lastName = trim((string)($contactDetails['lastName'] ?? ''));
+        if ($contactName === '' && ($firstName !== '' || $lastName !== '')) {
+            $contactName = trim("{$firstName} {$lastName}");
+        }
+
+        $title = sanitize_text_field((string)($body['title'] ?? ''));
+        $defaultName = $contactName !== '' ? "Quote - {$contactName}" : 'Estimate';
+        $name = mb_substr($title !== '' ? $title : $defaultName, 0, 40);
+
+        $phone = (string)($contactDetails['phone'] ?? $contactDetails['phoneNo'] ?? '');
+        $formattedPhone = '';
+        if ($phone !== '') {
+            $formattedPhone = str_starts_with($phone, '+')
+                ? $phone
+                : '+61' . ltrim($phone, '0');
+        }
+
+        $email = sanitize_email((string)($contactDetails['email'] ?? ''));
+        $contactId = (string)($contactDetails['id'] ?? '');
+        if ($contactId === '') {
+            return new WP_Error(
+                'missing_contact_id',
+                __('Contact ID is required to create an estimate.', 'cheapalarms'),
+                ['status' => 400]
+            );
+        }
+
+        $discount = is_array($body['discount'] ?? null) ? $body['discount'] : [];
+        $discountType = (string)($discount['type'] ?? 'percentage');
+        $discountValue = (float)($discount['value'] ?? 0);
+
+        $payload = [
+            'altId'   => $locationId,
+            'altType' => 'location',
+            'name'    => $name,
+            'title'   => 'ESTIMATE',
+            'businessDetails' => [
+                'name' => $brandName,
+                'address' => [
+                    'addressLine1' => $brandName,
+                    'city'         => 'Brisbane',
+                    'state'        => 'QLD',
+                    'postalCode'   => '4000',
+                    'countryCode'  => 'AU',
+                ],
+            ],
+            'currency' => 'AUD',
+            'discount' => [
+                'type'  => $discountType !== '' ? $discountType : 'percentage',
+                'value' => $discountValue,
+            ],
+            'contactDetails' => [
+                'id'      => $contactId,
+                'email'   => $email,
+                'name'    => $contactName,
+                'phoneNo' => $formattedPhone,
+                'address' => [
+                    'addressLine1' => '',
+                    'city'         => '',
+                    'state'        => '',
+                    'postalCode'   => '',
+                    'countryCode'  => 'AU',
+                ],
+            ],
+            'issueDate'         => gmdate('Y-m-d'),
+            'expiryDate'        => gmdate('Y-m-d', strtotime('+30 days')),
+            'frequencySettings' => ['enabled' => false],
+            'liveMode'          => array_key_exists('liveMode', $body) ? (bool)$body['liveMode'] : true,
+            'items'             => $items,
+        ];
+
+        $termsNotes = sanitize_textarea_field((string)($body['termsNotes'] ?? ''));
+        if ($termsNotes !== '') {
+            $payload['termsNotes'] = $termsNotes;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Build GHL line-item description HTML with optional product image.
+     */
+    private function buildGhlItemDescription(string $text, string $imageUrl = ''): string
+    {
+        $text = trim($text);
+        $imageUrl = esc_url_raw(trim($imageUrl));
+
+        if ($text !== '' && preg_match('/<img\s/i', $text)) {
+            return $text;
+        }
+
+        $parts = [];
+        if ($text !== '') {
+            $parts[] = '<p>' . esc_html(wp_strip_all_tags($text)) . '</p>';
+        }
+        if ($imageUrl !== '') {
+            $parts[] = '<img src="' . esc_attr($imageUrl) . '" width="170" style="border-radius:8px;margin:6px 0;display:block;" alt="">';
+        }
+
+        return implode("\n", $parts);
     }
 
 }

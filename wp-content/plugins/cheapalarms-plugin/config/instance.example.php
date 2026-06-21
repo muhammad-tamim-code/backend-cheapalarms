@@ -39,7 +39,8 @@ return [
     'upload_shared_secret' => '',
     'upload_max_mb'        => 10,
     'jwt_secret'           => '',
-    'jwt_ttl_seconds'      => 3600,
+    'jwt_ttl_seconds'          => 3600,
+    'jwt_remember_ttl_seconds' => 2592000,
 
     // CORS — auto-synced from cheapalarms.instance.json
     'upload_allowed_origins' => [

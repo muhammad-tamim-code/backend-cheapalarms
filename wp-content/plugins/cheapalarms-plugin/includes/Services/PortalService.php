@@ -3146,23 +3146,37 @@ class PortalService
             }
 
             if ($isHeading) {
-                $itemsMeta[$name] = [
-                    'isHeading' => true,
-                    'addedAt'   => $now,
-                ];
-                continue;
-            }
-
-            // Non-heading line: respect explicit override, otherwise default to required.
-            $photoRequired = array_key_exists('photoRequired', $item)
-                ? (bool)$item['photoRequired']
-                : true;
-
             $itemsMeta[$name] = [
-                'photoRequired' => $photoRequired,
-                'maxPhotos'     => 2,
-                'addedAt'       => $now,
+                'isHeading' => true,
+                'addedAt'   => $now,
             ];
+            if (!empty($item['image'])) {
+                $itemsMeta[$name]['image'] = esc_url_raw((string)$item['image']);
+            }
+            continue;
+        }
+
+        // Non-heading line: respect explicit override, otherwise default to required.
+        $photoRequired = array_key_exists('photoRequired', $item)
+            ? (bool)$item['photoRequired']
+            : true;
+
+        $entry = [
+            'photoRequired' => $photoRequired,
+            'maxPhotos'     => 2,
+            'addedAt'       => $now,
+        ];
+        if (!empty($item['image'])) {
+            $entry['image'] = esc_url_raw((string)$item['image']);
+        }
+        if (!empty($item['ghlProductId'])) {
+            $entry['ghlProductId'] = sanitize_text_field((string)$item['ghlProductId']);
+        }
+        if (!empty($item['isCustom'])) {
+            $entry['isCustom'] = true;
+        }
+
+        $itemsMeta[$name] = $entry;
         }
 
         return $itemsMeta;

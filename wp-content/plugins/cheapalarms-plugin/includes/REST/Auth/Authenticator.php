@@ -167,10 +167,12 @@ class Authenticator
     /**
      * @param array<mixed> $payload
      */
-    public function issueToken(WP_User $user): array
+    public function issueToken(WP_User $user, bool $remember = false): array
     {
         $issuedAt = time();
-        $ttl      = $this->config->getJwtTtlSeconds();
+        $ttl      = $remember
+            ? $this->config->getJwtRememberTtlSeconds()
+            : $this->config->getJwtTtlSeconds();
         $expires  = $issuedAt + $ttl;
         $resolved = $this->authorization->resolveForUser($user);
         $legacyCaps = array_values(array_filter(array_keys($user->allcaps ?? []), static fn ($cap) => str_starts_with($cap, 'ca_')));

@@ -57,7 +57,8 @@ return [
 
     // JWT Authentication Secret
     'jwt_secret'       => '', // or set CA_JWT_SECRET env var
-    'jwt_ttl_seconds'  => 3600, // 1 hour
+    'jwt_ttl_seconds'          => 3600, // 1 hour (default session)
+    'jwt_remember_ttl_seconds' => 2592000, // 30 days when "Remember me" is checked
 
     // Next.js portal URL (NOT the WordPress marketing domain)
     'frontend_url'     => 'https://portal.cheapalarms.com.au',
