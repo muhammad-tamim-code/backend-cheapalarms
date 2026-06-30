@@ -289,6 +289,11 @@ class Config
 
     public function getUploadSharedSecret(): string
     {
+        $fromDb = get_option('ca_upload_shared_secret', '');
+        if (is_string($fromDb) && $fromDb !== '') {
+            return sanitize_text_field($fromDb);
+        }
+
         return $this->fromOverrides('upload_shared_secret') ?: $this->getEnv('CA_UPLOAD_SHARED_SECRET', $this->defaults['upload_shared_secret']);
     }
 
@@ -348,6 +353,11 @@ class Config
         $override = $this->fromOverrides('jwt_secret');
         if (is_string($override) && $override !== '') {
             return $override;
+        }
+
+        $fromDb = get_option('ca_jwt_secret', '');
+        if (is_string($fromDb) && $fromDb !== '') {
+            return sanitize_text_field($fromDb);
         }
 
         $env = (string) $this->getEnv('CA_JWT_SECRET', '');

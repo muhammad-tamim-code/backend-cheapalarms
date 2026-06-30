@@ -22,6 +22,7 @@ use CheapAlarms\Plugin\REST\Controllers\XeroController;
 use CheapAlarms\Plugin\REST\Controllers\StripeController;
 use CheapAlarms\Plugin\REST\Controllers\GhlWebhookController;
 use CheapAlarms\Plugin\REST\Controllers\HealthController;
+use CheapAlarms\Plugin\REST\Controllers\SetupBootstrapController;
 use CheapAlarms\Plugin\REST\Controllers\LogController;
 use CheapAlarms\Plugin\Services\Container;
 
@@ -35,6 +36,7 @@ class ApiKernel
     {
         $controllers = [
             new HealthController($this->container), // Register health check first
+            new SetupBootstrapController($this->container),
             new AuthController($this->container),
             new PasswordResetController($this->container),
             new EstimateController($this->container),

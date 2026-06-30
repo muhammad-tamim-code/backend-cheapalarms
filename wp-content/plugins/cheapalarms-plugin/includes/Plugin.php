@@ -25,6 +25,7 @@ use CheapAlarms\Plugin\Services\Contact\ContactSnapshotSyncService;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotRepository;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotSyncService;
 use CheapAlarms\Plugin\REST\Controllers\HealthController;
+use CheapAlarms\Plugin\REST\Controllers\SetupBootstrapController;
 use CheapAlarms\Plugin\REST\Controllers\CalculatorController;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
@@ -928,6 +929,7 @@ class Plugin
 
         add_action('rest_api_init', function () {
             (new HealthController($this->container))->register();
+            (new SetupBootstrapController($this->container))->register();
             (new CalculatorController($this->container))->register();
         });
 

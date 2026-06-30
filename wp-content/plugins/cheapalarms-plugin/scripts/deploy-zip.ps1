@@ -19,7 +19,6 @@ New-Item -ItemType Directory -Path (Split-Path $zipPath) -Force | Out-Null
 robocopy $pluginRoot $wrapDir /E `
     /XD node_modules cheapalarms-plugin-zip-tmp deploy scripts .git tests `
     /XF cheapalarms-plugin.zip *.log .gitignore `
-    /XF secrets.php instance.php `
     /NFL /NDL /NJH /NJS /nc /ns /np
 
 if ($LASTEXITCODE -ge 8) {
