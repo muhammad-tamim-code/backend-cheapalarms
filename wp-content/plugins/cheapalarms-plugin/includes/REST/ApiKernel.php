@@ -17,6 +17,7 @@ use CheapAlarms\Plugin\REST\Controllers\AdminEstimateController;
 use CheapAlarms\Plugin\REST\Controllers\AdminInvoiceController;
 use CheapAlarms\Plugin\REST\Controllers\AdminSettingsController;
 use CheapAlarms\Plugin\REST\Controllers\QuoteRequestController;
+use CheapAlarms\Plugin\REST\Controllers\CalculatorController;
 use CheapAlarms\Plugin\REST\Controllers\XeroController;
 use CheapAlarms\Plugin\REST\Controllers\StripeController;
 use CheapAlarms\Plugin\REST\Controllers\GhlWebhookController;
@@ -49,6 +50,7 @@ class ApiKernel
             new AdminSettingsController($this->container),
             new AdminGhlContactsController($this->container),
             new QuoteRequestController($this->container),
+            new CalculatorController($this->container),
             new XeroController($this->container),
             new StripeController($this->container),
             new GhlWebhookController($this->container),

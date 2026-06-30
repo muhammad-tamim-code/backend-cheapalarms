@@ -168,7 +168,7 @@ class Config
             return trim($env);
         }
 
-        return $this->getBrandName() . ' Support';
+        return $this->getBrandName();
     }
 
     public function getSupportEmail(): string

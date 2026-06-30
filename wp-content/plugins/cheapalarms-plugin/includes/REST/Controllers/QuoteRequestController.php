@@ -10,7 +10,10 @@ use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\PortalService;
 use CheapAlarms\Plugin\Services\EmailTemplateHtmlHelper;
+use CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry;
+use CheapAlarms\Plugin\Calculators\ResolveTokenStore;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
+use CheapAlarms\Plugin\Support\AustralianPhone;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -93,18 +96,49 @@ class QuoteRequestController implements ControllerInterface
 
         $body = $request->get_json_params();
 
+        $brand = sanitize_text_field($body['brand'] ?? '');
+        $isCalculator = $brand !== '';
+
         // Validate required fields
         $firstName = sanitize_text_field($body['firstName'] ?? '');
         $lastName = sanitize_text_field($body['lastName'] ?? '');
         $email = sanitize_email($body['email'] ?? '');
         $phone = sanitize_text_field($body['phone'] ?? '');
 
-        if (empty($firstName) || empty($lastName) || empty($email)) {
+        if ($phone !== '') {
+            $normalizedPhone = AustralianPhone::toE164($phone);
+            if ($normalizedPhone === null) {
+                return $this->respond(new WP_Error('invalid_phone', 'Please enter a valid Australian phone number (e.g. 04XX XXX XXX)', ['status' => 400]));
+            }
+            $phone = $normalizedPhone;
+        }
+
+        if ($isCalculator) {
+            if (empty($firstName) || empty($lastName) || empty($phone)) {
+                return $this->respond(new WP_Error('missing_params', 'Missing required fields: firstName, lastName, phone', ['status' => 400]));
+            }
+            if (empty($email)) {
+                $email = $this->syntheticEmailFromPhone($phone);
+            }
+        } elseif (empty($firstName) || empty($lastName) || empty($email)) {
             return $this->respond(new WP_Error('missing_params', 'Missing required fields: firstName, lastName, email', ['status' => 400]));
         }
 
+        $calcResolveToken = '';
+        if ($isCalculator) {
+            $resolved = $this->resolveCalculatorItems($body, $brand);
+            if (is_wp_error($resolved)) {
+                return $this->respond($resolved);
+            }
+            $body['items'] = $resolved['items'];
+            $calcResolveToken = (string) ($resolved['resolveToken'] ?? '');
+            if (!empty($resolved['propertyProfile'])) {
+                $body['propertyProfile'] = $resolved['propertyProfile'];
+            }
+        }
+
         // Define lock key BEFORE using it (needed for duplicate prevention)
-        $lockKey = 'ca_quote_request_lock_' . md5($email);
+        $lockKey = 'ca_quote_request_lock_' . md5($email !== '' ? $email : $phone);
 
         // DUPLICATE PREVENTION: Check if same email recently created an estimate
         // Use email-based lock (60 seconds) to prevent duplicate quote requests
@@ -433,13 +467,8 @@ class QuoteRequestController implements ControllerInterface
             }
 
             // Step 2: Create estimate in GHL
-            // Format phone to E.164 (GHL might require this)
-            $formattedPhone = '';
-            if ($phone) {
-                $formattedPhone = str_starts_with($phone, '+') 
-                    ? $phone 
-                    : '+61' . ltrim($phone, '0');
-            }
+            // Phone is already normalized to E.164 (+61…) when provided
+            $formattedPhone = $phone;
             
             $estimateData = [
                 'altId' => $effectiveLocationId,
@@ -878,6 +907,10 @@ class QuoteRequestController implements ControllerInterface
 
             // Success! Keep the lock for full 60 seconds to prevent duplicate submissions
             // (Don't clear it - let it expire naturally)
+
+            if ($calcResolveToken !== '') {
+                $this->container->get(ResolveTokenStore::class)->delete($calcResolveToken);
+            }
             
             return $this->respond([
                 'ok' => true,
@@ -896,6 +929,84 @@ class QuoteRequestController implements ControllerInterface
             
             return $this->respond(new WP_Error('unexpected_error', 'An unexpected error occurred. Please try again.', ['status' => 500]));
         }
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @return array{items:array<int,array<string,mixed>>,resolveToken?:string,propertyProfile?:string}|WP_Error
+     */
+    private function resolveCalculatorItems(array $body, string $brand)
+    {
+        $registry = $this->container->get(CalculatorResolverRegistry::class);
+        $resolver = $registry->get($brand);
+        if (is_wp_error($resolver)) {
+            return $resolver;
+        }
+
+        $resolveToken = sanitize_text_field($body['resolveToken'] ?? '');
+        $selections = null;
+
+        if ($resolveToken !== '') {
+            $store = $this->container->get(ResolveTokenStore::class);
+            $stored = $store->get($resolveToken);
+            if ($stored === null) {
+                return new WP_Error('invalid_token', 'Quote session expired — please review your kit again', ['status' => 400]);
+            }
+            $selections = $stored['selections'];
+        } else {
+            $kit = $body['kit'] ?? [];
+            if (!is_array($kit) || $kit === []) {
+                return new WP_Error('missing_selections', 'Missing resolveToken or kit selections', ['status' => 400]);
+            }
+            $selections = [
+                'mode'       => sanitize_text_field($body['mode'] ?? 'build'),
+                'property'   => $body['property'] ?? null,
+                'monitoring' => sanitize_text_field($body['monitoring'] ?? 'none'),
+                'kit'        => $kit,
+            ];
+        }
+
+        $valid = $resolver->validate($selections);
+        if (is_wp_error($valid)) {
+            return $valid;
+        }
+
+        $locationId = $this->config->getLocationId();
+        if ($locationId === '' && defined('WP_DEBUG') && WP_DEBUG) {
+            $locationId = 'local-dev';
+        }
+        if ($locationId === '') {
+            return new WP_Error('no_location', 'GHL location is not configured', ['status' => 500]);
+        }
+
+        $items = $resolver->toLineItems($selections, $locationId);
+        if ($items === []) {
+            return new WP_Error('resolve_failed', 'Could not price kit — products may not be seeded', ['status' => 502]);
+        }
+
+        $propertyProfile = '';
+        if (!empty($selections['mode'])) {
+            $propertyProfile = 'ajax:' . sanitize_text_field((string) $selections['mode']);
+            if (!empty($selections['property'])) {
+                $propertyProfile .= ':' . sanitize_text_field((string) $selections['property']);
+            }
+        }
+
+        return [
+            'items'           => $items,
+            'resolveToken'    => $resolveToken,
+            'propertyProfile' => $propertyProfile,
+        ];
+    }
+
+    private function syntheticEmailFromPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            $digits = 'unknown';
+        }
+
+        return 'quotes+' . $digits . '@quotes.safeguard.local';
     }
 
     /**

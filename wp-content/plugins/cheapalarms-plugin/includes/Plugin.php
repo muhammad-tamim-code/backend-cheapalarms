@@ -2,7 +2,6 @@
 
 namespace CheapAlarms\Plugin;
 
-use CheapAlarms\Plugin\Admin\Menu;
 use CheapAlarms\Plugin\Admin\UserCapabilities;
 use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Db\Schema;
@@ -25,6 +24,8 @@ use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotSyncService;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotRepository;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotSyncService;
+use CheapAlarms\Plugin\REST\Controllers\HealthController;
+use CheapAlarms\Plugin\REST\Controllers\CalculatorController;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8SnapshotSyncService;
@@ -142,30 +143,12 @@ class Plugin
                 $missing[] = 'upload_shared_secret';
             }
             
-            // ✅ FIX: Don't call wp_die() during bootstrap - this prevents plugin upload
-            // Log error but allow plugin to load (configuration can be added later)
             $missingStr = implode(', ', $missing);
             error_log('[CA] Configuration error: Missing required secrets: ' . $missingStr);
-            
-            // ✅ Only block API calls, not plugin loading/activation
-            // This allows plugin to be uploaded and activated even if not configured
-            add_action('rest_api_init', function() use ($missingStr) {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    $message = sprintf(
-                        __('Portal plugin is not configured. Missing required secrets: %s. Please configure secrets.php or set environment variables.', 'cheapalarms'),
-                        $missingStr
-                    );
-                    wp_die($message, __('Plugin Configuration Error', 'cheapalarms'), ['response' => 500]);
-                } else {
-                    wp_die(
-                        __('Portal plugin is not properly configured. Please contact the administrator.', 'cheapalarms'),
-                        __('Plugin Configuration Error', 'cheapalarms'),
-                        ['response' => 500]
-                    );
-                }
-            }, 1); // Priority 1 to run before API endpoints register
-            
-            // ✅ Don't initialize services if not configured, but don't kill WordPress
+
+            Schema::maybeMigrate();
+            $this->bootstrapPublicCalculatorApi($config, $missingStr);
+
             return;
         }
         
@@ -499,7 +482,6 @@ class Plugin
         $this->registerCors();
         $this->registerRestEndpoints();
         $this->registerFrontend();
-        $this->registerAdminUi();
         $this->registerAdmin();
         $this->registerUserTracking();
     }
@@ -826,6 +808,16 @@ class Plugin
             $this->container->get(Logger::class),
             $this->container->get(Config::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver::class, fn () => new \CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver(
+            $this->container->get(ProductSnapshotRepository::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry::class, fn () => new \CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry(
+            $this->container->get(\CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Calculators\ResolveTokenStore::class, fn () => new \CheapAlarms\Plugin\Calculators\ResolveTokenStore());
+        $this->container->set(\CheapAlarms\Plugin\Calculators\AjaxProductSeedService::class, fn () => new \CheapAlarms\Plugin\Calculators\AjaxProductSeedService(
+            $this->container->get(ProductSnapshotRepository::class)
+        ));
 
         $this->container->set(\CheapAlarms\Plugin\Services\XeroService::class, fn () => new \CheapAlarms\Plugin\Services\XeroService(
             $this->container->get(Config::class),
@@ -906,6 +898,48 @@ class Plugin
         });
     }
 
+    /**
+     * Minimal API when secrets.php is missing — public calculator catalog/resolve only.
+     */
+    private function bootstrapPublicCalculatorApi(Config $config, string $missingStr): void
+    {
+        $this->container->set(Config::class, fn () => $config);
+        $this->container->set(Logger::class, fn () => new Logger(null));
+        $this->container->set(AuthorizationService::class, fn () => new AuthorizationService());
+        $this->container->set(Authenticator::class, fn () => new Authenticator(
+            $this->container->get(Config::class),
+            $this->container->get(AuthorizationService::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\GhlClient::class, fn () => new \CheapAlarms\Plugin\Services\GhlClient(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(ProductSnapshotRepository::class, fn () => new ProductSnapshotRepository());
+        $this->container->set(\CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver::class, fn () => new \CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver(
+            $this->container->get(ProductSnapshotRepository::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry::class, fn () => new \CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry(
+            $this->container->get(\CheapAlarms\Plugin\Calculators\Resolvers\AjaxResolver::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Calculators\ResolveTokenStore::class, fn () => new \CheapAlarms\Plugin\Calculators\ResolveTokenStore());
+        $this->container->set(\CheapAlarms\Plugin\Calculators\AjaxProductSeedService::class, fn () => new \CheapAlarms\Plugin\Calculators\AjaxProductSeedService(
+            $this->container->get(ProductSnapshotRepository::class)
+        ));
+
+        add_action('rest_api_init', function () {
+            (new HealthController($this->container))->register();
+            (new CalculatorController($this->container))->register();
+        });
+
+        if (is_admin()) {
+            add_action('admin_notices', function () use ($missingStr) {
+                echo '<div class="notice notice-warning"><p><strong>CheapAlarms:</strong> Calculator API is active, but portal features need <code>config/secrets.php</code>. Missing: '
+                    . esc_html($missingStr)
+                    . '</p></div>';
+            });
+        }
+    }
+
     private function registerCors(): void
     {
         add_action('rest_api_init', function () {
@@ -953,11 +987,6 @@ class Plugin
     {
         $origins = $this->container->get(Config::class)->getApiAllowedOrigins();
         return in_array($origin, $origins, true);
-    }
-
-    private function registerAdminUi(): void
-    {
-        new Menu();
     }
 
     private function registerAdmin(): void

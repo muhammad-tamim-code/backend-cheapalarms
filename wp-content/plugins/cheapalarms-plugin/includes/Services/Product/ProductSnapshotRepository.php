@@ -359,4 +359,163 @@ class ProductSnapshotRepository
             'hasPrices'   => $hasAmount,
         ];
     }
+
+    /**
+     * Upsert a calculator product with price (used by Ajax seed).
+     *
+     * @param array<string, mixed> $record
+     * @return true|WP_Error
+     */
+    public function upsertCalculatorProduct(string $locationId, array $record)
+    {
+        global $wpdb;
+
+        if ($locationId === '') {
+            return new WP_Error('bad_request', 'locationId is required', ['status' => 400]);
+        }
+
+        $productId = (string) ($record['productId'] ?? '');
+        if ($productId === '') {
+            return new WP_Error('bad_request', 'productId is required', ['status' => 400]);
+        }
+
+        $syncedAt = current_time('mysql');
+        $amount = isset($record['amount']) ? (float) $record['amount'] : null;
+
+        $res = $wpdb->query(
+            $wpdb->prepare(
+                "INSERT INTO {$this->tableName}
+                    (location_id, product_id, name, sku, description, image, product_type,
+                     price_amount, price_currency, synced_at, raw_json)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %f, %s, %s, %s)
+                 ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    sku = VALUES(sku),
+                    description = VALUES(description),
+                    image = VALUES(image),
+                    product_type = VALUES(product_type),
+                    price_amount = VALUES(price_amount),
+                    price_currency = VALUES(price_currency),
+                    synced_at = VALUES(synced_at),
+                    raw_json = VALUES(raw_json)",
+                $locationId,
+                $productId,
+                (string) ($record['name'] ?? ''),
+                (string) ($record['sku'] ?? ''),
+                (string) ($record['description'] ?? ''),
+                (string) ($record['image'] ?? ''),
+                (string) ($record['productType'] ?? 'physical'),
+                $amount ?? 0.0,
+                (string) ($record['currency'] ?? 'AUD'),
+                $syncedAt,
+                (string) ($record['rawJson'] ?? wp_json_encode($record))
+            )
+        );
+
+        if ($res === false) {
+            return new WP_Error('db_error', 'Failed to upsert calculator product', [
+                'status'  => 500,
+                'details' => $wpdb->last_error,
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getCalculatorProductByKey(string $locationId, string $brand, string $key): ?array
+    {
+        global $wpdb;
+
+        if ($locationId === '' || $key === '') {
+            return null;
+        }
+
+        $productId = 'calc:' . strtolower($brand) . ':' . $key;
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT product_id, name, sku, description, image, product_type,
+                        price_amount, price_currency, synced_at, raw_json
+                 FROM {$this->tableName}
+                 WHERE location_id = %s AND product_id = %s
+                 LIMIT 1",
+                $locationId,
+                $productId
+            ),
+            ARRAY_A
+        );
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|WP_Error
+     */
+    public function listCalculatorProducts(string $locationId, string $brand)
+    {
+        global $wpdb;
+
+        if ($locationId === '') {
+            return new WP_Error('bad_request', 'locationId is required', ['status' => 400]);
+        }
+
+        $prefix = 'calc:' . strtolower($brand) . ':%';
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT product_id, name, sku, description, image, product_type,
+                        price_amount, price_currency, synced_at, raw_json
+                 FROM {$this->tableName}
+                 WHERE location_id = %s AND product_id LIKE %s
+                 ORDER BY name ASC",
+                $locationId,
+                $prefix
+            ),
+            ARRAY_A
+        );
+
+        if ($rows === null) {
+            return new WP_Error('db_error', 'Failed to list calculator products', [
+                'status'  => 500,
+                'details' => $wpdb->last_error,
+            ]);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function rowToCalculatorCatalog(array $row): array
+    {
+        $raw = [];
+        if (!empty($row['raw_json']) && is_string($row['raw_json'])) {
+            $decoded = json_decode($row['raw_json'], true);
+            if (is_array($decoded)) {
+                $raw = $decoded;
+            }
+        }
+
+        $productId = (string) ($row['product_id'] ?? '');
+        $key = (string) ($raw['calculatorKey'] ?? '');
+        if ($key === '' && strpos($productId, ':') !== false) {
+            $parts = explode(':', $productId);
+            $key = (string) end($parts);
+        }
+
+        return [
+            'key'     => $key,
+            'name'    => (string) ($row['name'] ?? ''),
+            'desc'    => (string) ($row['description'] ?? ''),
+            'cat'     => (string) ($raw['cat'] ?? ''),
+            'icon'    => (string) ($raw['icon'] ?? ''),
+            'colours' => $raw['colours'] ?? ['white'],
+            'alts'    => $raw['alts'] ?? [],
+            'thumb'   => (string) ($row['image'] ?? ''),
+            'gallery' => is_array($raw['gallery'] ?? null) ? $raw['gallery'] : [],
+        ];
+    }
 }

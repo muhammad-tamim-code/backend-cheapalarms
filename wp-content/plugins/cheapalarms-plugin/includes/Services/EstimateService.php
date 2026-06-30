@@ -438,6 +438,16 @@ class EstimateService
             $portalService->autoTransitionToReviewed($estimateId);
         }
 
+        // Keep local snapshot in sync — getEstimate reads snapshot first.
+        $record = $this->fetchEstimateRecordFromGhl($estimateId, (string) $altId, true);
+        if (!is_wp_error($record) && is_array($record) && $record !== []) {
+            $this->writeThroughEstimateSnapshot((string) $altId, $record);
+        } elseif (is_array($response['estimate'] ?? null)) {
+            $this->writeThroughEstimateSnapshot((string) $altId, $response['estimate']);
+        } elseif (is_array($response) && !empty($response['id'] ?? $response['_id'] ?? null)) {
+            $this->writeThroughEstimateSnapshot((string) $altId, $response);
+        }
+
         return ['ok' => true, 'result' => $response];
     }
 
@@ -1186,6 +1196,87 @@ class EstimateService
     }
 
     /**
+     * Force-fetch an estimate from GHL and refresh the local snapshot (admin sync).
+     *
+     * @return array|WP_Error
+     */
+    public function refreshEstimateFromGhl(string $estimateId, string $locationId = '')
+    {
+        $locationId = $locationId ?: $this->config->getLocationId();
+        if ($estimateId === '') {
+            return new WP_Error('bad_request', __('estimateId is required', 'cheapalarms'), ['status' => 400]);
+        }
+        if ($locationId === '') {
+            return new WP_Error('missing_location', __('locationId required', 'cheapalarms'), ['status' => 400]);
+        }
+
+        $record = $this->fetchEstimateRecordFromGhl($estimateId, $locationId, true);
+        if (is_wp_error($record)) {
+            return $record;
+        }
+        if (!$record) {
+            return new WP_Error('not_found', __('Estimate not found in GoHighLevel.', 'cheapalarms'), ['status' => 404]);
+        }
+
+        $this->writeThroughEstimateSnapshot($locationId, $record);
+
+        return $this->trimEstimate($record, 0);
+    }
+
+    /**
+     * @return array<string, mixed>|WP_Error|null
+     */
+    private function fetchEstimateRecordFromGhl(string $estimateId, string $locationId, bool $bypassFetchGuard = false)
+    {
+        $response = $this->client->get(
+            '/invoices/estimate/' . rawurlencode($estimateId),
+            ['altId' => $locationId, 'altType' => 'location', 'raw' => 1],
+            25,
+            $locationId,
+            1,
+            $bypassFetchGuard
+        );
+        if (is_wp_error($response)) {
+            $data = $response->get_error_data();
+            $code = $data['code'] ?? null;
+            if ($code && (int) $code !== 404) {
+                return $response;
+            }
+        } elseif (isset($response['estimate']) && is_array($response['estimate'])) {
+            return $response['estimate'];
+        } elseif (!empty($response) && is_array($response)) {
+            return $response;
+        }
+
+        $offset = '0';
+        $loops  = 0;
+        do {
+            $loops++;
+            if ($loops > 20) {
+                break;
+            }
+            $query = ['altId' => $locationId, 'altType' => 'location', 'limit' => 50, 'offset' => $offset];
+            $list  = $this->client->get('/invoices/estimate/list', $query, 25, $locationId, 1, $bypassFetchGuard);
+            if (is_wp_error($list)) {
+                return $list;
+            }
+
+            $records = $list['estimates'] ?? $list['items'] ?? [];
+            foreach ($records as $record) {
+                $rid = $record['id'] ?? $record['_id'] ?? $record['estimateId'] ?? null;
+                if ($rid && (string) $rid === $estimateId) {
+                    return $record;
+                }
+            }
+
+            $next   = $list['nextOffset'] ?? ($list['meta']['nextOffset'] ?? null);
+            $offset = $next ? (string) $next : null;
+        } while ($offset !== null);
+
+        return null;
+    }
+
+    /**
      * @return array|WP_Error|null
      */
     private function getEstimateById(string $estimateId, string $locationId)
@@ -1233,54 +1324,15 @@ class EstimateService
             );
         }
 
-        // Fallback to GHL API if snapshot not available or not found
-        $response = $this->client->get(
-            '/invoices/estimate/' . rawurlencode($estimateId),
-            ['altId' => $locationId, 'altType' => 'location', 'raw' => 1]
-        );
-        if (is_wp_error($response)) {
-            $data = $response->get_error_data();
-            $code = $data['code'] ?? null;
-            if ($code && (int)$code !== 404) {
-                return $response;
-            }
-        } else {
-            if (isset($response['estimate'])) {
-                return $response['estimate'];
-            }
-
-            if (!empty($response)) {
-                return $response;
-            }
+        $record = $this->fetchEstimateRecordFromGhl($estimateId, $locationId, false);
+        if (is_wp_error($record)) {
+            return $record;
+        }
+        if ($record) {
+            $this->writeThroughEstimateSnapshot($locationId, $record);
         }
 
-        // fallback: list + filter
-        $offset = '0';
-        $loops = 0;
-        do {
-            $loops++;
-            if ($loops > 20) {
-                break;
-            }
-            $query = ['altId' => $locationId, 'altType' => 'location', 'limit' => 50, 'offset' => $offset];
-            $list = $this->client->get('/invoices/estimate/list', $query);
-            if (is_wp_error($list)) {
-                return $list;
-            }
-
-            $records = $list['estimates'] ?? $list['items'] ?? [];
-            foreach ($records as $record) {
-                $rid = $record['id'] ?? $record['_id'] ?? $record['estimateId'] ?? null;
-                if ($rid && $rid === $estimateId) {
-                    return $record;
-                }
-            }
-
-            $next = $list['nextOffset'] ?? ($list['meta']['nextOffset'] ?? null);
-            $offset = $next ? (string)$next : null;
-        } while ($offset !== null);
-
-        return null;
+        return $record;
     }
 
     /**

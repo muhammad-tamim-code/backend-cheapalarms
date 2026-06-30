@@ -934,6 +934,7 @@ class AdminEstimateController extends AdminController
         return $this->respond([
             'ok'            => true,
             'id'            => $estimateId,
+            'locationId'    => $locationId ?: $this->container->get(Config::class)->getLocationId(),
             'estimateNumber' => $estimate['estimateNumber'] ?? $estimateId,
             'title'         => $estimate['title'] ?? $estimate['name'] ?? 'ESTIMATE',
             'ghlStatus'     => $estimate['status'] ?? 'draft',
@@ -988,19 +989,13 @@ class AdminEstimateController extends AdminController
             $args['locationId'] = $locationId;
         }
 
-        // Re-fetch from GHL
-        $estimate = $this->estimateService->getEstimate($args);
+        // Re-fetch from GHL and refresh local snapshot (bypasses stale snapshot + fetch guard).
+        $estimate = $this->estimateService->refreshEstimateFromGhl($estimateId, $locationId ?: '');
         if (is_wp_error($estimate)) {
             return $this->respond($estimate);
         }
 
-        // Get updated portal meta
-        $meta = $this->getPortalMeta($estimateId);
-
-        // Optionally reconcile portal meta if GHL status changed
-        // (For now, just return updated data)
-
-        return $this->getEstimate($request); // Reuse getEstimate logic
+        return $this->getEstimate($request);
     }
 
     /**
