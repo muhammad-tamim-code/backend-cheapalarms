@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CheapAlarms Platform Bridge
  * Description: Hardened WordPress integration layer for CheapAlarms – exposes secure REST endpoints, admin dashboard loader, and GHL integration.
- * Version: 2.0.2
+ * Version: 2.0.3
  * Author: CheapAlarms Engineering
  * Requires at least: 5.8
  * Requires PHP: 7.4

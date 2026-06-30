@@ -52,6 +52,12 @@ class Config
         }
 
         $instanceFile = CA_PLUGIN_PATH . 'config/instance.php';
+        if (!file_exists($instanceFile)) {
+            $stagingInstance = CA_PLUGIN_PATH . 'config/instance.staging.php';
+            if (file_exists($stagingInstance)) {
+                $instanceFile = $stagingInstance;
+            }
+        }
         if (file_exists($instanceFile)) {
             $data = include $instanceFile;
             if (is_array($data)) {
