@@ -7,6 +7,7 @@ use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\Shared\PortalMetaRepository;
+use CheapAlarms\Plugin\Support\EstimateNumber;
 use WP_Error;
 
 use function add_query_arg;
@@ -214,7 +215,11 @@ class EstimateService
 
             $out[] = [
                 'id'             => $estimateId,
-                'estimateNumber' => $record['estimateNumber'] ?? null,
+                'estimateNumber' => EstimateNumber::format(
+                    $record['estimateNumber'] ?? null,
+                    $this->config->getEstimateNumberPrefix(),
+                    $estimateId
+                ),
                 'email'          => $email,
                 'status'         => $status,
                 'total'          => (float)($record['total'] ?? 0),
@@ -1655,10 +1660,15 @@ class EstimateService
             ];
         }
 
+        $estimateId = (string) ($record['id'] ?? $record['_id'] ?? '');
         $payload = [
             'ok'             => true,
             'estimateId'     => $record['id'] ?? ($record['_id'] ?? null),
-            'estimateNumber' => $record['estimateNumber'] ?? null,
+            'estimateNumber' => EstimateNumber::format(
+                $record['estimateNumber'] ?? null,
+                $this->config->getEstimateNumberPrefix(),
+                $estimateId !== '' ? $estimateId : null
+            ),
             'status'         => $record['estimateStatus'] ?? $record['status'] ?? null,
             'title'          => $record['title'] ?? $record['name'] ?? 'Estimate',
             'contact'        => $contact,

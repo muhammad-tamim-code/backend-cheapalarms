@@ -6,6 +6,8 @@ use CheapAlarms\Plugin\Calculators\Config\AjaxProducts;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotRepository;
 use WP_Error;
 
+use function home_url;
+
 class AjaxResolver implements CalculatorResolverInterface
 {
     private const INSTALL_BASE = 450.0;
@@ -87,7 +89,8 @@ class AjaxResolver implements CalculatorResolverInterface
                 continue;
             }
 
-            $items[] = [
+            $imageUrl = $this->resolveProductImage($key, $row, $config);
+            $lineItem = [
                 'name'        => $name,
                 'description' => (string) ($row['description'] ?? $config['description'] ?? ''),
                 'currency'    => 'AUD',
@@ -96,6 +99,10 @@ class AjaxResolver implements CalculatorResolverInterface
                 'type'        => 'one_time',
                 'photoRequired' => true,
             ];
+            if ($imageUrl !== '') {
+                $lineItem['image'] = $imageUrl;
+            }
+            $items[] = $lineItem;
         }
 
         $install = $this->installEstimate($selections, $items);
@@ -200,5 +207,29 @@ class AjaxResolver implements CalculatorResolverInterface
         }
 
         return round($total, 2);
+    }
+
+    /**
+     * @param array<string, mixed>|null $row
+     * @param array<string, mixed>|null $config
+     */
+    private function resolveProductImage(string $key, ?array $row, ?array $config): string
+    {
+        if (is_array($row) && !empty($row['image']) && is_string($row['image'])) {
+            return trim($row['image']);
+        }
+
+        if ($config === null) {
+            return '';
+        }
+
+        $galleryFiles = is_array($config['gallery'] ?? null) ? $config['gallery'] : [];
+        $media = AjaxProducts::buildMediaUrls(
+            rtrim(home_url('/wp-content/uploads/2026/06'), '/'),
+            $key,
+            $galleryFiles
+        );
+
+        return (string) ($media['thumb'] ?? '');
     }
 }

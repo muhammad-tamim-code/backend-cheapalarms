@@ -6,6 +6,7 @@ use WP_Error;
 use WP_User;
 use CheapAlarms\Plugin\Services\ServiceM8Service;
 use CheapAlarms\Plugin\Services\JobLinkService;
+use CheapAlarms\Plugin\Support\EstimateNumber;
 
 use function add_query_arg;
 use function apply_filters;
@@ -228,7 +229,10 @@ class PortalService
             'statusLabel' => $isAcceptedInPortal 
                 ? 'Accepted' 
                 : ($isAcceptedInGhl ? 'Accepted via GHL' : ($isRejectedInPortal ? 'Rejected' : 'Sent')),
-            'number'      => $estimate['estimateNumber'] ?? $estimate['estimateId'],
+            'number'      => $this->formatEstimateDisplay(
+                $meta['quote']['number'] ?? $estimate['estimateNumber'] ?? null,
+                (string) ($estimate['estimateId'] ?? '')
+            ),
             'acceptedAt'  => $meta['quote']['acceptedAt'] ?? null,
             'canAccept'   => !$isAccepted && !$isRejectedInPortal && $acceptanceEnabled && $isReadyToAccept, // Can only accept when acceptance is enabled and workflow is ready_to_accept
             'approval_requested' => $meta['quote']['approval_requested'] ?? false, // NEW: Include approval_requested flag
@@ -796,7 +800,7 @@ class PortalService
             $dispatcher = $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalDispatcher::class);
 
             // Prepare note data
-            $estimateNumber = $estimate['estimateNumber'] ?? $estimateId;
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $acceptedAt = current_time('mysql');
             $noteData = [
                 'estimateNumber' => $estimateNumber,
@@ -2910,7 +2914,10 @@ class PortalService
             'quote'        => [
                 'status'      => $quote['status'] ?? 'sent',
                 'statusLabel' => $quote['statusLabel'] ?? 'Sent',
-                'number'      => $quote['number'] ?? $estimateId, // Fallback to ID if number not stored
+                'number'      => $this->formatEstimateDisplay(
+                    $quote['number'] ?? null,
+                    $estimateId
+                ),
                 'acceptedAt'  => $quote['acceptedAt'] ?? null,
             ],
             'account'      => [
@@ -4448,7 +4455,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
             $brandName = $this->config->getBrandName();
             $teamName = $this->config->getSupportName();
@@ -4610,7 +4617,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
             
             // Format booking date
@@ -4833,7 +4840,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
             
             // CRITICAL FIX: Get current payment amount from payments array, not cumulative total
@@ -5302,7 +5309,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
             
             // Get admin's note (from parameter or stored in quote meta)
@@ -5478,7 +5485,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
 
             // Check if there's a revision (changes made during review)
@@ -5696,7 +5703,7 @@ class PortalService
 
             $contact = $estimate['contact'] ?? [];
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             
             // Admin dashboard URL (pointing to Next.js frontend)
             $adminUrl = $this->config->getFrontendUrl() . '/admin/estimates?id=' . $estimateId;
@@ -5782,7 +5789,7 @@ class PortalService
 
             $contact = $estimate['contact'] ?? [];
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $photosRequired = !empty($quote['photos_required']);
             $photosUploaded = $photos['uploaded'] ?? 0;
             $photosSubmitted = ($photos['submission_status'] ?? '') === 'submitted';
@@ -6137,7 +6144,7 @@ class PortalService
             }
 
             $customerName = sanitize_text_field($contact['name'] ?? $contact['firstName'] ?? 'Customer');
-            $estimateNumber = sanitize_text_field($estimate['estimateNumber'] ?? $estimateId);
+            $estimateNumber = $this->formatEstimateDisplay($estimate['estimateNumber'] ?? null, $estimateId);
             $portalUrl = $this->resolvePortalUrl($estimateId);
             
             // Validate and sanitize numeric values (handle NaN/Infinity from frontend)
@@ -6644,6 +6651,18 @@ class PortalService
             'isFullyPaid' => $totals['isFullyPaid'],
             'hasDepositPaid' => $totals['hasDepositPaid'],
         ];
+    }
+
+    /**
+     * @param mixed $raw GHL estimate number (int, string, or null)
+     */
+    private function formatEstimateDisplay($raw, ?string $fallbackId = null): string
+    {
+        return EstimateNumber::format(
+            $raw,
+            $this->config->getEstimateNumberPrefix(),
+            $fallbackId
+        );
     }
 }
 

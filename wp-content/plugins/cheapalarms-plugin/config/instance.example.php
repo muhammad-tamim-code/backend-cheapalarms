@@ -28,6 +28,8 @@ return [
     'email_from_name'    => 'CheapAlarms',
     'email_from_address' => 'quotes@cheapalarms.com.au',
 
+    'estimate_number_prefix' => 'EST-',
+
     // Next.js portal — email links, password reset, Xero callback host
     // Sync from cheapalarms.instance.json; do not hand-edit after sync.
     'frontend_url'       => 'https://headless-cheapalarms.vercel.app',

@@ -37,6 +37,7 @@ class Config
         'support_email'          => '',
         'email_from_name'        => '',
         'email_from_address'     => '',
+        'estimate_number_prefix' => 'EST-',
     ];
 
     private array $overrides = [];
@@ -125,6 +126,21 @@ class Config
         }
 
         return (string) $this->defaults['brand_accent_color'];
+    }
+
+    public function getEstimateNumberPrefix(): string
+    {
+        $override = $this->fromOverrides('estimate_number_prefix');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = (string) $this->getEnv('CA_ESTIMATE_NUMBER_PREFIX', '');
+        if (trim($env) !== '') {
+            return trim($env);
+        }
+
+        return (string) $this->defaults['estimate_number_prefix'];
     }
 
     public function getBrandLogoHorizontalUrl(): string

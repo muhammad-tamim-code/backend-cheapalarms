@@ -9,7 +9,6 @@ use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotRepository;
 use CheapAlarms\Plugin\Services\Product\ProductSnapshotSyncService;
-use CheapAlarms\Plugin\Services\ProductRepository;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -27,19 +26,6 @@ class ProductsController implements ControllerInterface
     public function register(): void
     {
         $auth = $this->container->get(Authenticator::class);
-        $repo = $this->container->get(ProductRepository::class);
-
-        // List products
-        register_rest_route('ca/v1', '/products', [
-            'methods'             => 'GET',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function () use ($repo) {
-                $items = array_values($repo->all());
-                $response = new WP_REST_Response($items, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
 
         // POST /ca/v1/products/ghl/sync — background sync catalog + prices into local DB
         register_rest_route('ca/v1', '/products/ghl/sync', [
@@ -64,6 +50,31 @@ class ProductsController implements ControllerInterface
             },
         ]);
 
+        // POST /ca/v1/products/ghl — create product in GHL + local snapshot
+        register_rest_route('ca/v1', '/products/ghl', [
+            'methods'             => 'POST',
+            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
+            'callback'            => function (WP_REST_Request $request) {
+                $payload = json_decode($request->get_body(), true);
+                if (!is_array($payload)) {
+                    $response = new WP_REST_Response(['ok' => false, 'err' => 'Invalid JSON body'], 400);
+                } else {
+                    $writer = $this->container->get(\CheapAlarms\Plugin\Services\Product\GhlProductWriteService::class);
+                    $result = $writer->create($payload);
+                    if ($result instanceof WP_Error) {
+                        $response = new WP_REST_Response(
+                            ['ok' => false, 'err' => $result->get_error_message(), 'code' => $result->get_error_code()],
+                            (int) ($result->get_error_data()['status'] ?? 502)
+                        );
+                    } else {
+                        $response = new WP_REST_Response($result, 201);
+                    }
+                }
+                $this->addSecurityHeaders($response);
+                return $response;
+            },
+        ]);
+
         // GET /ca/v1/products/ghl?search=&refresh=1
         register_rest_route('ca/v1', '/products/ghl', [
             'methods'             => 'GET',
@@ -71,7 +82,10 @@ class ProductsController implements ControllerInterface
             'callback'            => function (WP_REST_Request $request) {
                 $search  = sanitize_text_field((string) ($request->get_param('search') ?? ''));
                 $refresh = $request->get_param('refresh') === '1' || $request->get_param('refresh') === 'true';
-                $result  = $this->fetchGhlProducts($search, $refresh);
+                $excludeCalculator = $request->get_param('excludeCalculator') === '1'
+                    || $request->get_param('excludeCalculator') === 'true';
+                $limit = (int) ($request->get_param('limit') ?? 500);
+                $result  = $this->fetchGhlProducts($search, $refresh, $excludeCalculator, $limit);
                 if ($result instanceof WP_Error) {
                     $response = new WP_REST_Response(['ok' => false, 'err' => $result->get_error_message()], 502);
                 } else {
@@ -99,194 +113,6 @@ class ProductsController implements ControllerInterface
             },
         ]);
 
-        // Type-filtered lists
-        register_rest_route('ca/v1', '/products/base', [
-            'methods'             => 'GET',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function () use ($repo) {
-                $items = array_values(array_filter($repo->all(), fn ($p) => ($p['type'] ?? '') === 'base'));
-                $response = new WP_REST_Response($items, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-        register_rest_route('ca/v1', '/products/addons', [
-            'methods'             => 'GET',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function () use ($repo) {
-                $items = array_values(array_filter($repo->all(), fn ($p) => ($p['type'] ?? '') === 'addon'));
-                $response = new WP_REST_Response($items, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-        register_rest_route('ca/v1', '/products/packages', [
-            'methods'             => 'GET',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function () use ($repo) {
-                $items = array_values(array_filter($repo->all(), fn ($p) => ($p['type'] ?? '') === 'package'));
-                $response = new WP_REST_Response($items, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-
-        // Get by id
-        register_rest_route('ca/v1', '/products/(?P<id>[a-zA-Z0-9_\-]+)', [
-            'methods'             => 'GET',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function (WP_REST_Request $request) use ($repo) {
-                $id = sanitize_text_field($request->get_param('id'));
-                $item = $repo->get($id);
-                if (!$item) {
-                    return new WP_Error('not_found', __('Product not found.', 'cheapalarms'), ['status' => 404]);
-                }
-                $response = new WP_REST_Response($item, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-
-        // Create/Update
-        register_rest_route('ca/v1', '/products', [
-            'methods'             => 'POST',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function (WP_REST_Request $request) use ($repo) {
-                $payload = json_decode($request->get_body(), true);
-                if (!is_array($payload)) {
-                    return new WP_Error('bad_request', __('Invalid JSON body.', 'cheapalarms'), ['status' => 400]);
-                }
-                $validated = $this->validateProduct($payload);
-                if (is_wp_error($validated)) {
-                    return $validated;
-                }
-                $saved = $repo->save($validated);
-                $response = new WP_REST_Response($saved, 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-
-        // Delete
-        register_rest_route('ca/v1', '/products/(?P<id>[a-zA-Z0-9_\-]+)', [
-            'methods'             => 'DELETE',
-            'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
-            'callback'            => function (WP_REST_Request $request) use ($repo) {
-                $id = sanitize_text_field($request->get_param('id'));
-                $ok = $repo->delete($id);
-                if (!$ok) {
-                    return new WP_Error('not_found', __('Product not found.', 'cheapalarms'), ['status' => 404]);
-                }
-                $response = new WP_REST_Response(['ok' => true], 200);
-                $this->addSecurityHeaders($response);
-                return $response;
-            },
-        ]);
-    }
-
-    /**
-     * Validate and normalise the product payload according to agreed schema.
-     *
-     * @param array $data
-     * @return array|WP_Error
-     */
-    private function validateProduct(array $data): array|WP_Error
-    {
-        $type = isset($data['type']) ? (string) $data['type'] : '';
-        if (!in_array($type, ['base', 'addon', 'package'], true)) {
-            return new WP_Error('bad_request', __('type must be one of base|addon|package', 'cheapalarms'), ['status' => 400]);
-        }
-        $name = isset($data['name']) ? trim((string) $data['name']) : '';
-        if ($name === '') {
-            return new WP_Error('bad_request', __('name is required', 'cheapalarms'), ['status' => 400]);
-        }
-        $brand = isset($data['brand']) ? (string) $data['brand'] : null;
-        $status = isset($data['status']) && in_array($data['status'], ['active', 'inactive'], true) ? $data['status'] : 'active';
-
-        $price = is_array($data['price'] ?? null) ? $data['price'] : [];
-        $oneOffExGst = isset($price['oneOffExGst']) ? (float) $price['oneOffExGst'] : 0.0;
-        $installExGst = isset($price['installExGst']) ? (float) $price['installExGst'] : 0.0;
-        $recurring = isset($price['recurring']) && is_array($price['recurring']) ? $price['recurring'] : null;
-        if ($recurring) {
-            $recurring['amountExGst'] = isset($recurring['amountExGst']) ? (float) $recurring['amountExGst'] : 0.0;
-            $recurring['interval'] = in_array($recurring['interval'] ?? '', ['month', 'year'], true) ? $recurring['interval'] : 'year';
-            $recurring['termMonths'] = isset($recurring['termMonths']) ? (int) $recurring['termMonths'] : 12;
-        }
-
-        $gstRate = isset($data['gstRate']) ? (float) $data['gstRate'] : 0.1;
-        $installMinutes = isset($data['installMinutes']) ? (int) $data['installMinutes'] : 0;
-
-        $tags = array_values(array_filter(array_map('strval', $data['tags'] ?? [])));
-        $attributes = is_array($data['attributes'] ?? null) ? $data['attributes'] : [];
-        $id = isset($data['id']) ? (string) $data['id'] : null;
-
-        $out = [
-            'id'             => $id,
-            'type'           => $type,
-            'name'           => $name,
-            'brand'          => $brand,
-            'status'         => $status,
-            'price'          => [
-                'oneOffExGst'  => $oneOffExGst,
-                'installExGst' => $installExGst,
-            ],
-            'gstRate'        => $gstRate,
-            'installMinutes' => $installMinutes,
-            'tags'           => $tags,
-            'attributes'     => $attributes,
-        ];
-        if ($recurring) {
-            $out['price']['recurring'] = $recurring;
-        }
-
-        if ($type === 'package') {
-            $baseId = isset($data['baseId']) ? (string) $data['baseId'] : '';
-            if ($baseId === '') {
-                return new WP_Error('bad_request', __('package.baseId is required', 'cheapalarms'), ['status' => 400]);
-            }
-            $components = is_array($data['components'] ?? null) ? $data['components'] : [];
-            $normComponents = [];
-            foreach ($components as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                $addonId = isset($row['addonId']) ? (string) $row['addonId'] : '';
-                if ($addonId === '') {
-                    continue;
-                }
-                $normComponents[] = [
-                    'addonId'     => $addonId,
-                    'minQty'      => isset($row['minQty']) ? (int) $row['minQty'] : 0,
-                    'maxQty'      => isset($row['maxQty']) ? (int) $row['maxQty'] : 0,
-                    'defaultQty'  => isset($row['defaultQty']) ? (int) $row['defaultQty'] : 0,
-                    'powerDrawmA' => isset($row['powerDrawmA']) ? (int) $row['powerDrawmA'] : null,
-                    'notes'       => isset($row['notes']) ? (string) $row['notes'] : null,
-                ];
-            }
-            $out['baseId'] = $baseId;
-            $out['components'] = $normComponents;
-        } elseif ($type === 'base') {
-            $addons = is_array($data['addons'] ?? null) ? $data['addons'] : [];
-            $normAddons = [];
-            foreach ($addons as $row) {
-                if (!is_array($row) || empty($row['addonId'])) {
-                    continue;
-                }
-                $normAddons[] = [
-                    'addonId'    => (string) $row['addonId'],
-                    'minQty'     => isset($row['minQty']) ? (int) $row['minQty'] : 0,
-                    'maxQty'     => isset($row['maxQty']) ? (int) $row['maxQty'] : 0,
-                    'defaultQty' => isset($row['defaultQty']) ? (int) $row['defaultQty'] : 0,
-                ];
-            }
-            $out['addons'] = $normAddons;
-        } else { // addon
-            if (isset($data['maxQtyPerSite'])) {
-                $out['maxQtyPerSite'] = (int) $data['maxQtyPerSite'];
-            }
-        }
-
-        return $out;
     }
 
     /**
@@ -323,8 +149,12 @@ class ProductsController implements ControllerInterface
      *
      * @return array{ok:bool,items:array,total:int,cached:bool,source?:string}|WP_Error
      */
-    private function fetchGhlProducts(string $search = '', bool $refresh = false): array|WP_Error
-    {
+    private function fetchGhlProducts(
+        string $search = '',
+        bool $refresh = false,
+        bool $excludeCalculator = false,
+        int $limit = 500
+    ): array|WP_Error {
         $config     = $this->container->get(Config::class);
         $locationId = $config->getLocationId();
         if ($locationId === '') {
@@ -343,7 +173,13 @@ class ProductsController implements ControllerInterface
 
         $hasLocal = $repo->hasData($locationId);
         if (!is_wp_error($hasLocal) && $hasLocal) {
-            $local = $repo->listByLocation($locationId, $search !== '' ? $search : null, 500, 0);
+            $local = $repo->listByLocation(
+                $locationId,
+                $search !== '' ? $search : null,
+                max(1, min(1000, $limit)),
+                0,
+                $excludeCalculator
+            );
             if (!is_wp_error($local)) {
                 $lastSynced = $repo->lastSyncedAt($locationId);
                 $isStale = is_wp_error($lastSynced) || !CacheConfig::isFresh($lastSynced, CacheConfig::PRODUCT_LIST_STALE_SECONDS);

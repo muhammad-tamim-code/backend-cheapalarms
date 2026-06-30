@@ -32,6 +32,8 @@ return [
     'email_from_name'        => 'Safeguard',
     'email_from_address'     => 'quotes@safeguardsecurity.com.au',
 
+    'estimate_number_prefix' => 'EST-',
+
     'ghl_token'              => 'pit-195d44e7-6b55-4e86-aa33-1c039d458e5c',
     'ghl_location_id'        => 'aLTXtdwNknfmEFo3WBIX',
     'ghl_user_id'            => '',

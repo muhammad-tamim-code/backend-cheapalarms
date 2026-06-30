@@ -15,6 +15,8 @@ use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\PortalService;
+use CheapAlarms\Plugin\Support\EstimateNumber;
+use CheapAlarms\Plugin\Support\GhlLineItemHtml;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -421,6 +423,7 @@ class AdminEstimateController extends AdminController
         $workflowStatus = in_array($workflowStatusRaw, $validWorkflowStatuses, true) ? $workflowStatusRaw : '';
         $page        = max(1, (int)($request->get_param('page') ?? 1));
         $pageSize    = max(1, min(100, (int)($request->get_param('pageSize') ?? 20)));
+        $estimatePrefix = $this->container->get(Config::class)->getEstimateNumberPrefix();
 
         // Prefer snapshot table (fast + scalable). Fall back to transient-cached GHL list if snapshots are empty/unavailable.
         $items = null;
@@ -560,6 +563,9 @@ class AdminEstimateController extends AdminController
             }
             if ($search) {
                 $matches = false;
+                $rawNumber = $meta['quote']['number'] ?? $item['estimateNumber'] ?? null;
+                $displayNumber = EstimateNumber::format($rawNumber, $estimatePrefix, $estimateId);
+                $matches = $matches || ($displayNumber !== '' && stripos($displayNumber, $search) !== false);
                 $matches = $matches || (isset($item['estimateNumber']) && stripos((string)$item['estimateNumber'], $search) !== false);
                 $matches = $matches || (isset($item['email']) && stripos($item['email'], $search) !== false);
                 if (!$matches) {
@@ -601,9 +607,14 @@ class AdminEstimateController extends AdminController
             }
 
             // Reuse workflowStatusValue calculated above (no need to recalculate)
+            $displayEstimateNumber = EstimateNumber::format(
+                $meta['quote']['number'] ?? $item['estimateNumber'] ?? null,
+                $estimatePrefix,
+                $estimateId
+            );
             $out[] = [
                 'id'             => $estimateId,
-                'estimateNumber' => $item['estimateNumber'] ?? null,
+                'estimateNumber' => $displayEstimateNumber !== '' ? $displayEstimateNumber : null,
                 'title'          => $title,
                 'contactName'    => $contactName ?: ($contactEmail ?: 'N/A'),
                 'contactEmail'   => $contactEmail,
@@ -930,12 +941,18 @@ class AdminEstimateController extends AdminController
 
         // Build normalized response
         $contact = $estimate['contact'] ?? $estimate['contactDetails'] ?? [];
+        $estimatePrefix = $this->container->get(Config::class)->getEstimateNumberPrefix();
+        $displayEstimateNumber = EstimateNumber::format(
+            $meta['quote']['number'] ?? $estimate['estimateNumber'] ?? null,
+            $estimatePrefix,
+            $estimateId
+        );
 
         return $this->respond([
             'ok'            => true,
             'id'            => $estimateId,
             'locationId'    => $locationId ?: $this->container->get(Config::class)->getLocationId(),
-            'estimateNumber' => $estimate['estimateNumber'] ?? $estimateId,
+            'estimateNumber' => $displayEstimateNumber !== '' ? $displayEstimateNumber : $estimateId,
             'title'         => $estimate['title'] ?? $estimate['name'] ?? 'ESTIMATE',
             'ghlStatus'     => $estimate['status'] ?? 'draft',
             'portalStatus'  => $meta['quote']['status'] ?? 'sent',
@@ -1494,12 +1511,19 @@ class AdminEstimateController extends AdminController
             return $this->respond($items);
         }
 
+        $estimatePrefix = $this->container->get(Config::class)->getEstimateNumberPrefix();
+
         // Normalize for frontend
         $normalized = [];
         foreach ($items as $row) {
+            $rowId = (string) ($row['estimate_id'] ?? '');
             $normalized[] = [
                 'id' => $row['estimate_id'] ?? null,
-                'estimateNumber' => $row['estimate_number'] ?? null,
+                'estimateNumber' => EstimateNumber::format(
+                    $row['estimate_number'] ?? null,
+                    $estimatePrefix,
+                    $rowId !== '' ? $rowId : null
+                ),
                 'email' => $row['email'] ?? '',
                 'status' => $row['ghl_status'] ?? '',
                 'total' => (float)($row['total'] ?? 0),
@@ -2712,7 +2736,7 @@ class AdminEstimateController extends AdminController
             $imageUrl = (string)($item['image'] ?? '');
             $items[] = [
                 'name'        => $name,
-                'description' => $this->buildGhlItemDescription($description, $imageUrl),
+                'description' => GhlLineItemHtml::buildDescription($description, $imageUrl),
                 'currency'    => 'AUD',
                 'amount'      => $amount,
                 'qty'         => max(1, (int)($item['qty'] ?? $item['quantity'] ?? 1)),
@@ -2807,29 +2831,6 @@ class AdminEstimateController extends AdminController
         }
 
         return $payload;
-    }
-
-    /**
-     * Build GHL line-item description HTML with optional product image.
-     */
-    private function buildGhlItemDescription(string $text, string $imageUrl = ''): string
-    {
-        $text = trim($text);
-        $imageUrl = esc_url_raw(trim($imageUrl));
-
-        if ($text !== '' && preg_match('/<img\s/i', $text)) {
-            return $text;
-        }
-
-        $parts = [];
-        if ($text !== '') {
-            $parts[] = '<p>' . esc_html(wp_strip_all_tags($text)) . '</p>';
-        }
-        if ($imageUrl !== '') {
-            $parts[] = '<img src="' . esc_attr($imageUrl) . '" width="170" style="border-radius:8px;margin:6px 0;display:block;" alt="">';
-        }
-
-        return implode("\n", $parts);
     }
 
 }

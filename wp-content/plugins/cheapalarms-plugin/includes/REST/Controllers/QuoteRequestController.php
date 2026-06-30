@@ -14,6 +14,8 @@ use CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry;
 use CheapAlarms\Plugin\Calculators\ResolveTokenStore;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\Support\AustralianPhone;
+use CheapAlarms\Plugin\Support\EstimateNumber;
+use CheapAlarms\Plugin\Support\GhlLineItemHtml;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -206,9 +208,12 @@ class QuoteRequestController implements ControllerInterface
                 continue;
             }
 
+            $imageUrl = sanitize_text_field((string)($item['image'] ?? ''));
+            $description = (string)($item['description'] ?? '');
+
             $sanitizedItems[] = [
                 'name'        => $itemName,
-                'description' => (string)($item['description'] ?? ''),
+                'description' => GhlLineItemHtml::buildDescription($description, $imageUrl),
                 'currency'    => (string)($item['currency'] ?? 'AUD'),
                 'amount'      => $itemAmount,
                 'qty'         => (int)($item['qty'] ?? $item['quantity'] ?? 1),
@@ -219,6 +224,9 @@ class QuoteRequestController implements ControllerInterface
             if (array_key_exists('isPackage', $item))     { $hint['isPackage']     = (bool)$item['isPackage']; }
             if (array_key_exists('isHeading', $item))     { $hint['isHeading']     = (bool)$item['isHeading']; }
             if (array_key_exists('photoRequired', $item)) { $hint['photoRequired'] = (bool)$item['photoRequired']; }
+            if ($imageUrl !== '') {
+                $hint['image'] = esc_url_raw($imageUrl);
+            }
             $itemHints[] = $hint;
         }
         
@@ -531,6 +539,11 @@ class QuoteRequestController implements ControllerInterface
             $response = $estimateResult['result'] ?? [];
             $estimateId = $response['estimate']['id'] ?? $response['id'] ?? $response['_id'] ?? null;
             $estimateNumberFromCreate = $response['estimate']['estimateNumber'] ?? $response['estimateNumber'] ?? null;
+            $estimateNumberFormatted = EstimateNumber::format(
+                $estimateNumberFromCreate,
+                $this->config->getEstimateNumberPrefix(),
+                $estimateId ? (string) $estimateId : null
+            );
             $estimateTotalFromCreate = $response['estimate']['total'] ?? $response['total'] ?? null;
             $estimateCurrencyFromCreate = $response['estimate']['currency'] ?? $response['currency'] ?? 'AUD';
             
@@ -784,7 +797,7 @@ class QuoteRequestController implements ControllerInterface
                     $meta['quote']['approval_requested'] = false; // Ensure approval is not requested on send
                     
                     // Store estimate snapshot data for fast dashboard loading using creation response (no extra GHL call)
-                    $meta['quote']['number'] = $estimateNumberFromCreate ?? $estimateId;
+                    $meta['quote']['number'] = $estimateNumberFormatted !== '' ? $estimateNumberFormatted : $estimateId;
                     $meta['quote']['total'] = $estimateTotalFromCreate ?? 0;
                     $meta['quote']['currency'] = $estimateCurrencyFromCreate ?? 'AUD';
                     $meta['quote']['last_synced_at'] = current_time('mysql');
@@ -803,7 +816,7 @@ class QuoteRequestController implements ControllerInterface
             // This ensures correct email variation detection
             
             // Get estimate number for email (use creation response, avoid extra GHL call)
-            $estimateNumber = $estimateNumberFromCreate ?? $estimateId; // Fallback to estimateId
+            $estimateNumber = $estimateNumberFormatted !== '' ? $estimateNumberFormatted : $estimateId;
             
             // Get frontend URL for login link
             $frontendUrl = $this->config->getFrontendUrl();

@@ -189,8 +189,13 @@ class ProductSnapshotRepository
     /**
      * @return array{items: array<int, array<string, mixed>>, total: int}|WP_Error
      */
-    public function listByLocation(string $locationId, ?string $search = null, int $limit = 500, int $offset = 0)
-    {
+    public function listByLocation(
+        string $locationId,
+        ?string $search = null,
+        int $limit = 500,
+        int $offset = 0,
+        bool $excludeCalculator = false
+    ) {
         global $wpdb;
 
         if ($locationId === '') {
@@ -199,6 +204,10 @@ class ProductSnapshotRepository
 
         $where = ['location_id = %s'];
         $params = [$locationId];
+
+        if ($excludeCalculator) {
+            $where[] = "product_id NOT LIKE 'calc:%'";
+        }
 
         if ($search !== null && $search !== '') {
             $like = '%' . $wpdb->esc_like($search) . '%';

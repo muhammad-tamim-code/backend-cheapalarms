@@ -21,4 +21,5 @@ wp-content/plugins/cheapalarms-plugin/config/instance.php
 # 4) Build artifacts / vendor (also covered by the plugin .gitignore).
 wp-content/plugins/cheapalarms-plugin/vendor/
 wp-content/plugins/cheapalarms-plugin/*.zip
+wp-content/plugins/cheapalarms-plugin/deploy/*.zip
 wp-content/plugins/*.zip
