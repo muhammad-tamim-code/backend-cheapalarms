@@ -1,0 +1,156 @@
+/* Intercom Systems category page — overrides on top of cctv.css / alarm-systems.css */
+
+.sg-intercom-hero-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+}
+
+@media (min-width: 768px) {
+  .sg-intercom-hero-placeholder {
+    min-height: 100%;
+  }
+}
+
+/* Six-card install grid */
+.sg-intercom-install__grid {
+  display: grid;
+  gap: 0.875rem;
+  margin-top: clamp(1.5rem, 3vw, 2rem);
+}
+
+.sg-intercom-install__cell {
+  background: #fff;
+  border: 1px solid var(--sg-line);
+  padding: clamp(1.125rem, 2vw, 1.5rem);
+}
+
+.sg-intercom-install__brands {
+  margin: clamp(1.5rem, 3vw, 2rem) auto 0;
+  max-width: 62ch;
+  text-align: center;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--sg-muted);
+}
+
+@media (min-width: 640px) {
+  .sg-intercom-install__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .sg-intercom-install__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Three property-type panels */
+@media (min-width: 900px) {
+  .sg-intercom-segments__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.sg-intercom-segment .sg-cctv-segment__desc {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* Integration cards + Ajax aside */
+.sg-intercom-layered__inner {
+  max-width: none;
+}
+
+.sg-intercom-layered__split {
+  margin-top: clamp(1.5rem, 3vw, 2rem);
+}
+
+.sg-intercom-layered__cards {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.sg-intercom-layered__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: #fff;
+  border: 1px solid var(--sg-line);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sg-intercom-layered__card:hover {
+  border-color: #b8d4e8;
+  background: var(--sg-blue-wash);
+  box-shadow: none;
+}
+
+.sg-intercom-layered__card .sg-cctv-layered__card-icon {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+}
+
+.sg-intercom-layered__card .sg-cctv-layered__card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sg-intercom-layered__card .sg-cctv-layered__card-title {
+  font-size: 0.9375rem;
+}
+
+.sg-intercom-layered__card .sg-cctv-layered__card-desc {
+  font-size: 0.8125rem;
+}
+
+.sg-intercom-layered__card .sg-cctv-layered__card-chevron {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: var(--sg-blue);
+}
+
+.sg-intercom-layered__aside {
+  min-width: 0;
+}
+
+.sg-intercom-layered__aside .sg-ajax-card {
+  height: 100%;
+}
+
+body.safeguard-intercom-page .sg-band.sg-portal-band.sg-intercom-portal {
+  padding-bottom: clamp(2.5rem, 5vw, 3.5rem);
+}
+
+@media (min-width: 768px) {
+  .sg-intercom-layered__cards {
+    gap: 0.875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sg-intercom-layered__split {
+    grid-template-columns: minmax(0, 20rem) minmax(17rem, 22rem);
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    align-items: start;
+    justify-content: space-between;
+  }
+
+  .sg-intercom-layered__cards {
+    max-width: 20rem;
+  }
+
+  .sg-intercom-layered__aside {
+    justify-self: end;
+    width: 100%;
+    max-width: 22rem;
+  }
+}

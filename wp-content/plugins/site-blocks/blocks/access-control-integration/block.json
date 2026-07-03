@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/access-control-integration",
+  "version": "1.0.0",
+  "title": "Access Control Integration",
+  "category": "theme",
+  "icon": "lock",
+  "description": "Access Control page block.",
+  "keywords": ["access control"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

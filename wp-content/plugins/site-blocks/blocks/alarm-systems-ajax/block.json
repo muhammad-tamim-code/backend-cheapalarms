@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-ajax",
+  "version": "1.0.0",
+  "title": "Alarm Systems Ajax Band",
+  "category": "theme",
+  "icon": "shield-alt",
+  "description": "Safeguard + Ajax partnership band for the Alarm Systems page.",
+  "keywords": ["alarm", "ajax", "wireless"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "Safeguard + Ajax"
+    },
+    "headline": {
+      "type": "string",
+      "default": "Wireless done properly"
+    },
+    "lead": {
+      "type": "string",
+      "default": "Ajax is the system we'll design with you end-to-end online — wireless, refined, genuinely smart. The hardware is only half of it; the difference is how it's specified, installed and supported."
+    },
+    "ctaLabel": {
+      "type": "string",
+      "default": "Explore Ajax with Safeguard"
+    },
+    "ctaUrl": {
+      "type": "string",
+      "default": "/ajax-alarm-systems/"
+    }
+  },
+  "render": "file:./render.php"
+}

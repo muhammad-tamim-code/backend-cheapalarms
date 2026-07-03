@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-form",
+  "version": "1.0.0",
+  "title": "Contact Form",
+  "category": "theme",
+  "icon": "feedback",
+  "description": "Native HTML contact form with wp_mail handler.",
+  "keywords": ["contact", "form", "inquiry"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": false,
+    "multiple": false
+  },
+  "attributes": {
+    "formTitle": {
+      "type": "string",
+      "default": "Send a message"
+    },
+    "submitLabel": {
+      "type": "string",
+      "default": "Send message"
+    }
+  },
+  "render": "file:./render.php"
+}

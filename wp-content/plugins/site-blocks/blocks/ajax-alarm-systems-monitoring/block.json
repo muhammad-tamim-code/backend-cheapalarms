@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-monitoring",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Monitoring",
+  "category": "theme",
+  "icon": "shield",
+  "description": "Monitoring options row for the Ajax landing page.",
+  "keywords": ["ajax", "monitoring", "security"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-portal",
+  "title": "Intercom Portal & Quotes",
+  "category": "site-blocks",
+  "description": "Customer portal band for the Intercom Systems page.",
+  "keywords": ["intercom", "portal", "quote"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

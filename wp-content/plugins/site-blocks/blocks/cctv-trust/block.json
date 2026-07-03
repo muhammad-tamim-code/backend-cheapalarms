@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-trust",
+  "version": "1.0.0",
+  "title": "CCTV Why Safeguard",
+  "category": "theme",
+  "icon": "awards",
+  "description": "Trust and credentials panel.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

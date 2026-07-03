@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/safeguard-homepage",
+  "version": "1.0.0",
+  "title": "Safeguard Homepage",
+  "category": "theme",
+  "icon": "admin-home",
+  "description": "Complete Safeguard Security Services homepage (all sections).",
+  "keywords": ["homepage", "safeguard", "security", "sydney"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

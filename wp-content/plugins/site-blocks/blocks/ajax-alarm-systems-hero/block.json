@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-hero",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Hero",
+  "category": "theme",
+  "icon": "shield",
+  "description": "SEO hero for the Ajax alarm systems landing page.",
+  "keywords": ["ajax", "hero", "alarm"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "Ajax alarm systems · Australia"
+    },
+    "headline": {
+      "type": "string",
+      "default": "Ajax alarm systems, professionally installed by Safeguard"
+    },
+    "lead": {
+      "type": "string",
+      "default": "We design, install and configure Ajax wireless alarm systems for homes, apartments and small businesses across Australia — specified around your property, not sold as a generic kit."
+    },
+    "primaryCtaLabel": {
+      "type": "string",
+      "default": "Design my Ajax system"
+    },
+    "primaryCtaUrl": {
+      "type": "string",
+      "default": "/ajax-calculator/"
+    },
+    "secondaryCtaLabel": {
+      "type": "string",
+      "default": "Call 1300 225 276"
+    },
+    "secondaryCtaUrl": {
+      "type": "string",
+      "default": "tel:1300225276"
+    }
+  },
+  "render": "file:./render.php"
+}

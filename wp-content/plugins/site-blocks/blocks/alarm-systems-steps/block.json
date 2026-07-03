@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-steps",
+  "version": "1.0.0",
+  "title": "Alarm Systems How It Works",
+  "category": "theme",
+  "icon": "editor-ol",
+  "description": "Four-step how it works section for the Alarm Systems page.",
+  "keywords": ["alarm", "steps", "how it works"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "How it works"
+    },
+    "headlineBefore": {
+      "type": "string",
+      "default": "Simple steps, done "
+    },
+    "headlineAccent": {
+      "type": "string",
+      "default": "properly"
+    },
+    "intro": {
+      "type": "string",
+      "default": "A fast online quote, reviewed by a technician before anything is installed."
+    }
+  },
+  "render": "file:./render.php"
+}

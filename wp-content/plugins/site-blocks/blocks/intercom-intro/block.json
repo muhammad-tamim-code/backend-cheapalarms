@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-intro",
+  "version": "1.0.0",
+  "title": "Intercom Intro",
+  "category": "theme",
+  "icon": "info",
+  "description": "Why an intercom matters section.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

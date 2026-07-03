@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-why",
+  "version": "1.0.0",
+  "title": "Alarm Systems Why Safeguard",
+  "category": "theme",
+  "icon": "awards",
+  "description": "Why Safeguard for alarms — three-column value section.",
+  "keywords": ["alarm", "why", "value"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "Why Safeguard for alarms"
+    },
+    "headlineBefore": {
+      "type": "string",
+      "default": "One"
+    },
+    "headlineAccent": {
+      "type": "string",
+      "default": "team"
+    },
+    "headlineAfter": {
+      "type": "string",
+      "default": ", start to finish"
+    }
+  },
+  "render": "file:./render.php"
+}

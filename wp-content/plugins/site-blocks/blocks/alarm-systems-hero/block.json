@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-hero",
+  "version": "1.0.0",
+  "title": "Alarm Systems Hero",
+  "category": "theme",
+  "icon": "shield",
+  "description": "Hero section for the Alarm Systems service page.",
+  "keywords": ["alarm", "hero", "service"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "Alarm Systems · Sydney"
+    },
+    "headline": {
+      "type": "string",
+      "default": "Alarm systems that earn their keep"
+    },
+    "lead": {
+      "type": "string",
+      "default": "Wireless and smart alarms designed around your property, how you live in it, and what you need to protect — not an off-the-shelf kit."
+    },
+    "note": {
+      "type": "string",
+      "default": "We specify, install and support alarm systems for homes and businesses across Greater Sydney. You get clear recommendations, professional installation, and a team you can reach when it matters."
+    },
+    "primaryCtaLabel": {
+      "type": "string",
+      "default": "Start My Quote"
+    },
+    "primaryCtaUrl": {
+      "type": "string",
+      "default": "/get-an-instant-quote/"
+    },
+    "secondaryCtaLabel": {
+      "type": "string",
+      "default": "Help Me Choose"
+    },
+    "secondaryCtaUrl": {
+      "type": "string",
+      "default": "/design-my-solution/"
+    }
+  },
+  "render": "file:./render.php"
+}

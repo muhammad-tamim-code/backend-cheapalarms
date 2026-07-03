@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-hero",
+  "version": "1.0.0",
+  "title": "Contact Hero",
+  "category": "theme",
+  "icon": "email-alt",
+  "description": "Editorial contact page headline.",
+  "keywords": ["contact", "hero", "headline"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": false,
+    "multiple": false
+  },
+  "attributes": {
+    "headline": {
+      "type": "string",
+      "default": "Write to us."
+    },
+    "subhead": {
+      "type": "string",
+      "default": "A direct line for questions, partnerships, and project inquiries."
+    }
+  },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-process",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Process",
+  "category": "theme",
+  "icon": "list-view",
+  "description": "Design, install, monitor and support value strip for the Ajax landing page.",
+  "keywords": ["ajax", "process", "services"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

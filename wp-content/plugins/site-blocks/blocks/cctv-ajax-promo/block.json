@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-ajax-promo",
+  "title": "CCTV Ajax Promo",
+  "category": "site-blocks",
+  "description": "Safeguard + Ajax promo card for the CCTV page.",
+  "keywords": ["cctv", "ajax", "promo"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

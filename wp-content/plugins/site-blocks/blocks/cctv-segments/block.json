@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-segments",
+  "version": "1.0.0",
+  "title": "CCTV Residential & Commercial",
+  "category": "theme",
+  "icon": "building",
+  "description": "Two photo-top segment panels.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

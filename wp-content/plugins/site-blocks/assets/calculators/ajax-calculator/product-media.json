@@ -1,0 +1,133 @@
+{
+  "origin": "https://staging.safeguardsecurity.com.au",
+  "products": {
+    "upgrade": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/upgrade-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/upgrade-01.webp"
+      ]
+    },
+    "siren_out": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_out-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_out-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_out-01.webp"
+      ]
+    },
+    "siren_in": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_in-thumb.webp",
+      "gallery": []
+    },
+    "siren_dd": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_dd-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_dd-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_dd-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/siren_dd-01.webp"
+      ]
+    },
+    "multitx": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/multitx-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/multitx-01.webp"
+      ]
+    },
+    "motion": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion-extra.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion-01.webp"
+      ]
+    },
+    "motion_plus": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion_plus-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion_plus-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/motion_plus-01.webp"
+      ]
+    },
+    "keypad": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-extra.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-06.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-05.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-04.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad-01.webp"
+      ]
+    },
+    "keypad_ts": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad_ts-thumb.webp",
+      "gallery": []
+    },
+    "keypad_basic": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad_basic-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad_basic-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad_basic-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/keypad_basic-01.webp"
+      ]
+    },
+    "hub_plus": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/hub_plus-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/hub_plus-extra.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/hub_plus-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/hub_plus-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/hub_plus-01.webp"
+      ]
+    },
+    "glass": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/glass-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/glass-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/glass-01.webp"
+      ]
+    },
+    "fob": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/fob-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/fob-01.webp"
+      ]
+    },
+    "door": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/door-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/door-01.webp"
+      ]
+    },
+    "doorbell": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/doorbell-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/doorbell-01.webp"
+      ]
+    },
+    "door_plus": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/door_plus-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/door_plus-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/door_plus-01.webp"
+      ]
+    },
+    "combi": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/combi-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/combi-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/combi-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/combi-01.webp"
+      ]
+    },
+    "button": {
+      "thumb": "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/button-thumb.webp",
+      "gallery": [
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/button-extra.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/button-03.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/button-02.webp",
+        "https://staging.safeguardsecurity.com.au/wp-content/uploads/2026/06/button-01.webp"
+      ]
+    }
+  }
+}

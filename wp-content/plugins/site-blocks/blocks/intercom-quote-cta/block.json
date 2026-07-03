@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-quote-cta",
+  "version": "1.0.0",
+  "title": "Intercom Quote CTA",
+  "category": "theme",
+  "icon": "megaphone",
+  "description": "Closing quote CTA band.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

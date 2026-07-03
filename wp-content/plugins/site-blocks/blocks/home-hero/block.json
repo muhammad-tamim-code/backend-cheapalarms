@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/home-hero",
+  "version": "1.0.0",
+  "title": "Home Hero",
+  "category": "theme",
+  "icon": "shield",
+  "description": "Dark hero section for Safeguard Security homepage with radar visual.",
+  "keywords": ["home", "hero", "security", "landing"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "eyebrow": {
+      "type": "string",
+      "default": "Safeguard Security · Sydney"
+    },
+    "headline": {
+      "type": "string",
+      "default": "Protection you can see."
+    },
+    "subhead": {
+      "type": "string",
+      "default": "Professional camera, alarm, and intercom installation for homes and businesses across Sydney. Designed, installed, and supported by one local team."
+    },
+    "ctaLabel": {
+      "type": "string",
+      "default": "Get a free quote"
+    },
+    "ctaUrl": {
+      "type": "string",
+      "default": "/contact/"
+    },
+    "trustLine": {
+      "type": "string",
+      "default": "Licensed & insured installers serving Greater Sydney"
+    },
+    "badgeLine": {
+      "type": "string",
+      "default": "Cameras · Alarms · Intercoms · Monitoring"
+    },
+    "orbitCtaLabel": {
+      "type": "string",
+      "default": "View packages"
+    },
+    "orbitCtaUrl": {
+      "type": "string",
+      "default": "/packages/"
+    }
+  },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-hero",
+  "version": "1.0.0",
+  "title": "CCTV Hero",
+  "category": "theme",
+  "icon": "video-alt3",
+  "description": "Hero for the CCTV category page.",
+  "keywords": ["cctv", "hero", "cameras"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

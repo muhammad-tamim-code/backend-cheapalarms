@@ -1,4 +1,4 @@
-# Backend repo: track ONLY wp-content/plugins/cheapalarms-plugin — nothing else.
+# Backend repo: track cheapalarms-plugin + site-blocks (Safeguard marketing) — nothing else.
 # WordPress core and all other wp-content are intentionally untracked.
 
 # 1) Ignore everything at the repo root...
@@ -11,6 +11,7 @@
 !/wp-content/plugins
 /wp-content/plugins/*
 !/wp-content/plugins/cheapalarms-plugin
+!/wp-content/plugins/site-blocks
 
 # 3) Never commit real secrets / per-instance config (defense in depth;
 #    the plugin's own .gitignore also covers these).
@@ -22,4 +23,5 @@ wp-content/plugins/cheapalarms-plugin/config/instance.php
 wp-content/plugins/cheapalarms-plugin/vendor/
 wp-content/plugins/cheapalarms-plugin/*.zip
 wp-content/plugins/cheapalarms-plugin/deploy/*.zip
+wp-content/plugins/site-blocks/deploy/*.zip
 wp-content/plugins/*.zip

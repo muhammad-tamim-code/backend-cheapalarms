@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-difference",
+  "version": "1.0.0",
+  "title": "CCTV Safeguard Difference",
+  "category": "theme",
+  "icon": "groups",
+  "description": "One team handover copy and four-step process.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-services",
+  "version": "1.0.0",
+  "title": "Alarm Systems Services",
+  "category": "theme",
+  "icon": "grid-view",
+  "description": "What we install — alarm service cards for the Alarm Systems page.",
+  "keywords": ["alarm", "services", "grid"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "attributes": {
+    "heading": {
+      "type": "string",
+      "default": "What we install"
+    },
+    "intro": {
+      "type": "string",
+      "default": "Wireless, wired and smart alarm solutions — specified for your property, not pulled off a shelf."
+    }
+  },
+  "render": "file:./render.php"
+}

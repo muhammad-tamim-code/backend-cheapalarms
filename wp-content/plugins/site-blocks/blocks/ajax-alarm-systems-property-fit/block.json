@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-property-fit",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Property Fit",
+  "category": "theme",
+  "icon": "building",
+  "description": "Property types grid for the Ajax landing page.",
+  "keywords": ["ajax", "property", "homes"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

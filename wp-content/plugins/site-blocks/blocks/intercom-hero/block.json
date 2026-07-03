@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-hero",
+  "version": "1.0.0",
+  "title": "Intercom Hero",
+  "category": "theme",
+  "icon": "phone",
+  "description": "Hero for the Intercom Systems category page.",
+  "keywords": ["intercom", "hero"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-compare",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Compare",
+  "category": "theme",
+  "icon": "editor-table",
+  "description": "Ajax vs traditional wired alarms comparison table.",
+  "keywords": ["ajax", "compare", "table"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

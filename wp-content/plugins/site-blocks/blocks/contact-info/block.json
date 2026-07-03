@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-info",
+  "version": "1.0.0",
+  "title": "Contact Info",
+  "category": "theme",
+  "icon": "location",
+  "description": "Business contact details with semantic address markup.",
+  "keywords": ["contact", "address", "info"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": false,
+    "multiple": false
+  },
+  "attributes": {
+    "organizationName": {
+      "type": "string",
+      "default": ""
+    },
+    "streetAddress": {
+      "type": "string",
+      "default": ""
+    },
+    "city": {
+      "type": "string",
+      "default": ""
+    },
+    "region": {
+      "type": "string",
+      "default": ""
+    },
+    "postalCode": {
+      "type": "string",
+      "default": ""
+    },
+    "country": {
+      "type": "string",
+      "default": ""
+    },
+    "phone": {
+      "type": "string",
+      "default": ""
+    },
+    "email": {
+      "type": "string",
+      "default": ""
+    },
+    "hoursNote": {
+      "type": "string",
+      "default": "We respond to messages within two business days."
+    }
+  },
+  "render": "file:./render.php"
+}

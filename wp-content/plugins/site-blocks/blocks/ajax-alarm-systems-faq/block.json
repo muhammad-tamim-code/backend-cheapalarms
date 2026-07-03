@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-faq",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems FAQ",
+  "category": "theme",
+  "icon": "editor-help",
+  "description": "FAQ accordion for the Ajax alarm systems landing page.",
+  "keywords": ["ajax", "faq", "questions"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

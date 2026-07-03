@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-install",
+  "version": "1.0.0",
+  "title": "Intercom What We Install",
+  "category": "theme",
+  "icon": "grid-view",
+  "description": "What we design and install grid.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

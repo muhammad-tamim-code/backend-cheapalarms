@@ -1,0 +1,692 @@
+/* CCTV category page — layouts not covered by safeguard-home / alarm-systems */
+
+/* Shared media placeholder (swap when images uploaded to assets/images/cctv/) */
+.sg-cctv-media-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+  background: linear-gradient(145deg, var(--sg-blue-wash) 0%, #dceaf4 50%, var(--sg-blue-wash) 100%);
+  border: 1px dashed #b8d4e8;
+}
+
+/* Hero — dot grid + homepage badge */
+.sg-cctv-hero {
+  position: relative;
+}
+
+/* Hero — legacy cctv grid (pillar heroes use sg-hero__dark-bg) */
+.sg-cctv-hero__grid-bg {
+  display: none;
+}
+
+.sg-cctv-hero .sg-alarm-hero__inner {
+  position: relative;
+  z-index: 1;
+}
+
+body.safeguard-cctv-page .sg-cctv-hero__badge {
+  display: inline-block;
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 1.25rem;
+  background: var(--sg-blue-wash);
+  border: 1px solid #c5ddf0;
+  font-family: var(--sg-font-head);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-blue);
+}
+
+.sg-cctv-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  color: var(--sg-muted);
+}
+
+.sg-cctv-breadcrumb a {
+  color: var(--sg-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sg-cctv-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.sg-cctv-trust-line {
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--sg-muted);
+  max-width: 50ch;
+}
+
+@media (min-width: 768px) {
+  .sg-cctv-hero .sg-alarm-hero__title {
+    font-size: clamp(2.25rem, 4vw, 3.35rem);
+    max-width: 16ch;
+  }
+}
+
+@media (max-width: 767px) {
+  .sg-cctv-hero:not(.sg-alarm-hero--image-center) .sg-alarm-hero__visual {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin-inline: 0;
+  }
+
+  .sg-cctv-hero:not(.sg-alarm-hero--image-center) .sg-alarm-hero__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 42% center;
+  }
+
+  .sg-cctv-breadcrumb {
+    display: none;
+  }
+
+  .sg-cctv-hero .sg-alarm-hero__grid {
+    padding-bottom: 1rem;
+  }
+}
+
+/* Intro — prose + proof stack */
+.sg-cctv-intro__grid {
+  display: grid;
+  gap: 2rem;
+  align-items: start;
+}
+
+.sg-cctv-intro__copy p {
+  margin: 0 0 1rem;
+  color: var(--sg-muted);
+  line-height: 1.65;
+  max-width: 52ch;
+}
+
+.sg-cctv-intro__copy p:last-child {
+  margin-bottom: 0;
+}
+
+.sg-cctv-proof {
+  padding: 1.125rem 0;
+  border-bottom: 1px solid var(--sg-line);
+}
+
+.sg-cctv-proof:first-child {
+  padding-top: 0;
+}
+
+.sg-cctv-proof:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sg-cctv-proof__title {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-family: var(--sg-font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sg-navy);
+}
+
+.sg-cctv-proof__desc {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--sg-muted);
+}
+
+@media (min-width: 900px) {
+  .sg-cctv-intro__grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 3rem;
+  }
+}
+
+/* Difference — intro + steps on blue wash */
+.sg-cctv-difference__header {
+  margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.sg-cctv-difference__intro p {
+  margin: 0 0 1rem;
+}
+
+.sg-cctv-difference__intro p:last-child {
+  margin-bottom: 0;
+}
+
+body.safeguard-cctv-page .entry-content ol.sg-cctv-difference__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Bento install grid */
+.sg-cctv-bento {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.sg-cctv-bento__cell {
+  background: #fff;
+  border: 1px solid var(--sg-line);
+  padding: clamp(1.125rem, 2vw, 1.5rem);
+}
+
+.sg-cctv-bento__cell--large {
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.sg-cctv-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+}
+
+.sg-cctv-icon__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sg-cctv-bento__icon,
+.sg-cctv-bento__icon--small,
+.sg-cctv-icon--proof,
+.sg-cctv-icon--step,
+.sg-cctv-icon--trust {
+  width: 72px;
+  height: 72px;
+}
+
+.sg-cctv-bento__icon {
+  margin-bottom: 0.85rem;
+}
+
+.sg-cctv-bento__icon--small,
+.sg-cctv-icon--proof {
+  margin-bottom: 0.65rem;
+}
+
+body.safeguard-cctv-page .sg-alarm-step-card__icon .sg-cctv-icon__img,
+body.safeguard-cctv-page .sg-alarm-why__icon .sg-cctv-icon__img,
+body.safeguard-intercom-page .sg-alarm-step-card__icon .sg-cctv-icon__img,
+body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img {
+  width: 100%;
+  height: 100%;
+}
+
+.sg-cctv-bento__title {
+  margin: 0 0 0.4rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
+  font-weight: 700;
+  color: var(--sg-navy);
+  line-height: 1.3;
+}
+
+.sg-cctv-bento__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--sg-muted);
+}
+
+@media (min-width: 768px) {
+  .sg-cctv-bento {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+
+  .sg-cctv-bento__large,
+  .sg-cctv-bento__small {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  .sg-cctv-bento__small {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Photo band — natural aspect so head-to-logo crop is not re-cropped */
+.sg-cctv-photo-band {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--sg-blue-wash);
+}
+
+.sg-cctv-photo-band__img,
+.sg-cctv-photo-band .sg-cctv-media-placeholder {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.sg-cctv-photo-band .sg-cctv-media-placeholder {
+  aspect-ratio: 1600 / 606;
+  min-height: 12rem;
+}
+
+/* Segment panels */
+.sg-cctv-segments__grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.sg-cctv-segment {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--sg-line);
+}
+
+.sg-cctv-segment__media {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--sg-blue-wash);
+}
+
+.sg-cctv-segment__media img,
+.sg-cctv-segment__media .sg-cctv-media-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sg-cctv-segment__body {
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.sg-cctv-segment__title {
+  margin: 0 0 0.65rem;
+  font-family: var(--sg-font-head);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--sg-navy);
+}
+
+.sg-cctv-segment__desc {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--sg-muted);
+}
+
+.sg-cctv-segment__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sg-blue);
+  text-decoration: none;
+}
+
+.sg-cctv-segment__link:hover {
+  color: var(--sg-blue-hover);
+  text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+  .sg-cctv-segments__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.125rem;
+  }
+}
+
+/* Layered system — hub diagram + service cards + Ajax card */
+.sg-cctv-layered__inner {
+  max-width: 72rem;
+}
+
+.sg-cctv-layered__header {
+  margin-bottom: 1.75rem;
+}
+
+.sg-cctv-layered__title {
+  margin: 0 0 0.65rem;
+}
+
+.sg-cctv-layered__rule {
+  display: block;
+  width: 3.5rem;
+  height: 3px;
+  margin: 0 0 1rem;
+  background: var(--sg-orange);
+  border-radius: 2px;
+}
+
+.sg-cctv-layered__lead {
+  margin: 0;
+  color: var(--sg-muted);
+  line-height: 1.65;
+  max-width: 52ch;
+}
+
+.sg-cctv-layered__split {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.sg-cctv-layered__diagram {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+
+.sg-cctv-layered__hub {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sg-cctv-layered__flow {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 1.75rem;
+}
+
+.sg-cctv-layered__spine {
+  display: none;
+}
+
+.sg-cctv-layered__hub-link {
+  display: none;
+}
+
+.sg-cctv-layered__hub-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 1.5px solid var(--sg-line);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.sg-cctv-layered__hub-icon {
+  width: 72px;
+  height: 72px;
+}
+
+.sg-cctv-layered__hub-label {
+  margin: 0.5rem 0 0;
+  max-width: 6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sg-muted);
+}
+
+.sg-cctv-layered__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.sg-cctv-layered__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem 0.875rem 0;
+  border: 1px solid var(--sg-line);
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sg-cctv-layered__card-branch {
+  display: none;
+}
+
+.sg-cctv-layered__card:hover {
+  border-color: color-mix(in srgb, var(--sg-blue) 35%, var(--sg-line));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--sg-blue) 8%, transparent);
+}
+
+.sg-cctv-layered__card-bar {
+  align-self: stretch;
+  width: 4px;
+  background: var(--sg-blue);
+  border-radius: 0 2px 2px 0;
+}
+
+.sg-cctv-layered__card-icon {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.sg-cctv-layered__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.sg-cctv-layered__card-title {
+  font-family: var(--sg-font-head);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--sg-blue);
+}
+
+.sg-cctv-layered__card-desc {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sg-muted);
+}
+
+.sg-cctv-layered__card-chevron {
+  padding-right: 0.25rem;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--sg-muted);
+}
+
+.sg-cctv-layered__aside {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .sg-cctv-layered__cards {
+    max-width: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sg-cctv-layered__split {
+    grid-template-columns: minmax(0, 1.2fr) minmax(17rem, 22rem);
+    gap: clamp(1rem, 2.5vw, 1.75rem);
+    align-items: center;
+    justify-items: stretch;
+  }
+
+  .sg-cctv-layered__diagram {
+    --sg-layered-gap: 0.75rem;
+    --sg-layered-connector: 1.75rem;
+    --sg-layered-hub-w: clamp(6.5rem, 8.5vw, 8.5rem);
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .sg-cctv-layered__hub {
+    position: relative;
+    align-self: stretch;
+    width: var(--sg-layered-hub-w);
+    padding-bottom: 0;
+  }
+
+  .sg-cctv-layered__hub-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: clamp(6rem, 8vw, 8.5rem);
+    height: clamp(6rem, 8vw, 8.5rem);
+  }
+
+  .sg-cctv-layered__hub-label {
+    position: absolute;
+    top: calc(50% + clamp(3rem, 4vw, 4.25rem) / 2 + 0.5rem);
+    left: 50%;
+    bottom: auto;
+    width: var(--sg-layered-hub-w);
+    margin: 0;
+    transform: translateX(-50%);
+    max-width: 8.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .sg-cctv-layered__flow {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: var(--sg-layered-connector);
+  }
+
+  .sg-cctv-layered__cards {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sg-layered-gap);
+  }
+
+  .sg-cctv-layered__card {
+    flex: 1 1 0;
+    min-height: 4.5rem;
+  }
+
+  .sg-cctv-layered__spine {
+    display: block;
+    position: absolute;
+    left: 0;
+    width: 0;
+    pointer-events: none;
+    border-left: 1.5px dashed color-mix(in srgb, var(--sg-muted) 55%, transparent);
+    top: calc((100% - 2 * var(--sg-layered-gap)) / 6);
+    bottom: calc((100% - 2 * var(--sg-layered-gap)) / 6);
+  }
+
+  .sg-cctv-layered__hub-link {
+    display: block;
+    position: absolute;
+    left: calc(-1 * (var(--sg-layered-connector) + var(--sg-layered-hub-w)));
+    width: calc(var(--sg-layered-connector) + var(--sg-layered-hub-w));
+    height: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    border-top: 1.5px dashed color-mix(in srgb, var(--sg-muted) 55%, transparent);
+  }
+
+  .sg-cctv-layered__hub-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .sg-cctv-layered__card-branch {
+    display: block;
+    position: absolute;
+    left: calc(-1 * var(--sg-layered-connector));
+    top: 50%;
+    width: var(--sg-layered-connector);
+    height: 0;
+    pointer-events: none;
+    border-top: 1.5px dashed color-mix(in srgb, var(--sg-muted) 55%, transparent);
+  }
+
+  .sg-cctv-layered__card {
+    padding: 1rem 1.125rem 1rem 0;
+    gap: 0.875rem;
+  }
+
+  .sg-cctv-layered__card-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .sg-cctv-layered__card-title {
+    font-size: 1rem;
+  }
+
+  .sg-cctv-layered__card-desc {
+    font-size: 0.875rem;
+  }
+}
+
+body.safeguard-cctv-page .sg-band.sg-portal-band.sg-cctv-portal {
+  padding-bottom: clamp(2.5rem, 5vw, 3.5rem);
+}
+
+/* Trust — 2×2 / 4-across panel */
+body.safeguard-cctv-page .sg-cctv-trust__panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  body.safeguard-cctv-page .sg-cctv-trust__panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.safeguard-cctv-page .sg-cctv-trust__panel .sg-alarm-why__item + .sg-alarm-why__item {
+    border-top: none;
+  }
+
+  body.safeguard-cctv-page .sg-cctv-trust__panel .sg-alarm-why__item:nth-child(n + 3) {
+    border-top: 1px solid var(--sg-line);
+  }
+}
+
+@media (min-width: 1024px) {
+  body.safeguard-cctv-page .sg-cctv-trust__panel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  body.safeguard-cctv-page .sg-cctv-trust__panel .sg-alarm-why__item:nth-child(n + 2) {
+    border-left: 1px solid var(--sg-line);
+  }
+
+  body.safeguard-cctv-page .sg-cctv-trust__panel .sg-alarm-why__item:nth-child(n + 3) {
+    border-top: none;
+  }
+}
+
+/* FAQ — single column on mobile for readability */
+@media (max-width: 767px) {
+  body.safeguard-cctv-page .sg-cctv-faq .sg-value-faq {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

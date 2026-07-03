@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-difference",
+  "version": "1.0.0",
+  "title": "Intercom Safeguard Difference",
+  "category": "theme",
+  "icon": "groups",
+  "description": "Safeguard difference and process steps.",
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

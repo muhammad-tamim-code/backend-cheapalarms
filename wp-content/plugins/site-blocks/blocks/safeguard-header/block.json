@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/safeguard-header",
+  "version": "1.0.0",
+  "title": "Safeguard Header",
+  "category": "theme",
+  "icon": "admin-site-alt3",
+  "description": "Safeguard utility bar and primary navigation header.",
+  "keywords": ["header", "nav", "safeguard"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": false,
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

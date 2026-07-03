@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/safeguard-footer",
+  "version": "1.0.0",
+  "title": "Safeguard Footer",
+  "category": "theme",
+  "icon": "admin-home",
+  "description": "Shared Safeguard site footer and mobile bar.",
+  "keywords": ["footer", "safeguard"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}

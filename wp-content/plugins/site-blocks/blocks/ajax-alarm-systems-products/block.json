@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-alarm-systems-products",
+  "version": "1.0.0",
+  "title": "Ajax Alarm Systems Products",
+  "category": "theme",
+  "icon": "grid-view",
+  "description": "Common Ajax components grid for the Ajax landing page.",
+  "keywords": ["ajax", "products", "components"],
+  "textdomain": "site-blocks",
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": false
+  },
+  "render": "file:./render.php"
+}
