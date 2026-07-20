@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — who, where, when.
+ * Access Control, who, where, when.
  *
  * @package Site_Blocks
  */
@@ -24,15 +24,15 @@ site_blocks_render_access_control_split(
 		'list'         => array(
 			array(
 				'title' => __( 'Who', 'site-blocks' ),
-				'desc'  => __( 'Staff, contractors, visitors and cleaners — each with credentials matched to their role.', 'site-blocks' ),
+				'desc'  => __( 'Staff, contractors, visitors and cleaners, each with credentials matched to their role.', 'site-blocks' ),
 			),
 			array(
 				'title' => __( 'Where', 'site-blocks' ),
-				'desc'  => __( 'Front doors, server rooms, car parks, loading docks and perimeter gates — door by door.', 'site-blocks' ),
+				'desc'  => __( 'Front doors, server rooms, car parks, loading docks and perimeter gates, door by door.', 'site-blocks' ),
 			),
 			array(
 				'title' => __( 'When', 'site-blocks' ),
-				'desc'  => __( 'Business hours only, after-hours access, or one-off visitor windows — scheduled automatically.', 'site-blocks' ),
+				'desc'  => __( 'Business hours only, after-hours access, or one-off visitor windows, scheduled automatically.', 'site-blocks' ),
 			),
 		),
 		'visual'       => static function (): void {

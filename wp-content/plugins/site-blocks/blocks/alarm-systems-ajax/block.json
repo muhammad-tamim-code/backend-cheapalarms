@@ -25,7 +25,7 @@
     },
     "lead": {
       "type": "string",
-      "default": "Ajax is the system we'll design with you end-to-end online — wireless, refined, genuinely smart. The hardware is only half of it; the difference is how it's specified, installed and supported."
+      "default": "Ajax is the system we'll design with you end-to-end online, wireless, refined, genuinely smart. The hardware is only half of it; the difference is how it's specified, installed and supported."
     },
     "ctaLabel": {
       "type": "string",

@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — where we install.
+ * Access Control, where we install.
  *
  * @package Site_Blocks
  */
@@ -75,7 +75,7 @@ $sectors = array(
 				<?php esc_html_e( 'Repairs, upgrades & takeovers', 'site-blocks' ); ?>
 			</h3>
 			<p class="sg-ac-repairs__desc">
-				<?php esc_html_e( 'Already have access control? We service, expand and migrate existing systems — including reader replacements, controller upgrades and integration with your CCTV and alarms.', 'site-blocks' ); ?>
+				<?php esc_html_e( 'Already have access control? We service, expand and migrate existing systems, including reader replacements, controller upgrades and integration with your CCTV and alarms.', 'site-blocks' ); ?>
 			</p>
 		</aside>
 	</div>

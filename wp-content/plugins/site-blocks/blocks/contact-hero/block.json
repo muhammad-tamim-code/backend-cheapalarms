@@ -6,7 +6,7 @@
   "title": "Contact Hero",
   "category": "theme",
   "icon": "email-alt",
-  "description": "Editorial contact page headline.",
+  "description": "Contact page headline.",
   "keywords": ["contact", "hero", "headline"],
   "textdomain": "site-blocks",
   "supports": {
@@ -17,11 +17,11 @@
   "attributes": {
     "headline": {
       "type": "string",
-      "default": "Write to us."
+      "default": "Contact us"
     },
     "subhead": {
       "type": "string",
-      "default": "A direct line for questions, partnerships, and project inquiries."
+      "default": "Questions about quotes, installs or support? Call, email or send a message and our team will get back to you."
     }
   },
   "render": "file:./render.php"

@@ -396,7 +396,7 @@ class AuthorizationService
 
                 'wp_role'     => self::WP_ROLE_CUSTOMER,
 
-                'description' => __('Customer portal only — no admin app.', 'cheapalarms'),
+                'description' => __('Customer portal only, no admin app.', 'cheapalarms'),
 
             ],
 

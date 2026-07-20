@@ -1,6 +1,6 @@
 <?php
 /**
- * Alarm Systems — Safeguard + Ajax band render.
+ * Alarm Systems, Safeguard + Ajax band render.
  *
  * @package Site_Blocks
  *
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $eyebrow    = isset( $attributes['eyebrow'] ) ? (string) $attributes['eyebrow'] : __( 'Safeguard + Ajax', 'site-blocks' );
 $headline   = isset( $attributes['headline'] ) ? (string) $attributes['headline'] : __( 'Wireless done properly', 'site-blocks' );
-$lead       = isset( $attributes['lead'] ) ? (string) $attributes['lead'] : __( 'Ajax is the system we\'ll design with you end-to-end online — wireless, refined, genuinely smart. The hardware is only half of it; the difference is how it\'s specified, installed and supported.', 'site-blocks' );
+$lead       = isset( $attributes['lead'] ) ? (string) $attributes['lead'] : __( 'Ajax is the system we\'ll design with you end-to-end online, wireless, refined, genuinely smart. The hardware is only half of it; the difference is how it\'s specified, installed and supported.', 'site-blocks' );
 $cta_label  = isset( $attributes['ctaLabel'] ) ? (string) $attributes['ctaLabel'] : __( 'Explore Ajax with Safeguard', 'site-blocks' );
 $cta_url    = isset( $attributes['ctaUrl'] ) ? (string) $attributes['ctaUrl'] : '/ajax-alarm-systems/';
 
@@ -29,7 +29,7 @@ $ajax_img = site_blocks_asset_url( 'images/alarm/ajax-alarm-trimmed.png' );
 			<p class="sg-alarm-ajax__lead"><?php echo esc_html( $lead ); ?></p>
 			<a class="sg-alarm-ajax__link" href="<?php echo esc_url( home_url( $cta_url ) ); ?>">
 				<?php echo esc_html( $cta_label ); ?>
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+				<?php site_blocks_lucide_icon( 'arrow-right', 14 ); ?>
 			</a>
 		</div>
 

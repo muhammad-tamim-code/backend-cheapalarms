@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-quote-cta",
+  "title": "Alarm Systems Quote CTA",
+  "category": "site-blocks",
+  "description": "Closing quote CTA for the Alarm Systems page.",
+  "keywords": ["alarm", "quote", "cta"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

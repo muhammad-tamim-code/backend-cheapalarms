@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — credential options grid.
+ * Access Control, credential options grid.
  *
  * @package Site_Blocks
  */
@@ -24,7 +24,7 @@ $options = array(
 	),
 	array(
 		'title' => __( 'Mobile credentials', 'site-blocks' ),
-		'desc'  => __( 'Unlock doors from a smartphone — no card to lose or replace.', 'site-blocks' ),
+		'desc'  => __( 'Unlock doors from a smartphone, no card to lose or replace.', 'site-blocks' ),
 		'best'  => __( 'Best for: agile teams, hot-desking, visitor passes', 'site-blocks' ),
 	),
 	array(
@@ -52,7 +52,7 @@ $options = array(
 				<span class="sg-accent"><?php esc_html_e( 'entry point', 'site-blocks' ); ?></span>
 			</h2>
 			<p class="sg-section-intro sg-section-intro--center">
-				<?php esc_html_e( 'Mix credentials on the same system — matched to how each door is actually used.', 'site-blocks' ); ?>
+				<?php esc_html_e( 'Mix credentials on the same system, matched to how each door is actually used.', 'site-blocks' ); ?>
 			</p>
 		</header>
 

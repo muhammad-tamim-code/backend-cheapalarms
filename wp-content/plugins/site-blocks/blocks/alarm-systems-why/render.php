@@ -1,6 +1,6 @@
 <?php
 /**
- * Alarm Systems — Why Safeguard block render.
+ * Alarm Systems, Why Safeguard block render.
  *
  * @package Site_Blocks
  *

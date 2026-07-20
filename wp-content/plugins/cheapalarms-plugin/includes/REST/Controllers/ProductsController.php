@@ -27,7 +27,7 @@ class ProductsController implements ControllerInterface
     {
         $auth = $this->container->get(Authenticator::class);
 
-        // POST /ca/v1/products/ghl/sync — background sync catalog + prices into local DB
+        // POST /ca/v1/products/ghl/sync, background sync catalog + prices into local DB
         register_rest_route('ca/v1', '/products/ghl/sync', [
             'methods'             => 'POST',
             'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
@@ -50,7 +50,7 @@ class ProductsController implements ControllerInterface
             },
         ]);
 
-        // POST /ca/v1/products/ghl — create product in GHL + local snapshot
+        // POST /ca/v1/products/ghl, create product in GHL + local snapshot
         register_rest_route('ca/v1', '/products/ghl', [
             'methods'             => 'POST',
             'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
@@ -96,7 +96,7 @@ class ProductsController implements ControllerInterface
             },
         ]);
 
-        // GET /ca/v1/products/ghl/{id}/price — fetch a single product's price on demand
+        // GET /ca/v1/products/ghl/{id}/price, fetch a single product's price on demand
         register_rest_route('ca/v1', '/products/ghl/(?P<id>[a-zA-Z0-9_-]+)/price', [
             'methods'             => 'GET',
             'permission_callback' => fn () => $this->isDevBypass() ?: $auth->requireCapability('ca_manage_portal'),
@@ -198,7 +198,7 @@ class ProductsController implements ControllerInterface
             }
         }
 
-        // Empty snapshots — kick off first sync and fall back to legacy transient/live catalog (no prices).
+        // Empty snapshots, kick off first sync and fall back to legacy transient/live catalog (no prices).
         if (!is_wp_error($hasLocal) && !$hasLocal && !wp_next_scheduled('ca_sync_product_snapshots', [$locationId])) {
             wp_schedule_single_event(time() + 1, 'ca_sync_product_snapshots', [$locationId]);
         }
@@ -207,7 +207,7 @@ class ProductsController implements ControllerInterface
     }
 
     /**
-     * Legacy live GHL catalog fetch (metadata only — prices come from snapshots).
+     * Legacy live GHL catalog fetch (metadata only, prices come from snapshots).
      *
      * @return array{ok:bool,items:array,total:int,cached:bool,source?:string}|WP_Error
      */

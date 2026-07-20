@@ -1,14 +1,30 @@
 # WordPress plugin upload zip — layout MUST be: site-blocks/site-blocks.php
 # Do NOT zip the inner files only (that breaks WP and causes "Plugin file does not exist").
+#
+# Usage:
+#   .\deploy-zip.ps1              # full package (default) — avoid WP Admin; use SFTP/rsync
+#   .\deploy-zip.ps1 -CodeOnly    # ~1 MB PHP/CSS/JS only (WP Admin will wipe plugin images!)
+#
+# Long-term: do NOT install this plugin via WP Admin → Plugins → Upload.
+# WP writes the zip into wp-content/uploads/YYYY/MM first, then deletes the whole
+# plugin folder and extracts. That path fills the disk and is why installs fail/hang.
+# Prefer: SFTP/rsync onto the Coolify bind-mounted plugins directory.
+
+param(
+    [switch]$CodeOnly
+)
 
 $ErrorActionPreference = 'Stop'
 
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 $pluginsDir = Split-Path -Parent $pluginRoot
-$staging    = Join-Path $pluginsDir 'site-blocks-zip-tmp'
-$wrapDir    = Join-Path $staging 'site-blocks'
-$zipPath    = Join-Path $pluginRoot 'deploy\site-blocks-wp-upload.zip'
-$zipCopy    = Join-Path $pluginsDir 'site-blocks.zip'
+# Repo root (headless-cheapalarms) — always overwrite this path so the zip lands in the same place every time
+$repoRoot     = (Resolve-Path (Join-Path $pluginRoot '..\..\..\..')).Path
+$staging      = Join-Path $pluginsDir 'site-blocks-zip-tmp'
+$wrapDir      = Join-Path $staging 'site-blocks'
+$zipPath      = Join-Path $pluginRoot 'deploy\site-blocks-wp-upload.zip'
+$zipCopy      = Join-Path $pluginsDir 'site-blocks.zip'
+$zipCanonical = Join-Path $repoRoot 'site-blocks.zip'
 
 if (Test-Path $staging) {
     Remove-Item -Recurse -Force $staging
@@ -17,13 +33,37 @@ if (Test-Path $staging) {
 New-Item -ItemType Directory -Path $wrapDir -Force | Out-Null
 New-Item -ItemType Directory -Path (Split-Path $zipPath) -Force | Out-Null
 
-robocopy $pluginRoot $wrapDir /E `
-    /XD node_modules site-blocks-zip-tmp site-blocks-deploy deploy scripts src `
-    /XF site-blocks.zip *.log package.json package-lock.json postcss.config.js tailwind.config.js .gitignore `
-    /NFL /NDL /NJH /NJS /nc /ns /np
+$excludeDirs = @(
+    'node_modules', 'site-blocks-zip-tmp', 'site-blocks-deploy', 'deploy', 'scripts', 'src'
+)
+if ($CodeOnly) {
+    $excludeDirs += 'images'
+}
+
+$xdArgs = @()
+foreach ($d in $excludeDirs) {
+    $xdArgs += '/XD'
+    $xdArgs += $d
+}
+
+$xfArgs = @(
+    '/XF', 'site-blocks.zip', '*.log', 'package.json', 'package-lock.json',
+    'postcss.config.js', 'tailwind.config.js', '.gitignore',
+    'solar-use-cases-banner.png', 'solar-use-cases-split.png', 'hub-commercial.webp'
+)
+
+& robocopy $pluginRoot $wrapDir /E @xdArgs @xfArgs /NFL /NDL /NJH /NJS /nc /ns /np
 
 if ($LASTEXITCODE -ge 8) {
     throw "robocopy failed with exit code $LASTEXITCODE"
+}
+
+if ($CodeOnly) {
+    $imagesInZip = Join-Path $wrapDir 'assets\images'
+    if (Test-Path $imagesInZip) {
+        Remove-Item -Recurse -Force $imagesInZip
+    }
+    New-Item -ItemType Directory -Path $imagesInZip -Force | Out-Null
 }
 
 $mainFile = Join-Path $wrapDir 'site-blocks.php'
@@ -56,8 +96,18 @@ if ($nested) {
 }
 
 Copy-Item -Force $zipPath $zipCopy
+Copy-Item -Force $zipPath $zipCanonical
 
 $sizeMb = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)
+$mode   = if ($CodeOnly) { 'CODE-ONLY (no images)' } else { 'FULL (code + images)' }
+
 Write-Host ""
-Write-Host "OK - WordPress plugin zip ready ($sizeMb MB)" -ForegroundColor Green
-Write-Host "  $zipPath"
+Write-Host "OK - WordPress plugin zip ready ($sizeMb MB) [$mode]" -ForegroundColor Green
+Write-Host "  Canonical (same every time): $zipCanonical"
+Write-Host "  Also: $zipPath"
+Write-Host "  Also: $zipCopy"
+Write-Host ""
+Write-Host "Prefer SFTP/rsync to Coolify plugins bind-mount over WP Admin upload." -ForegroundColor Yellow
+if ($CodeOnly) {
+    Write-Host "Code-only via WP Admin deletes the plugin folder - re-sync assets/images after install." -ForegroundColor Yellow
+}

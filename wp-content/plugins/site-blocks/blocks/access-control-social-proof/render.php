@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — client logos and reviews placeholders.
+ * Access Control, client logos and reviews placeholders.
  *
  * @package Site_Blocks
  */
@@ -14,11 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 $logo_count = 6;
 $reviews    = array(
 	array(
-		'quote' => __( 'Placeholder review — client permission required before publishing.', 'site-blocks' ),
+		'quote' => __( 'Placeholder review, client permission required before publishing.', 'site-blocks' ),
 		'meta'  => __( 'Commercial client, Sydney', 'site-blocks' ),
 	),
 	array(
-		'quote' => __( 'Placeholder review — client permission required before publishing.', 'site-blocks' ),
+		'quote' => __( 'Placeholder review, client permission required before publishing.', 'site-blocks' ),
 		'meta'  => __( 'Strata building, Greater Sydney', 'site-blocks' ),
 	),
 );

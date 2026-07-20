@@ -30,6 +30,20 @@ function site_blocks_register_blocks(): void {
 		'alarm-systems-ajax',
 		'alarm-systems-steps',
 		'alarm-systems-faq',
+		'alarm-systems-portal',
+		'alarm-systems-trust',
+		'alarm-systems-related',
+		'alarm-systems-quote-cta',
+		'contact-portal',
+		'contact-related',
+		'contact-faq',
+		'contact-quote-cta',
+		'ajax-calculator-hero',
+		'ajax-calculator-embed',
+		'ajax-calculator-process',
+		'ajax-calculator-portal',
+		'ajax-calculator-faq',
+		'ajax-calculator-quote-cta',
 		'ajax-alarm-systems-hero',
 		'ajax-alarm-systems-process',
 		'ajax-alarm-systems-difference',
@@ -39,6 +53,8 @@ function site_blocks_register_blocks(): void {
 		'ajax-alarm-systems-compare',
 		'ajax-alarm-systems-faq',
 		'ajax-alarm-systems-quote-cta',
+		'ajax-alarm-systems-portal',
+		'ajax-alarm-systems-related',
 		'cctv-hero',
 		'cctv-intro',
 		'cctv-difference',
@@ -50,6 +66,7 @@ function site_blocks_register_blocks(): void {
 		'cctv-portal',
 		'cctv-trust',
 		'cctv-faq',
+		'cctv-related',
 		'cctv-quote-cta',
 		'intercom-hero',
 		'intercom-intro',
@@ -60,6 +77,7 @@ function site_blocks_register_blocks(): void {
 		'intercom-portal',
 		'intercom-trust',
 		'intercom-faq',
+		'intercom-related',
 		'intercom-quote-cta',
 		'access-control-hero',
 		'access-control-what',
@@ -74,7 +92,15 @@ function site_blocks_register_blocks(): void {
 		'access-control-social-proof',
 		'access-control-faq',
 		'access-control-related',
+		'access-control-portal',
 		'access-control-quote-cta',
+		'logo-marquee',
+		'physical-security-hero',
+		'physical-security-section',
+		'monitoring-hero',
+		'monitoring-section',
+		'enterprise-hero',
+		'enterprise-section',
 	);
 
 	foreach ( $blocks as $block ) {
@@ -169,6 +195,86 @@ function site_blocks_register_patterns(): void {
 
 		if ( is_array( $access_control_pattern ) ) {
 			register_block_pattern( 'site/access-control-page', $access_control_pattern );
+		}
+	}
+
+	$physical_hub_pattern_file = SITE_BLOCKS_DIR . 'patterns/physical-security-hub-page.php';
+	if ( file_exists( $physical_hub_pattern_file ) ) {
+		$physical_hub_pattern = include $physical_hub_pattern_file;
+		if ( is_array( $physical_hub_pattern ) ) {
+			register_block_pattern( 'site/physical-security-hub-page', $physical_hub_pattern );
+		}
+	}
+
+	$physical_static_pattern_file = SITE_BLOCKS_DIR . 'patterns/physical-security-static-guards-page.php';
+	if ( file_exists( $physical_static_pattern_file ) ) {
+		$physical_static_pattern = include $physical_static_pattern_file;
+		if ( is_array( $physical_static_pattern ) ) {
+			register_block_pattern( 'site/physical-security-static-guards-page', $physical_static_pattern );
+		}
+	}
+
+	$physical_mobile_pattern_file = SITE_BLOCKS_DIR . 'patterns/physical-security-mobile-patrols-page.php';
+	if ( file_exists( $physical_mobile_pattern_file ) ) {
+		$physical_mobile_pattern = include $physical_mobile_pattern_file;
+		if ( is_array( $physical_mobile_pattern ) ) {
+			register_block_pattern( 'site/physical-security-mobile-patrols-page', $physical_mobile_pattern );
+		}
+	}
+
+	$monitoring_hub_pattern_file = SITE_BLOCKS_DIR . 'patterns/monitoring-hub-page.php';
+	if ( file_exists( $monitoring_hub_pattern_file ) ) {
+		$monitoring_hub_pattern = include $monitoring_hub_pattern_file;
+		if ( is_array( $monitoring_hub_pattern ) ) {
+			register_block_pattern( 'site/monitoring-hub-page', $monitoring_hub_pattern );
+		}
+	}
+
+	$monitoring_btb_pattern_file = SITE_BLOCKS_DIR . 'patterns/monitoring-back-to-base-page.php';
+	if ( file_exists( $monitoring_btb_pattern_file ) ) {
+		$monitoring_btb_pattern = include $monitoring_btb_pattern_file;
+		if ( is_array( $monitoring_btb_pattern ) ) {
+			register_block_pattern( 'site/monitoring-back-to-base-page', $monitoring_btb_pattern );
+		}
+	}
+
+	$monitoring_vp_pattern_file = SITE_BLOCKS_DIR . 'patterns/monitoring-virtual-patrol-page.php';
+	if ( file_exists( $monitoring_vp_pattern_file ) ) {
+		$monitoring_vp_pattern = include $monitoring_vp_pattern_file;
+		if ( is_array( $monitoring_vp_pattern ) ) {
+			register_block_pattern( 'site/monitoring-virtual-patrol-page', $monitoring_vp_pattern );
+		}
+	}
+
+	$monitoring_solar_pattern_file = SITE_BLOCKS_DIR . 'patterns/monitoring-solar-cameras-monitoring-page.php';
+	if ( file_exists( $monitoring_solar_pattern_file ) ) {
+		$monitoring_solar_pattern = include $monitoring_solar_pattern_file;
+		if ( is_array( $monitoring_solar_pattern ) ) {
+			register_block_pattern( 'site/monitoring-solar-cameras-monitoring-page', $monitoring_solar_pattern );
+		}
+	}
+
+	$enterprise_hub_pattern_file = SITE_BLOCKS_DIR . 'patterns/enterprise-hub-page.php';
+	if ( file_exists( $enterprise_hub_pattern_file ) ) {
+		$enterprise_hub_pattern = include $enterprise_hub_pattern_file;
+		if ( is_array( $enterprise_hub_pattern ) ) {
+			register_block_pattern( 'site/enterprise-hub-page', $enterprise_hub_pattern );
+		}
+	}
+
+	$safeguard_solutions_pattern_file = SITE_BLOCKS_DIR . 'patterns/safeguard-solutions-page.php';
+	if ( file_exists( $safeguard_solutions_pattern_file ) ) {
+		$safeguard_solutions_pattern = include $safeguard_solutions_pattern_file;
+		if ( is_array( $safeguard_solutions_pattern ) ) {
+			register_block_pattern( 'site/safeguard-solutions-page', $safeguard_solutions_pattern );
+		}
+	}
+
+	$ajax_calculator_pattern_file = SITE_BLOCKS_DIR . 'patterns/ajax-calculator-page.php';
+	if ( file_exists( $ajax_calculator_pattern_file ) ) {
+		$ajax_calculator_pattern = include $ajax_calculator_pattern_file;
+		if ( is_array( $ajax_calculator_pattern ) ) {
+			register_block_pattern( 'site/ajax-calculator-page', $ajax_calculator_pattern );
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * Access Control radial process — scroll reveal animation.
+ * Access Control radial process, scroll reveal animation.
  */
 (function () {
   'use strict';

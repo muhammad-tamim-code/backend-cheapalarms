@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once SITE_BLOCKS_DIR . 'inc/alarm-systems-icons.php';
 
 $heading = isset( $attributes['heading'] ) ? (string) $attributes['heading'] : __( 'What we install', 'site-blocks' );
-$intro   = isset( $attributes['intro'] ) ? (string) $attributes['intro'] : __( 'Wireless, wired and smart alarm solutions — specified for your property, not pulled off a shelf.', 'site-blocks' );
+$intro   = isset( $attributes['intro'] ) ? (string) $attributes['intro'] : __( 'Wireless, wired and smart alarm solutions, specified for your property, not pulled off a shelf.', 'site-blocks' );
 
 $cards = array(
 	array(
@@ -52,7 +52,7 @@ $cards = array(
 	array(
 		'title'       => __( 'Back-to-base monitoring', 'site-blocks' ),
 		'description' => __( 'Someone watching when the alarm trips, 24/7.', 'site-blocks' ),
-		'url'         => '/contact/',
+		'url'         => '/monitoring/back-to-base/',
 		'icon'        => 'site_blocks_alarm_icon_monitoring',
 	),
 );
@@ -82,7 +82,7 @@ $cards = array(
 					<p class="sg-alarm-service-card__desc"><?php echo esc_html( $card['description'] ); ?></p>
 					<a class="sg-alarm-service-card__link" href="<?php echo esc_url( home_url( $card['url'] ) ); ?>">
 						<?php esc_html_e( 'Learn more', 'site-blocks' ); ?>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+						<?php site_blocks_lucide_icon( 'arrow-right', 14 ); ?>
 					</a>
 				</article>
 			<?php endforeach; ?>

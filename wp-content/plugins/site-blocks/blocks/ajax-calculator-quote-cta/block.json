@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-quote-cta",
+  "title": "Ajax Calculator Quote CTA",
+  "category": "site-blocks",
+  "description": "Quote CTA for the Ajax calculator page.",
+  "keywords": ["ajax", "calculator", "cta"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

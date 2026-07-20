@@ -278,7 +278,7 @@ class AdminInvoiceController extends AdminController
         if ($items === null) {
             $cfg = $this->container->get(Config::class);
             if (!$cfg->isGhlFetchAllowed()) {
-                error_log('[CA][INVOICE_CACHE] MISS — GHL fetch disabled; returning empty list');
+                error_log('[CA][INVOICE_CACHE] MISS, GHL fetch disabled; returning empty list');
                 $items = [];
                 $total = 0;
                 $dataSource = 'empty';
@@ -642,7 +642,7 @@ class AdminInvoiceController extends AdminController
         $portalMetaRepo  = $this->container->get(\CheapAlarms\Plugin\Services\Shared\PortalMetaRepository::class);
         $linkedEstimateId = $portalMetaRepo->findEstimateIdByInvoiceId($invoiceId);
 
-        // Trigger Xero sync if estimate found and invoice not already synced (async — do not block admin HTTP response)
+        // Trigger Xero sync if estimate found and invoice not already synced (async, do not block admin HTTP response)
         if ($linkedEstimateId) {
             $meta = $portalMetaRepo->get($linkedEstimateId);
             $invoiceMeta = $meta['invoice'] ?? [];
@@ -1264,7 +1264,7 @@ class AdminInvoiceController extends AdminController
 
     /**
      * Write-through: store a normalized invoice (from GHL API) into the local snapshot table.
-     * This is best-effort — if it fails, we log but don't break the main operation.
+     * This is best-effort, if it fails, we log but don't break the main operation.
      *
      * @param string $locationId
      * @param array<string, mixed> $invoice Normalized invoice from InvoiceService::getInvoice()

@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — what is access control.
+ * Access Control, what is access control.
  *
  * @package Site_Blocks
  */
@@ -23,7 +23,7 @@ site_blocks_render_access_control_split(
 		'title_after'   => __( '?', 'site-blocks' ),
 		'intro'         => __( 'Electronic access replaces physical keys with credentials you can issue, schedule and revoke.', 'site-blocks' ),
 		'paragraphs'    => array(
-			__( 'Instead of copying keys every time someone joins or leaves, you manage who can open which doors — and when — from one system.', 'site-blocks' ),
+			__( 'Instead of copying keys every time someone joins or leaves, you manage who can open which doors, and when, from one system.', 'site-blocks' ),
 			__( 'Every entry is logged, so you know who came in and when. Lost a card? Disable it in seconds without rekeying the building.', 'site-blocks' ),
 		),
 		'visual'        => static function (): void {

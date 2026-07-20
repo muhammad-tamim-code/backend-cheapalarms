@@ -1,6 +1,6 @@
 <?php
 /**
- * Safeguard staging instance — committed for zero-touch Coolify deploys.
+ * Safeguard staging instance, committed for zero-touch Coolify deploys.
  * Production uses config/instance.php (generated, gitignored).
  */
 return [

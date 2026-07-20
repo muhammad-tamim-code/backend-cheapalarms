@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/logo-marquee",
+  "version": "1.0.0",
+  "title": "Logo Marquee",
+  "category": "theme",
+  "icon": "images-alt2",
+  "description": "Sliding strip of brand logos (portfolio or partners).",
+  "textdomain": "site-blocks",
+  "attributes": {
+    "title": {
+      "type": "string",
+      "default": "Brands we have worked with"
+    },
+    "subtitle": {
+      "type": "string",
+      "default": ""
+    },
+    "source": {
+      "type": "string",
+      "default": "portfolio",
+      "enum": ["portfolio", "partners"]
+    },
+    "variant": {
+      "type": "string",
+      "default": "wash",
+      "enum": ["wash", "light"]
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": ["full"],
+    "multiple": true
+  },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-hero",
+  "title": "Ajax Calculator Hero",
+  "category": "site-blocks",
+  "description": "Intro hero for the Ajax calculator page.",
+  "keywords": ["ajax", "calculator", "hero"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

@@ -1,6 +1,6 @@
 <?php
 /**
- * CCTV — Safeguard + Ajax promo card.
+ * CCTV, Safeguard + Ajax promo card.
  *
  * @package Site_Blocks
  */

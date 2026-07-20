@@ -18,12 +18,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function site_blocks_get_safeguard_footer_services(): array {
 	return array(
+		'/enterprise-solutions/'  => __( 'Enterprise Solutions', 'site-blocks' ),
+		'/safeguard-solutions/'   => __( 'Safeguard Solutions', 'site-blocks' ),
 		'/alarm-systems/'         => __( 'Alarm Systems', 'site-blocks' ),
 		'/cctv-security-cameras/' => __( 'CCTV & Security Cameras', 'site-blocks' ),
 		'/access-control/'        => __( 'Access Control', 'site-blocks' ),
+		'/physical-security/'     => __( 'Physical Security', 'site-blocks' ),
 		'/intercom-systems/'      => __( 'Intercoms', 'site-blocks' ),
 		'/monitoring/'            => __( 'Alarm Monitoring', 'site-blocks' ),
-		'/security-guards/'       => __( 'Security Guards', 'site-blocks' ),
 	);
 }
 
@@ -99,7 +101,7 @@ function site_blocks_render_safeguard_footer(): void {
 		</div>
 		<div class="sg-footer__bar">
 			<div class="sg-container sg-footer__bar-inner">
-				<p>© <?php echo esc_html( gmdate( 'Y' ) ); ?> <?php esc_html_e( 'Safeguard Security Services · Master Licence No. 000000000', 'site-blocks' ); ?></p>
+				<p>© <?php echo esc_html( gmdate( 'Y' ) ); ?> <?php esc_html_e( 'Safeguard Security Services · Master Licence No. 000103619', 'site-blocks' ); ?></p>
 				<p><a href="<?php echo esc_url( home_url( '/privacy-policy/' ) ); ?>"><?php esc_html_e( 'Privacy Policy', 'site-blocks' ); ?></a> · <a href="<?php echo esc_url( home_url( '/terms-of-service/' ) ); ?>"><?php esc_html_e( 'Terms of Service', 'site-blocks' ); ?></a></p>
 			</div>
 		</div>

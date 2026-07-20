@@ -77,7 +77,7 @@ class UserCapabilities
             <tr>
                 <th><?php esc_html_e('WordPress roles', 'cheapalarms'); ?></th>
                 <td>
-                    <code><?php echo esc_html(implode(', ', $wpRoles) ?: '—'); ?></code>
+                    <code><?php echo esc_html(implode(', ', $wpRoles) ?: ', '); ?></code>
                 </td>
             </tr>
         </table>

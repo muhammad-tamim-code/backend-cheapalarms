@@ -1,6 +1,6 @@
 <?php
 /**
- * CCTV — what we design and install (bento grid).
+ * CCTV, what we design and install (bento grid).
  *
  * @package Site_Blocks
  */
@@ -21,7 +21,7 @@ $large = array(
 	),
 	array(
 		'title' => __( 'NVR & PoE recording', 'site-blocks' ),
-		'desc'  => __( 'Reliable local recording — one cable per camera.', 'site-blocks' ),
+		'desc'  => __( 'Reliable local recording, one cable per camera.', 'site-blocks' ),
 		'icon'  => 'property-coverage.png',
 	),
 );
@@ -34,7 +34,7 @@ $small = array(
 	),
 	array(
 		'title' => __( 'Smart detection', 'site-blocks' ),
-		'desc'  => __( 'Person and vehicle alerts — fewer false alarms.', 'site-blocks' ),
+		'desc'  => __( 'Person and vehicle alerts, fewer false alarms.', 'site-blocks' ),
 		'icon'  => 'smart-detection.png',
 	),
 	array(
@@ -57,7 +57,7 @@ $small = array(
 				<span class="sg-accent"><?php esc_html_e( 'install', 'site-blocks' ); ?></span>
 			</h2>
 			<p class="sg-section-intro sg-section-intro--center">
-				<?php esc_html_e( 'Cameras, recording, network and app — designed as one system.', 'site-blocks' ); ?>
+				<?php esc_html_e( 'Cameras, recording, network and app, designed as one system.', 'site-blocks' ); ?>
 			</p>
 		</header>
 

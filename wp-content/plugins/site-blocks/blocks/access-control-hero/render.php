@@ -36,7 +36,7 @@ site_blocks_render_pillar_hero(
 		'title_before'    => __( 'Replace keys with access you can ', 'site-blocks' ),
 		'title_accent'    => __( 'control', 'site-blocks' ),
 		'title_after'     => __( '.', 'site-blocks' ),
-		'lead'            => __( 'Cards, mobile credentials, PINs and biometrics — designed, installed and supported across Sydney. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
+		'lead'            => __( 'Cards, mobile credentials, PINs and biometrics, designed, installed and supported across Sydney. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
 		'primary_label'   => __( 'Start My Quote', 'site-blocks' ),
 		'primary_url'     => home_url( '/get-an-instant-quote/' ),
 		'secondary_label' => __( 'Help Me Choose', 'site-blocks' ),
@@ -47,16 +47,16 @@ site_blocks_render_pillar_hero(
 		},
 	)
 );
-?>
-<section class="sg-ac-trust-strip alignfull" aria-label="<?php esc_attr_e( 'Trust credentials', 'site-blocks' ); ?>">
-	<div class="sg-container">
-		<ul class="sg-ac-trust-strip__list" role="list">
-			<li><?php esc_html_e( 'Master Licence #000103619', 'site-blocks' ); ?></li>
-			<li><?php esc_html_e( 'ASIAL member', 'site-blocks' ); ?></li>
-			<li><?php esc_html_e( 'Commercial & residential', 'site-blocks' ); ?></li>
-			<li>
-				<a href="tel:1300225276"><?php esc_html_e( '1300 225 276', 'site-blocks' ); ?></a>
-			</li>
-		</ul>
-	</div>
-</section>
+
+site_blocks_render_trust_strip(
+	array(
+		'items' => array(
+			__( 'Master Licence #000103619', 'site-blocks' ),
+			__( 'ASIAL member', 'site-blocks' ),
+			__( 'Commercial & residential', 'site-blocks' ),
+			array(
+				'html' => '<a href="tel:1300225276">' . esc_html__( '1300 225 276', 'site-blocks' ) . '</a>',
+			),
+		),
+	)
+);

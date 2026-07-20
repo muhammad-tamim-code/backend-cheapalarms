@@ -12,17 +12,183 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Primary service nav links.
+ * Primary service nav, flat map (legacy / footer).
  *
  * @return array<string, string> Path => label.
  */
 function site_blocks_get_safeguard_nav_services(): array {
+	$flat = array();
+	foreach ( site_blocks_get_safeguard_nav_items() as $item ) {
+		if ( ( $item['type'] ?? '' ) === 'group' ) {
+			$flat[ $item['path'] ] = $item['label'];
+			foreach ( $item['children'] ?? array() as $child ) {
+				$flat[ $child['path'] ] = $child['label'];
+			}
+		} else {
+			$flat[ $item['path'] ] = $item['label'];
+		}
+	}
+
+	return $flat;
+}
+
+/**
+ * Structured primary nav (temporary single dropdown with all built pages).
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function site_blocks_get_safeguard_nav_items(): array {
 	return array(
-		'/alarm-systems/'         => __( 'Alarm Systems', 'site-blocks' ),
-		'/cctv-security-cameras/' => __( 'CCTV & Cameras', 'site-blocks' ),
-		'/access-control/'        => __( 'Access Control', 'site-blocks' ),
-		'/intercom-systems/'      => __( 'Intercom Systems', 'site-blocks' ),
+		array(
+			'type'     => 'group',
+			'label'    => __( 'All Pages', 'site-blocks' ),
+			'short'    => __( 'Pages', 'site-blocks' ),
+			'path'     => '/enterprise-solutions/',
+			'children' => array(
+				array(
+					'path'  => '/enterprise-solutions/',
+					'label' => __( 'Enterprise Solutions', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/safeguard-solutions/',
+					'label' => __( 'Safeguard Solutions', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/physical-security/',
+					'label' => __( 'Physical Security', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/physical-security/mobile-patrols/',
+					'label' => __( 'Mobile Patrols', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/access-control/',
+					'label' => __( 'Access Control', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/cctv-security-cameras/',
+					'label' => __( 'CCTV & Security Cameras', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/alarm-systems/',
+					'label' => __( 'Alarm Systems', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/intercom-systems/',
+					'label' => __( 'Intercom Systems', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/ajax-alarm-systems/',
+					'label' => __( 'Ajax Alarm Systems', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/monitoring/',
+					'label' => __( 'Monitoring & Response', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/monitoring/back-to-base/',
+					'label' => __( 'Back-to-Base Monitoring', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/physical-security/static-guards/',
+					'label' => __( 'Static Security Guards', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/monitoring/virtual-patrol/',
+					'label' => __( 'Virtual Patrol', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/monitoring/solar-cameras-monitoring/',
+					'label' => __( 'Solar Cameras with Monitoring', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/ajax-calculator/',
+					'label' => __( 'Ajax Calculator', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/contact/',
+					'label' => __( 'Contact', 'site-blocks' ),
+				),
+			),
+		),
 	);
+}
+
+/**
+ * Whether a nav item or any child matches the current page.
+ *
+ * @param array<string, mixed> $item Nav item.
+ */
+function site_blocks_safeguard_item_is_current( array $item ): bool {
+	$path = trim( (string) ( $item['path'] ?? '' ), '/' );
+
+	if ( '' !== $path && is_page( $path ) ) {
+		return true;
+	}
+
+	if ( ! empty( $item['children'] ) && is_array( $item['children'] ) ) {
+		foreach ( $item['children'] as $child ) {
+			if ( is_array( $child ) && site_blocks_safeguard_item_is_current( $child ) ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a nav path (or its silo children) is the current page.
+ */
+function site_blocks_safeguard_nav_is_current( string $path, bool $include_children = false ): bool {
+	$slug = trim( $path, '/' );
+
+	if ( is_page( $slug ) ) {
+		return true;
+	}
+
+	if ( ! $include_children ) {
+		return false;
+	}
+
+	foreach ( site_blocks_get_safeguard_nav_items() as $item ) {
+		if ( (string) ( $item['path'] ?? '' ) === $path ) {
+			return site_blocks_safeguard_item_is_current( $item );
+		}
+	}
+
+	return false;
+}
+
+/**
+ * @param array<string, mixed> $item Nav item.
+ */
+function site_blocks_render_safeguard_nav_link( array $item, string $class = '' ): void {
+	$path       = (string) ( $item['path'] ?? '' );
+	$label      = (string) ( $item['label'] ?? '' );
+	$short      = isset( $item['short'] ) ? (string) $item['short'] : '';
+	$is_current = site_blocks_safeguard_nav_is_current( $path, false );
+	$attrs      = $is_current ? ' aria-current="page"' : '';
+	$extra      = $class !== '' ? ' class="' . esc_attr( $class ) . '"' : '';
+	$title      = $short !== '' && $short !== $label ? ' title="' . esc_attr( $label ) . '"' : '';
+
+	printf(
+		'<a href="%s"%s%s%s>',
+		esc_url( home_url( $path ) ),
+		$extra,
+		$attrs,
+		$title
+	);
+	if ( $short !== '' ) {
+		printf(
+			'<span class="sg-header__nav-label sg-header__nav-label--long">%s</span><span class="sg-header__nav-label sg-header__nav-label--short">%s</span>',
+			esc_html( $label ),
+			esc_html( $short )
+		);
+	} else {
+		echo esc_html( $label );
+	}
+	echo '</a>';
 }
 
 /**
@@ -44,7 +210,7 @@ function site_blocks_get_safeguard_contact(): array {
 function site_blocks_render_safeguard_header(): void {
 	$logo      = site_blocks_asset_url( 'images/brand/safeguard-logo.png' );
 	$logo_mark = site_blocks_asset_url( 'images/brand/safeguard-logo-mark.png' );
-	$nav       = site_blocks_get_safeguard_nav_services();
+	$nav_items = site_blocks_get_safeguard_nav_items();
 	$contact   = site_blocks_get_safeguard_contact();
 	$phone     = $contact['phone'];
 	$phone_h   = $contact['phone_href'];
@@ -53,7 +219,7 @@ function site_blocks_render_safeguard_header(): void {
 	<div class="sg-utility" role="complementary" aria-label="<?php esc_attr_e( 'Service information', 'site-blocks' ); ?>">
 		<div class="sg-container sg-utility__inner">
 			<span><?php esc_html_e( 'Servicing Greater Sydney Metro', 'site-blocks' ); ?></span>
-			<span><?php esc_html_e( 'Master Licence No. 000000000', 'site-blocks' ); ?> &nbsp;·&nbsp; <?php esc_html_e( 'ASIAL Member', 'site-blocks' ); ?></span>
+			<span><?php esc_html_e( 'Master Licence No. 000103619', 'site-blocks' ); ?> &nbsp;·&nbsp; <?php esc_html_e( 'ASIAL Member', 'site-blocks' ); ?></span>
 		</div>
 	</div>
 
@@ -79,37 +245,95 @@ function site_blocks_render_safeguard_header(): void {
 			</a>
 
 			<nav class="sg-header__nav" aria-label="<?php esc_attr_e( 'Primary', 'site-blocks' ); ?>">
-				<?php foreach ( $nav as $path => $label ) : ?>
-					<?php
-					$is_current = is_page( trim( $path, '/' ) );
-					$attrs      = $is_current ? ' aria-current="page"' : '';
-					?>
-					<a href="<?php echo esc_url( home_url( $path ) ); ?>"<?php echo $attrs; ?>><?php echo esc_html( $label ); ?></a>
-				<?php endforeach; ?>
+				<ul class="sg-header__nav-list" role="list">
+					<?php foreach ( $nav_items as $item ) : ?>
+						<?php if ( ( $item['type'] ?? '' ) === 'group' ) : ?>
+							<?php
+							$group_current = site_blocks_safeguard_nav_is_current( (string) $item['path'], true );
+							$group_id      = 'sg-nav-' . sanitize_title( (string) $item['label'] );
+							?>
+							<li class="sg-header__nav-item sg-header__nav-item--dropdown<?php echo $group_current ? ' is-active' : ''; ?>">
+								<div class="sg-header__nav-dropdown-wrap">
+									<a
+										class="sg-header__nav-link sg-header__nav-link--parent"
+										href="<?php echo esc_url( home_url( (string) $item['path'] ) ); ?>"
+										title="<?php echo esc_attr( (string) $item['label'] ); ?>"
+										<?php echo $group_current ? 'aria-current="page"' : ''; ?>
+									>
+										<span class="sg-header__nav-label sg-header__nav-label--long"><?php echo esc_html( (string) $item['label'] ); ?></span>
+										<span class="sg-header__nav-label sg-header__nav-label--short"><?php echo esc_html( (string) ( $item['short'] ?? $item['label'] ) ); ?></span>
+										<span class="sg-header__nav-caret" aria-hidden="true"></span>
+									</a>
+									<?php if ( ! empty( $item['children'] ) && is_array( $item['children'] ) ) : ?>
+										<ul class="sg-header__nav-menu sg-header__nav-menu--mega" id="<?php echo esc_attr( $group_id ); ?>" role="list">
+											<?php foreach ( $item['children'] as $child ) : ?>
+												<li>
+													<?php site_blocks_render_safeguard_nav_link( $child, 'sg-header__nav-menu-link' ); ?>
+												</li>
+											<?php endforeach; ?>
+										</ul>
+									<?php endif; ?>
+								</div>
+							</li>
+						<?php else : ?>
+							<li class="sg-header__nav-item">
+								<?php site_blocks_render_safeguard_nav_link( $item, 'sg-header__nav-link' ); ?>
+							</li>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</ul>
 			</nav>
 
 			<div class="sg-header__actions">
 				<a class="sg-header__phone" href="<?php echo esc_attr( $phone_h ); ?>">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+					<?php site_blocks_lucide_icon( 'phone', 18 ); ?>
 					<?php echo esc_html( $phone ); ?>
 				</a>
 				<button type="button" class="sg-header__menu-btn" aria-expanded="false" aria-controls="sg-mobile-panel" aria-label="<?php esc_attr_e( 'Open menu', 'site-blocks' ); ?>">
 					<span></span><span></span><span></span>
 				</button>
 				<a class="sg-btn sg-btn--primary sg-header__quote-mobile" href="<?php echo esc_url( $quote ); ?>"><?php esc_html_e( 'Quote', 'site-blocks' ); ?></a>
-				<a class="sg-btn sg-btn--primary sg-header__quote" href="<?php echo esc_url( $quote ); ?>"><?php esc_html_e( 'Get an Instant Quote', 'site-blocks' ); ?></a>
+				<a class="sg-btn sg-btn--primary sg-header__quote" href="<?php echo esc_url( $quote ); ?>">
+					<span class="sg-header__quote-long"><?php esc_html_e( 'Get an Instant Quote', 'site-blocks' ); ?></span>
+					<span class="sg-header__quote-short" aria-hidden="true"><?php esc_html_e( 'Get a Quote', 'site-blocks' ); ?></span>
+				</a>
 			</div>
 		</div>
 
 		<div class="sg-mobile-panel" id="sg-mobile-panel" hidden>
 			<div class="sg-container">
-				<nav aria-label="<?php esc_attr_e( 'Mobile', 'site-blocks' ); ?>">
-					<?php foreach ( $nav as $path => $label ) : ?>
-						<?php
-						$is_current = is_page( trim( $path, '/' ) );
-						$attrs      = $is_current ? ' aria-current="page"' : '';
-						?>
-						<a href="<?php echo esc_url( home_url( $path ) ); ?>"<?php echo $attrs; ?>><?php echo esc_html( $label ); ?></a>
+				<nav class="sg-mobile-nav" aria-label="<?php esc_attr_e( 'Mobile', 'site-blocks' ); ?>">
+					<?php foreach ( $nav_items as $item ) : ?>
+						<?php if ( ( $item['type'] ?? '' ) === 'group' ) : ?>
+							<div class="sg-mobile-nav__group">
+								<?php
+								$group_current = site_blocks_safeguard_nav_is_current( (string) $item['path'], true );
+								$attrs         = $group_current ? ' aria-current="page"' : '';
+								?>
+								<a class="sg-mobile-nav__parent" href="<?php echo esc_url( home_url( (string) $item['path'] ) ); ?>"<?php echo $attrs; ?>>
+									<?php echo esc_html( (string) $item['label'] ); ?>
+								</a>
+								<?php if ( ! empty( $item['children'] ) && is_array( $item['children'] ) ) : ?>
+									<?php foreach ( $item['children'] as $child ) : ?>
+										<?php
+										$child_current = site_blocks_safeguard_nav_is_current( (string) $child['path'], false );
+										$child_attrs   = $child_current ? ' aria-current="page"' : '';
+										?>
+										<a class="sg-mobile-nav__child" href="<?php echo esc_url( home_url( (string) $child['path'] ) ); ?>"<?php echo $child_attrs; ?>>
+											<?php echo esc_html( (string) $child['label'] ); ?>
+										</a>
+									<?php endforeach; ?>
+								<?php endif; ?>
+							</div>
+						<?php else : ?>
+							<?php
+							$is_current = site_blocks_safeguard_nav_is_current( (string) $item['path'], false );
+							$attrs      = $is_current ? ' aria-current="page"' : '';
+							?>
+							<a class="sg-mobile-nav__link" href="<?php echo esc_url( home_url( (string) $item['path'] ) ); ?>"<?php echo $attrs; ?>>
+								<?php echo esc_html( (string) $item['label'] ); ?>
+							</a>
+						<?php endif; ?>
 					<?php endforeach; ?>
 				</nav>
 			</div>
@@ -128,7 +352,17 @@ function site_blocks_uses_safeguard_chrome(): bool {
 		|| is_page( 'cctv-security-cameras' )
 		|| is_page( 'access-control' )
 		|| is_page( 'intercom-systems' )
-		|| is_page( 'ajax-calculator' );
+		|| is_page( 'ajax-calculator' )
+		|| is_page( 'physical-security' )
+		|| is_page( 'static-guards' )
+		|| is_page( 'mobile-patrols' )
+		|| is_page( 'monitoring' )
+		|| is_page( 'back-to-base' )
+		|| is_page( 'virtual-patrol' )
+		|| is_page( 'solar-cameras-monitoring' )
+		|| is_page( 'enterprise-solutions' )
+		|| is_page( 'safeguard-solutions' )
+		|| is_singular( 'enterprise_insight' );
 }
 
 /**

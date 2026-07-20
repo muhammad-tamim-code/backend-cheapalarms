@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Alarm Systems — property fit row.
+ * Ajax Alarm Systems, property fit row.
  *
  * @package Site_Blocks
  *

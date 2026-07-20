@@ -3121,8 +3121,8 @@ class PortalService
      * Build the initial itemsMeta map for a freshly-created estimate.
      *
      * Each item in $items may include hints:
-     *   - isPackage / isHeading (bool) — explicit "this is a heading" signal from the client
-     *   - photoRequired (bool)         — explicit photo policy override
+     *   - isPackage / isHeading (bool), explicit "this is a heading" signal from the client
+     *   - photoRequired (bool), explicit photo policy override
      *
      * If no hints are present, the name heuristic decides:
      *   - looks like a package -> isHeading: true (no photoRequired)
@@ -3194,9 +3194,9 @@ class PortalService
      * Apply a partial admin override to itemsMeta, keyed by item name.
      *
      * Each entry in $items may carry any of:
-     *   - photoRequired (bool)  — customer must upload a photo for this line
-     *   - isHeading (bool)      — line is a bundle/section header, hide from photo checklist
-     *   - maxPhotos (int)       — 1–3 install-photo slots (device lines only)
+     *   - photoRequired (bool), customer must upload a photo for this line
+     *   - isHeading (bool), line is a bundle/section header, hide from photo checklist
+     *   - maxPhotos (int), 1–3 install-photo slots (device lines only)
      *
      * Existing keys (e.g. isCustom, addedAt) on the same name are preserved
      * because PortalService::updateMeta() deep-merges. To clear a field,

@@ -1,0 +1,125 @@
+/* Physical Security silo, layouts on top of access-control.css */
+
+body.safeguard-physical-security-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-physical-security-page .entry-content ul.sg-ps-services__grid,
+body.safeguard-physical-security-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-physical-security-page .entry-content .sg-ac-install__grid,
+body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-physical-security-page .entry-content ul.sg-ac-trust-strip__list > li,
+body.safeguard-physical-security-page .entry-content ul.sg-ps-services__grid > li,
+body.safeguard-physical-security-page .entry-content ul.sg-hub-services__grid > li,
+body.safeguard-physical-security-page .entry-content .sg-ac-install__grid > article,
+body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list > li {
+  margin: 0;
+  list-style: none;
+}
+
+/* Hero placeholder */
+.sg-ps-hero-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+}
+
+@media (min-width: 768px) {
+  .sg-ps-hero-placeholder {
+    min-height: 100%;
+  }
+}
+
+.sg-ps-media-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+}
+
+/* Split photos, portrait-heavy; don't crop faces (override access-control 4:3 cover) */
+body.safeguard-physical-security-page .sg-ac-split__visual {
+  aspect-ratio: auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body.safeguard-physical-security-page .sg-ac-split__visual img,
+body.safeguard-physical-security-page .sg-ac-split__visual .sg-cctv-media-placeholder {
+  width: 100%;
+  height: auto;
+  max-height: clamp(20rem, 44vw, 34rem);
+  object-fit: contain;
+  object-position: center center;
+}
+
+@media (min-width: 900px) {
+  body.safeguard-physical-security-page .sg-ac-split__visual img,
+  body.safeguard-physical-security-page .sg-ac-split__visual .sg-cctv-media-placeholder {
+    max-height: min(34rem, 72vh);
+  }
+}
+
+/* Cross-link line after integration splits (inside white band) */
+.sg-ps-cross-links-wrap {
+  margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
+  padding-bottom: 0;
+}
+
+.sg-ps-cross-links {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--sg-muted);
+}
+
+.sg-ps-cross-links a {
+  color: var(--sg-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sg-ps-cross-links a:hover {
+  text-decoration: underline;
+}
+
+/* Compare band */
+.sg-ps-compare__inner {
+  max-width: 42rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.sg-ps-compare__body {
+  margin: 1rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--sg-muted);
+}
+
+.sg-ps-compare__link-wrap {
+  margin: 1.25rem 0 0;
+}
+
+.sg-ps-compare__link {
+  font-family: var(--sg-font-head);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sg-blue);
+  text-decoration: none;
+}
+
+.sg-ps-compare__link:hover {
+  text-decoration: underline;
+}
+
+/* Industry grid, title-only cells */
+.sg-ps-industries__cell .sg-ac-options__title {
+  margin-bottom: 0.35rem;
+}

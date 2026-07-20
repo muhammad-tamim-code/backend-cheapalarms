@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-process",
+  "title": "Ajax Calculator Process Flow",
+  "category": "site-blocks",
+  "description": "Process flow for the Ajax calculator page.",
+  "keywords": ["ajax", "calculator", "process"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

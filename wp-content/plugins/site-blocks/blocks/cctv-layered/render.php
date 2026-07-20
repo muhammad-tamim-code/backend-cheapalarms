@@ -45,7 +45,7 @@ $links = array(
 			</h2>
 			<span class="sg-cctv-layered__rule" aria-hidden="true"></span>
 			<p class="sg-cctv-layered__lead">
-				<?php esc_html_e( 'Cameras work best with alarms and access control — layered security, one team, one plan.', 'site-blocks' ); ?>
+				<?php esc_html_e( 'Cameras work best with alarms and access control, layered security, one team, one plan.', 'site-blocks' ); ?>
 			</p>
 		</header>
 

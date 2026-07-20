@@ -31,7 +31,7 @@ class ContactSnapshotSyncService
     public function syncLocation(string $locationId, int $pageSize = 100, int $maxPages = 100)
     {
         if (!$this->config->isGhlFetchAllowed()) {
-            $this->logger->info('[CONTACT_SNAPSHOTS] sync skipped — GHL fetch disabled', ['locationId' => $locationId]);
+            $this->logger->info('[CONTACT_SNAPSHOTS] sync skipped, GHL fetch disabled', ['locationId' => $locationId]);
 
             return [
                 'ok'           => true,
@@ -178,7 +178,7 @@ class ContactSnapshotSyncService
         if (isset($result['meta']['startAfterId'])) {
             $nextStartAfterId = (string)$result['meta']['startAfterId'];
         } elseif (isset($result['meta']['nextPageUrl'])) {
-            // Some GHL versions use nextPageUrl — extract startAfterId from it
+            // Some GHL versions use nextPageUrl, extract startAfterId from it
             parse_str(parse_url($result['meta']['nextPageUrl'], PHP_URL_QUERY) ?? '', $urlParams);
             $nextStartAfterId = $urlParams['startAfterId'] ?? null;
         }

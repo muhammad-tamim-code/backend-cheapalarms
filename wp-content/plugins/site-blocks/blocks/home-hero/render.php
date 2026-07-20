@@ -1,6 +1,6 @@
 <?php
 /**
- * Home Hero block render — Safeguard Security Sydney.
+ * Home Hero block render, Safeguard Security Sydney.
  *
  * @package Site_Blocks
  *

@@ -1,6 +1,6 @@
 <?php
 /**
- * Intercom — what we design and install.
+ * Intercom, what we design and install.
  *
  * @package Site_Blocks
  */
@@ -41,7 +41,7 @@ $cards = array(
 	),
 	array(
 		'title' => __( 'Wired, 2-wire & IP', 'site-blocks' ),
-		'desc'  => __( 'New cabling or reusing existing wiring — chosen for your building.', 'site-blocks' ),
+		'desc'  => __( 'New cabling or reusing existing wiring, chosen for your building.', 'site-blocks' ),
 		'icon'  => 'home-camera.png',
 	),
 );
@@ -71,7 +71,7 @@ $cards = array(
 		</div>
 
 		<p class="sg-intercom-install__brands">
-			<?php esc_html_e( 'Trusted brands, matched to your property — not a one-size package.', 'site-blocks' ); ?>
+			<?php esc_html_e( 'Trusted brands, matched to your property, not a one-size package.', 'site-blocks' ); ?>
 		</p>
 	</div>
 </section>

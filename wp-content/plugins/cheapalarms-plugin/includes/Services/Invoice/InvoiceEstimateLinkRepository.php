@@ -31,7 +31,7 @@ class InvoiceEstimateLinkRepository
     }
 
     /**
-     * Upsert a link. Idempotent — safe to call repeatedly with the same args.
+     * Upsert a link. Idempotent, safe to call repeatedly with the same args.
      *
      * @return bool true on success, false on failure
      */
@@ -182,7 +182,7 @@ class InvoiceEstimateLinkRepository
 
     /**
      * One-time backfill: walk every `ca_portal_meta_*` row, extract any embedded invoice.id,
-     * and populate the link table. Idempotent — safe to run multiple times.
+     * and populate the link table. Idempotent, safe to run multiple times.
      *
      * Returns the number of links created/updated.
      */
@@ -190,8 +190,7 @@ class InvoiceEstimateLinkRepository
     {
         global $wpdb;
 
-        // Single scan of wp_options. This is the *last* time this scan runs in the codebase —
-        // after this backfill all reverse lookups go through the indexed find* methods.
+        // Single scan of wp_options. This is the *last* time this scan runs in the codebase, // after this backfill all reverse lookups go through the indexed find* methods.
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
             'ca_portal_meta_%'

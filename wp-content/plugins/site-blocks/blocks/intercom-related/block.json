@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/intercom-related",
+  "title": "Intercom Related Services",
+  "category": "site-blocks",
+  "description": "Related services grid for the Intercom page.",
+  "keywords": ["intercom", "related"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

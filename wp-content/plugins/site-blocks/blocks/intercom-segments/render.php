@@ -1,6 +1,6 @@
 <?php
 /**
- * Intercom — homes, apartments and business segments.
+ * Intercom, homes, apartments and business segments.
  *
  * @package Site_Blocks
  */
@@ -16,13 +16,13 @@ require_once SITE_BLOCKS_DIR . 'inc/intercom-media.php';
 $panels = array(
 	array(
 		'title' => __( 'Homes', 'site-blocks' ),
-		'desc'  => __( 'Door station, indoor monitor and mobile answering — add a gate release if you need one.', 'site-blocks' ),
+		'desc'  => __( 'Door station, indoor monitor and mobile answering, add a gate release if you need one.', 'site-blocks' ),
 		'image' => 'images/ajax/property/home.webp',
 		'alt'   => __( 'Intercom installation for a Sydney home', 'site-blocks' ),
 	),
 	array(
 		'title' => __( 'Apartments & strata', 'site-blocks' ),
-		'desc'  => __( 'Directory panels, per-unit call routing and building-manager access — planned for strata and fire-egress rules.', 'site-blocks' ),
+		'desc'  => __( 'Directory panels, per-unit call routing and building-manager access, planned for strata and fire-egress rules.', 'site-blocks' ),
 		'image' => 'images/ajax/property/apartments.webp',
 		'alt'   => __( 'Apartment and strata intercom installation Sydney', 'site-blocks' ),
 	),

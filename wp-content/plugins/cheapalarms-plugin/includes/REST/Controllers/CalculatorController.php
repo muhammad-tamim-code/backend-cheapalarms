@@ -116,7 +116,7 @@ class CalculatorController implements ControllerInterface
 
         $lineItems = $resolver->toLineItems($selections, $locationId);
         if ($lineItems === []) {
-            return $this->respond(new WP_Error('resolve_failed', 'Could not price kit — products may not be seeded', ['status' => 502]));
+            return $this->respond(new WP_Error('resolve_failed', 'Could not price kit, products may not be seeded', ['status' => 502]));
         }
 
         $install = $resolver->installEstimate($selections, $lineItems);
@@ -151,7 +151,7 @@ class CalculatorController implements ControllerInterface
         $config = $this->container->get(Config::class);
         $locationId = $this->effectiveLocationId($config);
         if ($locationId === '') {
-            return $this->respond(new WP_Error('no_location', 'GHL location is not configured — set ghl_location_id in config/instance.php', ['status' => 400]));
+            return $this->respond(new WP_Error('no_location', 'GHL location is not configured, set ghl_location_id in config/instance.php', ['status' => 400]));
         }
 
         $body = $request->get_json_params();

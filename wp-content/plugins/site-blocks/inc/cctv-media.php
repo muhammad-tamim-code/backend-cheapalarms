@@ -77,7 +77,7 @@ function site_blocks_cctv_image( string $relative_path, string $alt = '', string
 }
 
 /**
- * Hero image — falls back to alarm hero until CCTV asset is provided.
+ * Hero image, falls back to alarm hero until CCTV asset is provided.
  */
 function site_blocks_cctv_hero_image(): void {
 	$cctv = SITE_BLOCKS_DIR . 'assets/images/cctv/hero.webp';

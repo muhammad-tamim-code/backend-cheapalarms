@@ -16,14 +16,14 @@ require_once SITE_BLOCKS_DIR . 'inc/cctv-media.php';
 $panels = array(
 	array(
 		'title' => __( 'Residential CCTV', 'site-blocks' ),
-		'desc'  => __( 'Discreet coverage where it counts — front door, driveway and gates — without invading privacy.', 'site-blocks' ),
+		'desc'  => __( 'Discreet coverage where it counts, front door, driveway and gates, without invading privacy.', 'site-blocks' ),
 		'link'  => __( 'See home security cameras', 'site-blocks' ),
 		'url'   => home_url( '/cctv-security-cameras/' ),
 		'image' => 'images/cctv/residential.webp',
 	),
 	array(
 		'title' => __( 'Commercial CCTV', 'site-blocks' ),
-		'desc'  => __( 'Entries, stock and yards covered — built to work with alarms and access control.', 'site-blocks' ),
+		'desc'  => __( 'Entries, stock and yards covered, built to work with alarms and access control.', 'site-blocks' ),
 		'link'  => __( 'See commercial CCTV', 'site-blocks' ),
 		'url'   => home_url( '/contact/' ),
 		'image' => 'images/cctv/commercial.webp',

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-trust",
+  "title": "Alarm Systems Trust Panel",
+  "category": "site-blocks",
+  "description": "Why Safeguard trust panel for the Alarm Systems page.",
+  "keywords": ["alarm", "trust"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

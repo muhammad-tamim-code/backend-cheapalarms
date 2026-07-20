@@ -1,6 +1,6 @@
 <?php
 /**
- * Safeguard Security Services — full homepage render.
+ * Safeguard Security Services, full homepage render.
  *
  * @package Site_Blocks
  */

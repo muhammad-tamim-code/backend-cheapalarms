@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — replace keys comparison.
+ * Access Control, replace keys comparison.
  *
  * @package Site_Blocks
  */
@@ -45,7 +45,7 @@ $rows = array(
 					<span class="sg-accent"><?php esc_html_e( 'locks', 'site-blocks' ); ?></span>
 				</h2>
 				<p class="sg-ac-split__intro">
-					<?php esc_html_e( 'Physical keys create hidden risk — copies you can\'t track, rekeying costs, and no record of who came in after hours.', 'site-blocks' ); ?>
+					<?php esc_html_e( 'Physical keys create hidden risk, copies you can\'t track, rekeying costs, and no record of who came in after hours.', 'site-blocks' ); ?>
 				</p>
 				<div class="sg-ac-keys__table-wrap">
 					<table class="sg-ac-keys__table">

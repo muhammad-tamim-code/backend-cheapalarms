@@ -1,6 +1,6 @@
 <?php
 /**
- * Safeguard homepage — hide theme chrome, enqueue assets.
+ * Safeguard homepage, hide theme chrome, enqueue assets.
  *
  * @package Site_Blocks
  */
@@ -39,6 +39,10 @@ function site_blocks_enqueue_safeguard_home(): void {
 		array( 'safeguard-home-fonts' ),
 		SITE_BLOCKS_VERSION
 	);
+
+	if ( function_exists( 'site_blocks_enqueue_process_flow_styles' ) ) {
+		site_blocks_enqueue_process_flow_styles( 'safeguard-home' );
+	}
 
 	wp_enqueue_script(
 		'safeguard-home',

@@ -25,7 +25,7 @@
     },
     "lead": {
       "type": "string",
-      "default": "Wireless and smart alarms designed around your property, how you live in it, and what you need to protect — not an off-the-shelf kit."
+      "default": "Wireless and smart alarms designed around your property, how you live in it, and what you need to protect, not an off-the-shelf kit."
     },
     "note": {
       "type": "string",

@@ -2,7 +2,7 @@
 
 /**
 
- * Intercom — better with the rest of your system.
+ * Intercom, better with the rest of your system.
 
  *
 
@@ -90,7 +90,7 @@ $links = array(
 
 			<p class="sg-cctv-layered__lead">
 
-				<?php esc_html_e( 'Link your intercom with CCTV, access control and alarms — one connected system, one team, one quote.', 'site-blocks' ); ?>
+				<?php esc_html_e( 'Link your intercom with CCTV, access control and alarms, one connected system, one team, one quote.', 'site-blocks' ); ?>
 
 			</p>
 

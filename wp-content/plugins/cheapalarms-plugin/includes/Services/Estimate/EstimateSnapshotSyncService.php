@@ -28,7 +28,7 @@ class EstimateSnapshotSyncService
     public function syncLocation(string $locationId, int $pageSize = 50, int $maxPages = 200)
     {
         if (!$this->config->isGhlFetchAllowed()) {
-            $this->logger->info('[ESTIMATE_SNAPSHOTS] sync skipped — GHL fetch disabled', ['locationId' => $locationId]);
+            $this->logger->info('[ESTIMATE_SNAPSHOTS] sync skipped, GHL fetch disabled', ['locationId' => $locationId]);
 
             return [
                 'ok'           => true,

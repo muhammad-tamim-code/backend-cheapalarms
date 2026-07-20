@@ -1,4 +1,4 @@
-/* CCTV category page — layouts not covered by safeguard-home / alarm-systems */
+/* CCTV category page, layouts not covered by safeguard-home / alarm-systems */
 
 /* Shared media placeholder (swap when images uploaded to assets/images/cctv/) */
 .sg-cctv-media-placeholder {
@@ -10,12 +10,12 @@
   border: 1px dashed #b8d4e8;
 }
 
-/* Hero — dot grid + homepage badge */
+/* Hero, dot grid + homepage badge */
 .sg-cctv-hero {
   position: relative;
 }
 
-/* Hero — legacy cctv grid (pillar heroes use sg-hero__dark-bg) */
+/* Hero, legacy cctv grid (pillar heroes use sg-hero__dark-bg) */
 .sg-cctv-hero__grid-bg {
   display: none;
 }
@@ -101,7 +101,7 @@ body.safeguard-cctv-page .sg-cctv-hero__badge {
   }
 }
 
-/* Intro — prose + proof stack */
+/* Intro, prose + proof stack */
 .sg-cctv-intro__grid {
   display: grid;
   gap: 2rem;
@@ -156,7 +156,7 @@ body.safeguard-cctv-page .sg-cctv-hero__badge {
   }
 }
 
-/* Difference — intro + steps on blue wash */
+/* Difference, intro + steps on blue wash */
 .sg-cctv-difference__header {
   margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
 }
@@ -207,6 +207,13 @@ body.safeguard-cctv-page .entry-content ol.sg-cctv-difference__steps {
   object-fit: contain;
 }
 
+.sg-cctv-icon .sg-lucide-icon {
+  display: block;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  color: var(--sg-blue);
+}
+
 .sg-cctv-bento__icon,
 .sg-cctv-bento__icon--small,
 .sg-cctv-icon--proof,
@@ -228,9 +235,13 @@ body.safeguard-cctv-page .entry-content ol.sg-cctv-difference__steps {
 body.safeguard-cctv-page .sg-alarm-step-card__icon .sg-cctv-icon__img,
 body.safeguard-cctv-page .sg-alarm-why__icon .sg-cctv-icon__img,
 body.safeguard-intercom-page .sg-alarm-step-card__icon .sg-cctv-icon__img,
-body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img {
-  width: 100%;
-  height: 100%;
+body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img,
+body.safeguard-cctv-page .sg-alarm-step-card__icon .sg-lucide-icon,
+body.safeguard-cctv-page .sg-alarm-why__icon .sg-lucide-icon,
+body.safeguard-intercom-page .sg-alarm-step-card__icon .sg-lucide-icon,
+body.safeguard-intercom-page .sg-alarm-why__icon .sg-lucide-icon {
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
 }
 
 .sg-cctv-bento__title {
@@ -266,7 +277,7 @@ body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img {
   }
 }
 
-/* Photo band — natural aspect so head-to-logo crop is not re-cropped */
+/* Photo band, natural aspect so head-to-logo crop is not re-cropped */
 .sg-cctv-photo-band {
   position: relative;
   width: 100%;
@@ -355,7 +366,7 @@ body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img {
   }
 }
 
-/* Layered system — hub diagram + service cards + Ajax card */
+/* Layered system, hub diagram + service cards + Ajax card */
 .sg-cctv-layered__inner {
   max-width: 72rem;
 }
@@ -483,9 +494,19 @@ body.safeguard-intercom-page .sg-alarm-why__icon .sg-cctv-icon__img {
 }
 
 .sg-cctv-layered__card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 72px;
   height: 72px;
   flex-shrink: 0;
+}
+
+.sg-cctv-layered__card-icon .sg-lucide-icon {
+  display: block;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  color: var(--sg-blue);
 }
 
 .sg-cctv-layered__card-body {
@@ -651,7 +672,7 @@ body.safeguard-cctv-page .sg-band.sg-portal-band.sg-cctv-portal {
   padding-bottom: clamp(2.5rem, 5vw, 3.5rem);
 }
 
-/* Trust — 2×2 / 4-across panel */
+/* Trust, 2×2 / 4-across panel */
 body.safeguard-cctv-page .sg-cctv-trust__panel {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -684,7 +705,7 @@ body.safeguard-cctv-page .sg-cctv-trust__panel {
   }
 }
 
-/* FAQ — single column on mobile for readability */
+/* FAQ, single column on mobile for readability */
 @media (max-width: 767px) {
   body.safeguard-cctv-page .sg-cctv-faq .sg-value-faq {
     grid-template-columns: minmax(0, 1fr);

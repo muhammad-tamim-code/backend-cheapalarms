@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Alarm Systems — common components grid.
+ * Ajax Alarm Systems, common components grid.
  *
  * @package Site_Blocks
  *

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/alarm-systems-portal",
+  "title": "Alarm Systems Portal",
+  "category": "site-blocks",
+  "description": "Customer portal band for the Alarm Systems page.",
+  "keywords": ["alarm", "portal", "quote"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

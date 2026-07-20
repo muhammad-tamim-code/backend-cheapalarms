@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-quote-cta",
+  "title": "Contact Quote CTA",
+  "category": "site-blocks",
+  "description": "Quote CTA band for the Contact page.",
+  "keywords": ["contact", "quote", "cta"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

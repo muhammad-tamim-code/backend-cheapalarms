@@ -52,7 +52,7 @@ function site_blocks_get_ajax_alarm_faq_items(): array {
 		),
 		array(
 			'q' => __( 'Is Safeguard the manufacturer of Ajax?', 'site-blocks' ),
-			'a' => __( 'No. Ajax Systems manufactures Ajax hardware. Safeguard is an independent Australian installer — we design, supply, install and support Ajax systems for your property.', 'site-blocks' ),
+			'a' => __( 'No. Ajax Systems manufactures Ajax hardware. Safeguard is an independent Australian installer, we design, supply, install and support Ajax systems for your property.', 'site-blocks' ),
 		),
 		array(
 			'q' => __( 'How do I get an Ajax alarm quote?', 'site-blocks' ),

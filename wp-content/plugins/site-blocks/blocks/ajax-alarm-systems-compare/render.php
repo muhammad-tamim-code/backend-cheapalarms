@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Alarm Systems — comparison table.
+ * Ajax Alarm Systems, comparison table.
  *
  * @package Site_Blocks
  *

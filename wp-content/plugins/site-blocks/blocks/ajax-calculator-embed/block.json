@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-embed",
+  "title": "Ajax Calculator Embed",
+  "category": "site-blocks",
+  "description": "Full-width Ajax system design calculator iframe.",
+  "keywords": ["ajax", "calculator", "embed"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

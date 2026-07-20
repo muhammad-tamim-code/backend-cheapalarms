@@ -1,4 +1,4 @@
-/* Access Control category page — layouts on top of cctv.css / alarm-systems.css */
+/* Access Control category page, layouts on top of cctv.css / alarm-systems.css */
 
 body.safeguard-access-control-page .entry-content ul.sg-ac-trust-strip__list,
 body.safeguard-access-control-page .entry-content ol.sg-ac-process__orbit,
@@ -127,7 +127,7 @@ body.safeguard-access-control-page .entry-content ul.sg-ac-related__grid > li {
   }
 }
 
-/* Access options — 6-cell border grid */
+/* Access options, 6-cell border grid */
 .sg-ac-options__grid {
   display: grid;
   gap: 0.875rem;
@@ -294,7 +294,7 @@ body.safeguard-access-control-page .entry-content ul.sg-ac-related__grid > li {
   }
 }
 
-/* Where we install — 6-cell grid */
+/* Where we install, 6-cell grid */
 .sg-ac-install__grid {
   display: grid;
   gap: 0.875rem;
@@ -342,7 +342,7 @@ body.safeguard-access-control-page .entry-content ul.sg-ac-related__grid > li {
   }
 }
 
-/* Process — radial hub-and-spoke (desktop) + vertical stack (mobile) */
+/* Process, radial hub-and-spoke (desktop) + vertical stack (mobile) */
 .sg-ac-process {
   background: #fff;
 }
@@ -637,6 +637,13 @@ body.safeguard-access-control-page .entry-content ul.sg-ac-related__grid > li {
   width: 100%;
   height: 100%;
   min-height: 0;
+}
+
+.sg-ac-gallery__cell .sg-ac-gallery__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 @media (min-width: 768px) {

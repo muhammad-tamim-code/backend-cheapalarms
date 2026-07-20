@@ -8,6 +8,7 @@ use CheapAlarms\Plugin\Services\Contact\ContactSnapshotRepository;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\GhlClient;
 use CheapAlarms\Plugin\Services\EstimateService;
+use CheapAlarms\Plugin\Services\OtpVerificationService;
 use CheapAlarms\Plugin\Services\PortalService;
 use CheapAlarms\Plugin\Services\EmailTemplateHtmlHelper;
 use CheapAlarms\Plugin\Calculators\CalculatorResolverRegistry;
@@ -121,6 +122,16 @@ class QuoteRequestController implements ControllerInterface
             }
             if (empty($email)) {
                 $email = $this->syntheticEmailFromPhone($phone);
+            }
+
+            $otpToken = sanitize_text_field($body['otpVerifiedToken'] ?? '');
+            $otpService = $this->container->get(OtpVerificationService::class);
+            if (!$otpService->consumeVerifiedToken($phone, $otpToken)) {
+                return $this->respond(new WP_Error(
+                    'otp_required',
+                    __('Please verify your mobile number before submitting your quote.', 'cheapalarms'),
+                    ['status' => 400]
+                ));
             }
         } elseif (empty($firstName) || empty($lastName) || empty($email)) {
             return $this->respond(new WP_Error('missing_params', 'Missing required fields: firstName, lastName, email', ['status' => 400]));
@@ -963,7 +974,7 @@ class QuoteRequestController implements ControllerInterface
             $store = $this->container->get(ResolveTokenStore::class);
             $stored = $store->get($resolveToken);
             if ($stored === null) {
-                return new WP_Error('invalid_token', 'Quote session expired — please review your kit again', ['status' => 400]);
+                return new WP_Error('invalid_token', 'Quote session expired, please review your kit again', ['status' => 400]);
             }
             $selections = $stored['selections'];
         } else {
@@ -994,7 +1005,7 @@ class QuoteRequestController implements ControllerInterface
 
         $items = $resolver->toLineItems($selections, $locationId);
         if ($items === []) {
-            return new WP_Error('resolve_failed', 'Could not price kit — products may not be seeded', ['status' => 502]);
+            return new WP_Error('resolve_failed', 'Could not price kit, products may not be seeded', ['status' => 502]);
         }
 
         $propertyProfile = '';

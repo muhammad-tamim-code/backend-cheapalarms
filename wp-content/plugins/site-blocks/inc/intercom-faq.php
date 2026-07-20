@@ -22,7 +22,7 @@ function site_blocks_get_intercom_faq_items(): array {
 		),
 		array(
 			'q' => __( 'Will it still work if the internet goes down?', 'site-blocks' ),
-			'a' => __( 'Yes. Your door station and indoor monitor keep talking to each other locally without internet. Only remote answering on your phone needs a connection — the indoor monitor takes over in the meantime.', 'site-blocks' ),
+			'a' => __( 'Yes. Your door station and indoor monitor keep talking to each other locally without internet. Only remote answering on your phone needs a connection, the indoor monitor takes over in the meantime.', 'site-blocks' ),
 		),
 		array(
 			'q' => __( 'Can I reuse my existing intercom wiring?', 'site-blocks' ),
@@ -34,7 +34,7 @@ function site_blocks_get_intercom_faq_items(): array {
 		),
 		array(
 			'q' => __( 'Can I let a tradesperson in without being home?', 'site-blocks' ),
-			'a' => __( 'Yes. App-based systems let you release the door remotely, and many support temporary access codes you can issue and revoke — ideal for cleaners, couriers and contractors.', 'site-blocks' ),
+			'a' => __( 'Yes. App-based systems let you release the door remotely, and many support temporary access codes you can issue and revoke, ideal for cleaners, couriers and contractors.', 'site-blocks' ),
 		),
 		array(
 			'q' => __( 'Is the online estimate the final price?', 'site-blocks' ),

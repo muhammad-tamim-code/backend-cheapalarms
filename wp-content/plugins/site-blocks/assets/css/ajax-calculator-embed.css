@@ -1,43 +1,10 @@
 /**
- * Ajax calculator page — iframe fills visible viewport (not past the fold).
+ * Ajax calculator page — full-viewport embed (no marketing sections).
  */
 
-/* Full-bleed calculator page: no theme chrome, no admin bar offset */
-body.sg-ajax-calculator-page {
-	margin-top: 0 !important;
-	overflow: hidden;
-	height: 100svh;
-}
-
-body.sg-ajax-calculator-page #wpadminbar {
-	display: none !important;
-}
-
-body.sg-ajax-calculator-page #masthead,
-body.sg-ajax-calculator-page .site-header,
-body.sg-ajax-calculator-page #colophon,
-body.sg-ajax-calculator-page .site-footer,
-body.sg-ajax-calculator-page .entry-hero {
-	display: none !important;
-}
-
-body.sg-ajax-calculator-page #inner-wrap,
-body.sg-ajax-calculator-page .content-wrap,
-body.sg-ajax-calculator-page .entry-content-wrap,
-body.sg-ajax-calculator-page .entry-content,
-body.sg-ajax-calculator-page .content-bg,
-body.sg-ajax-calculator-page .site,
-body.sg-ajax-calculator-page .content-container {
-	margin: 0 !important;
-	padding: 0 !important;
-	max-width: none !important;
-	height: 100%;
-	min-height: 0;
-}
-
-body.sg-ajax-calculator-page .content-bg,
-body.sg-ajax-calculator-page .site {
-	background: #eef3f8;
+.sg-page--ajax-calculator .sg-main--ajax-calculator {
+	padding: 0;
+	margin: 0;
 }
 
 .sg-ajax-calculator-embed {
@@ -45,15 +12,23 @@ body.sg-ajax-calculator-page .site {
 	margin: 0;
 	padding: 0;
 	width: 100%;
-	height: 100svh;
+	min-height: calc(100vh - 8rem);
 	line-height: 0;
+	background: #eef3f8;
 }
 
 .sg-ajax-calculator-frame {
 	display: block;
 	width: 100%;
-	height: 100%;
+	min-height: calc(100vh - 8rem);
 	border: 0;
 	background: #fff;
 	vertical-align: top;
+}
+
+@media (min-width: 768px) {
+	.sg-ajax-calculator-embed,
+	.sg-ajax-calculator-frame {
+		min-height: calc(100vh - 7rem);
+	}
 }

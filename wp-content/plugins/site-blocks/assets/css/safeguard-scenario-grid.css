@@ -1,0 +1,210 @@
+/* Use cases / scenario grid, icon cards with optional split photo or banner */
+
+.sg-scenario-grid-section {
+  background: #fff;
+}
+
+.sg-scenario-grid {
+  padding: clamp(1.75rem, 3.5vw, 2.75rem) 0;
+}
+
+.sg-scenario-grid__banner {
+  margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+  overflow: hidden;
+  border: 1px solid var(--sg-line);
+}
+
+.sg-scenario-grid__banner .sg-scenario-grid__photo-img {
+  display: block;
+  width: 100%;
+  height: clamp(10rem, 22vw, 16rem);
+  object-fit: cover;
+  object-position: center;
+}
+
+.sg-scenario-grid__intro-row {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2rem);
+  margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+@media (min-width: 768px) {
+  .sg-scenario-grid--split .sg-scenario-grid__intro-row {
+    grid-template-columns: 2fr 3fr;
+    align-items: center;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+.sg-scenario-grid__heading {
+  max-width: 36rem;
+}
+
+.sg-scenario-grid--split .sg-scenario-grid__heading {
+  max-width: none;
+}
+
+.sg-scenario-grid__eyebrow {
+  margin: 0 0 0.5rem;
+  font-family: var(--sg-font-head);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sg-blue);
+}
+
+.sg-scenario-grid__eyebrow::after {
+  content: "";
+  display: block;
+  width: 2rem;
+  height: 3px;
+  margin-top: 0.5rem;
+  background: var(--sg-orange);
+}
+
+.sg-scenario-grid__title {
+  margin: 0 0 0.625rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(1.5rem, 2.75vw, 2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--sg-navy);
+}
+
+.sg-scenario-grid__intro {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--sg-muted);
+}
+
+.sg-scenario-grid__photo {
+  overflow: hidden;
+  border: 1px solid var(--sg-line);
+}
+
+.sg-scenario-grid__photo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: clamp(12rem, 24vw, 18rem);
+  object-fit: cover;
+  object-position: center;
+}
+
+.sg-scenario-grid__photo-placeholder {
+  display: block;
+  width: 100%;
+  min-height: clamp(12rem, 24vw, 18rem);
+  border: 1px dashed var(--sg-line);
+  background: #fff;
+}
+
+.sg-scenario-grid__grid {
+  display: grid;
+  gap: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .sg-scenario-grid__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 992px) {
+  /* 3 cards → 3 across; 6 cards → 3 across (a clean 3×2) */
+  .sg-scenario-grid__grid--3,
+  .sg-scenario-grid__grid--6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .sg-scenario-grid__grid--4,
+  .sg-scenario-grid__grid--5 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sg-scenario-grid__grid--5 .sg-scenario-grid__card:last-child {
+    grid-column: span 1;
+  }
+}
+
+@media (min-width: 1280px) {
+  .sg-scenario-grid__grid--5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .sg-scenario-grid__grid--5 .sg-scenario-grid__card:last-child {
+    grid-column: auto;
+  }
+}
+
+.sg-scenario-grid__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: clamp(1.5rem, 2.25vw, 1.75rem) clamp(1.125rem, 1.75vw, 1.5rem);
+  background: #fff;
+  border: 1px solid var(--sg-line);
+}
+
+.sg-scenario-grid__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.75rem;
+  height: 4.75rem;
+  margin-bottom: 0.125rem;
+  flex-shrink: 0;
+}
+
+.sg-scenario-grid__icon-img {
+  display: block;
+  width: 4.75rem;
+  height: 4.75rem;
+  object-fit: contain;
+  object-position: center;
+}
+
+.sg-scenario-grid__icon-placeholder {
+  display: block;
+  width: 4.75rem;
+  height: 4.75rem;
+  border: 1px dashed var(--sg-line);
+  background: #fff;
+}
+
+.sg-scenario-grid__icon .sg-lucide-icon {
+  display: block;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  color: var(--sg-blue);
+}
+
+.sg-scenario-grid__card-title {
+  margin: 0;
+  font-family: var(--sg-font-head);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--sg-navy);
+}
+
+.sg-scenario-grid__card-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--sg-muted);
+}
+
+body.safeguard-monitoring-page .entry-content .sg-scenario-grid__grid,
+body.safeguard-physical-security-page .entry-content .sg-scenario-grid__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

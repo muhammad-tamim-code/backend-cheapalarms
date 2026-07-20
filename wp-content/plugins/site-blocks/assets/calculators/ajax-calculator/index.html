@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0C2D44" />
-  <title>Design my Ajax system — Safeguard</title>
+  <title>Design my Ajax system, Safeguard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -209,7 +209,7 @@
     .sheet-thumb img{width:100%;height:100%;object-fit:contain;display:block}
     .sheet-thumb-ic svg{width:22px;height:22px}
 
-    /* learn more — modern product gallery (mobile-first) */
+    /* learn more, modern product gallery (mobile-first) */
     .learn-bg{position:fixed;inset:0;z-index:110;display:flex;align-items:flex-end;justify-content:center;background:rgba(12,45,68,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:learnFade .22s ease;overflow:hidden}
     @keyframes learnFade{from{opacity:0}to{opacity:1}}
     @media(min-width:520px){.learn-bg{align-items:center;padding:20px}}
@@ -361,11 +361,11 @@ const PRODUCT_FALLBACK = {
   fob:{ name:"SpaceControl", desc:"Key fob", cat:"alarm", icon:"fob", colours:C2, alts:["fob","button"] },
   button:{ name:"Button", desc:"Panic button", cat:"alarm", icon:"fob", colours:C2, alts:["fob","button"] },
   multitx:{ name:"MultiTransmitter", desc:"Connects your wired zones to Ajax", cat:"hub", icon:"hub", colours:C2, alts:["multitx"] },
-  cam_5mp:{ name:"5MP Dome Camera", desc:"Crisp Full-HD+ — ideal for most homes", cat:"camera", icon:"cam", colours:C2, alts:["cam_5mp","cam_8mp"] },
+  cam_5mp:{ name:"5MP Dome Camera", desc:"Crisp Full-HD+, ideal for most homes", cat:"camera", icon:"cam", colours:C2, alts:["cam_5mp","cam_8mp"] },
   cam_8mp:{ name:"8MP Dome Camera (4K)", desc:"Sharper detail, sees further", cat:"camera", icon:"cam", colours:C2, alts:["cam_5mp","cam_8mp"] },
   nvr:{ name:"NVR (recorder)", desc:"Records & stores your footage", cat:"camera", icon:"nvr", colours:C2, alts:["nvr"] },
   doorbell:{ name:"Ajax Doorbell", desc:"Video intercom at your door", cat:"intercom", icon:"bell", colours:C2, alts:["doorbell"] },
-  upgrade:{ name:"Wired-to-Wireless Kit (AX-WU-K1)", desc:"Hub + transmitter + battery — reuses your wiring", cat:"hub", icon:"hub", colours:C2, alts:["upgrade"] },
+  upgrade:{ name:"Wired-to-Wireless Kit (AX-WU-K1)", desc:"Hub + transmitter + battery, reuses your wiring", cat:"hub", icon:"hub", colours:C2, alts:["upgrade"] },
 };
 
 function productOf(key) {
@@ -383,6 +383,26 @@ function apiBase() {
   if (q) return q.replace(/\/$/, "");
   if (window.CA_CALC_CONFIG && window.CA_CALC_CONFIG.apiBase) return String(window.CA_CALC_CONFIG.apiBase).replace(/\/$/, "");
   return (window.location.origin + "/wp-json/ca/v1").replace(/\/$/, "");
+}
+
+async function sendOtpCode(phone) {
+  const res = await fetch(apiBase() + "/otp/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok && data.ok, err: data.err || data.message, data };
+}
+
+async function verifyOtpCode(phone, code) {
+  const res = await fetch(apiBase() + "/otp/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, code }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok && data.ok, err: data.err || data.message, token: data.otpVerifiedToken || null };
 }
 
 async function loadCatalog() {
@@ -418,7 +438,7 @@ const ADD = {
   camera:["cam_5mp","cam_8mp"],
   intercom:["doorbell"],
 };
-const MTX_CAPACITY = 18; /* boss: confirm — MultiTransmitter wired zones per module */
+const MTX_CAPACITY = 18; /* boss: confirm, MultiTransmitter wired zones per module */
 
 /* ============ product media (staging WP uploads) ============ */
 let PRODUCT_MEDIA = {};
@@ -536,9 +556,9 @@ function thumbHtml(key) {
 }
 
 const MONITORING = {
-  none:{ name:"No monitoring", desc:"Self-monitored — alerts go straight to your phone via the Ajax app.", icon:"self" },
+  none:{ name:"No monitoring", desc:"Self-monitored, alerts go straight to your phone via the Ajax app.", icon:"self" },
   ip:{ name:"IP Monitoring", desc:"A monitoring centre watches your alarm over your internet connection.", icon:"link" },
-  mobile4g:{ name:"4G Monitoring", desc:"Monitored over the 4G network — keeps working if the internet drops.", icon:"monitor" },
+  mobile4g:{ name:"4G Monitoring", desc:"Monitored over the 4G network, keeps working if the internet drops.", icon:"monitor" },
 };
 const isCommercial = () => S.property === "shop";
 function monPrice(key){ if(key==="none") return 0; if(key==="ip") return 35; return isCommercial() ? 49 : 45; } /* $/month + GST */
@@ -554,7 +574,7 @@ const DEFAULTS = {
   zones:8,
   monitoring:"none",
   contact:{ first:"", last:"", email:"", phone:"", consent:false },
-  otpSent:false, otpVerified:false,
+  otpSent:false, otpVerified:false, otpVerifiedToken:null,
   kit:null, i:0, resolveToken:null,
 };
 let S = JSON.parse(JSON.stringify(DEFAULTS));
@@ -656,7 +676,7 @@ function propLabel(){ return {apartment:"Apartment",house1:"House (1 storey)",ho
 function rStart(){
   view().innerHTML=`
     <h1>How would you like to start?</h1>
-    <p class="lead">Pick how you'd like to begin — we'll take it from there.</p>
+    <p class="lead">Pick how you'd like to begin, we'll take it from there.</p>
     <div class="stack" role="radiogroup">
       ${choiceCard("build",S.startPicked&&S.mode==="build","build","Build my system","Answer a few questions for a tailored design")}
       ${choiceCard("avg",S.startPicked&&S.mode==="avg","star","Average home package","Hub 2 Plus, keypad, 3× motion, sirens")}
@@ -667,11 +687,11 @@ function rStart(){
 function rProperty(){
   view().innerHTML=`
     <h1>What type of property?</h1>
-    <p class="lead">This sets smart starting numbers — change anything next.</p>
+    <p class="lead">This sets smart starting numbers, change anything next.</p>
     <div class="stack" role="radiogroup">
       ${choiceCard("apartment",S.property==="apartment","apt","Apartment","Unit, flat or townhouse")}
-      ${choiceCard("house1",S.property==="house1","house","House — single storey","Single-level home")}
-      ${choiceCard("house2",S.property==="house2","house2","House — 2 or more storeys","Double or multi-level")}
+      ${choiceCard("house1",S.property==="house1","house","House, single storey","Single-level home")}
+      ${choiceCard("house2",S.property==="house2","house2","House, 2 or more storeys","Double or multi-level")}
       ${choiceCard("shop",S.property==="shop","shop","Small shop","Retail, office or workspace")}
     </div>`;
   view().querySelectorAll("[data-value]").forEach(b=>b.onclick=()=>{ S.property=b.dataset.value; applyDefaults(); render(); });
@@ -679,7 +699,7 @@ function rProperty(){
 function rMotion(){
   view().innerHTML=`
     <h1>Indoor motion</h1>
-    <p class="lead">Your main line of defence — sensors that catch movement inside.</p>
+    <p class="lead">Your main line of defence, sensors that catch movement inside.</p>
     ${counterRow("motion","motion","Motion sensors","Rooms and hallways to cover")}`;
   bindCounters();
 }
@@ -687,7 +707,7 @@ function rPerimeter(){
   view().innerHTML=`
     <h1>Door &amp; window sensors</h1>
     <p class="lead">Protect the points an intruder could come in through.</p>
-    <div class="info-box"><span class="ni">${I.info}</span><div><strong>What these do:</strong> these trigger the instant a door or window opens — catching entry at the perimeter, before anyone's inside. Set any to 0 if you'd rather rely on indoor motion alone.</div></div>
+    <div class="info-box"><span class="ni">${I.info}</span><div><strong>What these do:</strong> these trigger the instant a door or window opens, catching entry at the perimeter, before anyone's inside. Set any to 0 if you'd rather rely on indoor motion alone.</div></div>
     ${counterRow("doors","door","External doors","Front, back, garage, side")}
     ${counterRow("windows","window","Windows","Ground-floor or accessible")}`;
   bindCounters();
@@ -695,7 +715,7 @@ function rPerimeter(){
 function rExtras(){
   view().innerHTML=`
     <h1>Alarm extras</h1>
-    <p class="lead">Optional — keep what you want.</p>
+    <p class="lead">Optional, keep what you want.</p>
     ${toggleRow("keypad","keypad","Keypad","Arm and disarm at the door","tgl")}
     ${toggleRow("siren_in","siren","Indoor siren","Alert inside the property","tgl")}
     ${toggleRow("siren_out","siren","Outdoor siren","Alert outside the property","tgl")}
@@ -705,15 +725,15 @@ function rExtras(){
 function rAddons(){
   view().innerHTML=`
     <h1>Add cameras or intercom?</h1>
-    <p class="lead">Round out your system — add only what you need.</p>
+    <p class="lead">Round out your system, add only what you need.</p>
     <div class="addon ${S.cctv?"open":""}">
       ${toggleRow("cctv","cam","CCTV cameras","See and record what happens","ad")}
       ${S.cctv?`<div class="addon-body">
         ${counterRow("cctvCount","cam","How many cameras?","All weatherproof dome cameras")}
         <div class="sub" style="font-weight:700;color:var(--sg-navy);margin:14px 0 8px;font-size:.9rem">Image quality</div>
         <div class="stack">
-          ${choiceCard("cam_5mp",S.cctvRes==="cam_5mp","cam","5MP Dome","Crisp Full-HD+ — ideal for most homes")}
-          ${choiceCard("cam_8mp",S.cctvRes==="cam_8mp","cam","8MP Dome (4K)","Sharper &amp; sees further — a little more")}
+          ${choiceCard("cam_5mp",S.cctvRes==="cam_5mp","cam","5MP Dome","Crisp Full-HD+, ideal for most homes")}
+          ${choiceCard("cam_8mp",S.cctvRes==="cam_8mp","cam","8MP Dome (4K)","Sharper &amp; sees further, a little more")}
         </div>
         <div class="info-box" style="margin:14px 0 0"><span class="ni">${I.info}</span><div>A recorder (NVR) is added automatically so footage is stored.</div></div>
       </div>`:""}
@@ -732,7 +752,7 @@ function rMonitoring(){
     <div class="stack" role="radiogroup">
       ${keys.map(k=>choiceCardPriced(k,S.monitoring===k,MONITORING[k].icon,MONITORING[k].name,MONITORING[k].desc,monPriceText(k))).join("")}
     </div>
-    <div class="info-box" style="margin-top:14px"><span class="ni">${I.info}</span><div>Monitoring is <strong>prepaid</strong> — billed quarterly or annually in advance. Hardware is quoted separately by email.</div></div>`;
+    <div class="info-box" style="margin-top:14px"><span class="ni">${I.info}</span><div>Monitoring is <strong>prepaid</strong>, billed quarterly or annually in advance. Hardware is quoted separately by email.</div></div>`;
   view().querySelectorAll("[data-value]").forEach(b=>b.onclick=()=>{ S.monitoring=b.dataset.value; render(); });
 }
 function rWired(){
@@ -740,7 +760,7 @@ function rWired(){
   view().innerHTML=`
     <h1>Your existing wired system</h1>
     <p class="lead">We'll reuse your wiring and bring it onto Ajax.</p>
-    <div class="info-box"><span class="ni">${I.info}</span><div><strong>Why we ask:</strong> each wired detector (zone) connects into a MultiTransmitter. The AX-WU-K1 kit covers 18 zones — beyond that we add an extra module per 18.</div></div>
+    <div class="info-box"><span class="ni">${I.info}</span><div><strong>Why we ask:</strong> each wired detector (zone) connects into a MultiTransmitter. The AX-WU-K1 kit covers 18 zones, beyond that we add an extra module per 18.</div></div>
     ${counterRow("zones","wire","Connected wired zones","Detectors / inputs on your current panel")}
     <div class="svc-card" style="margin-top:4px"><div class="field-icon">${I.hub}</div><div class="bd"><strong>AX-WU-K1 kit${extra>0?` · + ${extra} extra MultiTransmitter${extra!==1?"s":""}`:" covers all your zones"}</strong><span>From ${S.zones} connected zone${S.zones!==1?"s":""}</span></div></div>`;
   bindCounters(()=>rWired());
@@ -801,9 +821,9 @@ function rReview(){
   view().innerHTML=`
     <h1>Review your system</h1>
     <p class="lead">${n} device${n!==1?"s":""}${S.mode==="build"&&S.property?` · ${propLabel()}`:""} · tap to fine-tune</p>
-    <div class="svc-card"><div class="field-icon">${I[mon.icon]}</div><div class="bd"><strong>${mon.name}${S.monitoring!=="none"?` — ${monPriceText(S.monitoring)}`:""}</strong><span>${mon.desc}</span></div><button type="button" class="edit" id="edit-mon">Change</button></div>
+    <div class="svc-card"><div class="field-icon">${I[mon.icon]}</div><div class="bd"><strong>${mon.name}${S.monitoring!=="none"?`, ${monPriceText(S.monitoring)}`:""}</strong><span>${mon.desc}</span></div><button type="button" class="edit" id="edit-mon">Change</button></div>
     ${secs}
-    <div class="info-box" style="margin-top:16px"><span class="ni">${I.info}</span><div>Your quote and pricing are <strong>emailed</strong> after you verify your mobile — tailored to your site, not shown here.</div></div>`;
+    <div class="info-box" style="margin-top:16px"><span class="ni">${I.info}</span><div>Your quote and pricing are <strong>emailed</strong> after you verify your mobile, tailored to your site, not shown here.</div></div>`;
   bindReview();
   document.getElementById("edit-mon").onclick=openMonitoring;
 }
@@ -819,7 +839,7 @@ function rContact(){
     </div>
     <div class="form-field"><label for="f-email">Email <span class="opt">(optional)</span></label><input id="f-email" type="email" inputmode="email" autocomplete="email" value="${c.email}" /></div>
     <div class="form-field">
-      <label for="f-phone">Mobile number <span class="opt">(required — we verify this)</span></label>
+      <label for="f-phone">Mobile number <span class="opt">(required, we verify this)</span></label>
       <div class="phone-row">
         <input id="f-phone" type="tel" inputmode="tel" autocomplete="tel" value="${c.phone}" ${S.otpVerified?"disabled":""} />
         ${S.otpVerified?"":`<button type="button" class="btn-otp" id="send-otp">${S.otpSent?"Resend":"Send code"}</button>`}
@@ -828,15 +848,15 @@ function rContact(){
       ${(!S.otpVerified&&S.otpSent)?`<div class="otp-panel">
         <p class="ot-lead">Enter the 6-digit code we sent to <b>${c.phone||"your mobile"}</b>.</p>
         <div class="otp-inrow"><input id="f-otp" inputmode="numeric" maxlength="6" placeholder="••••••" /><button type="button" class="btn-otp" id="verify-otp">Verify</button></div>
-        <div class="otp-meta"><span>Demo: enter any 6 digits</span><button type="button" id="resend-otp">Resend code</button></div>
+        <div class="otp-meta"><span id="otp-demo-hint">Demo: enter any 6 digits</span><button type="button" id="resend-otp">Resend code</button></div>
         <div class="form-err hidden" id="e-otp">Enter the 6-digit code</div>
       </div>`:""}
     </div>
     <label class="consent"><input type="checkbox" id="f-consent" ${c.consent?"checked":""} /><span>I agree to be contacted about my quote and to the Privacy Policy.</span></label>
     <div class="form-err hidden" id="e-consent">Please agree to continue</div>`;
-  const so=document.getElementById("send-otp"); if(so) so.onclick=()=>{ grabContact(); if(!/^\+?[\d ]{8,}$/.test(S.contact.phone)){ flash("Enter a valid mobile number"); return; } S.otpSent=true; render(); };
-  const vo=document.getElementById("verify-otp"); if(vo) vo.onclick=()=>{ const code=(document.getElementById("f-otp").value||"").trim(); const ok=/^\d{6}$/.test(code); document.getElementById("e-otp").classList.toggle("hidden",ok); if(!ok)return; grabContact(); S.otpVerified=true; render(); };
-  const ro=document.getElementById("resend-otp"); if(ro) ro.onclick=()=>{ snackbar("Code resent"); };
+  const so=document.getElementById("send-otp"); if(so) so.onclick=async()=>{ grabContact(); if(!/^\+?[\d ]{8,}$/.test(S.contact.phone)){ flash("Enter a valid mobile number"); return; } so.disabled=true; const r=await sendOtpCode(S.contact.phone); so.disabled=false; if(!r.ok){ flash(r.err||"Could not send code"); return; } S.otpSent=true; S.otpVerified=false; S.otpVerifiedToken=null; render(); };
+  const vo=document.getElementById("verify-otp"); if(vo) vo.onclick=async()=>{ const code=(document.getElementById("f-otp").value||"").trim(); const ok=/^\d{6}$/.test(code); document.getElementById("e-otp").classList.toggle("hidden",ok); if(!ok)return; grabContact(); vo.disabled=true; const r=await verifyOtpCode(S.contact.phone,code); vo.disabled=false; if(!r.ok||!r.token){ flash(r.err||"Invalid code"); return; } S.otpVerified=true; S.otpVerifiedToken=r.token; render(); };
+  const ro=document.getElementById("resend-otp"); if(ro) ro.onclick=async()=>{ grabContact(); const r=await sendOtpCode(S.contact.phone); snackbar(r.ok?"Code resent":(r.err||"Could not resend")); if(r.ok){ S.otpSent=true; S.otpVerified=false; S.otpVerifiedToken=null; render(); } };
 }
 
 function rSuccess(c){
@@ -852,7 +872,7 @@ function rSuccess(c){
         <li>You'll get an SMS link to open your secure quote portal</li>
         <li>Upload a photo at each device location</li>
         <li>Our technician confirms your final quote &amp; pricing</li>
-        <li>Approve when you're ready — we book your install</li>
+        <li>Approve when you're ready, we book your install</li>
       </ol></div>
       <button type="button" class="btn-link" id="again">Start a new quote</button>
     </div>`;
@@ -896,7 +916,7 @@ function openLearnMore(key){
   preloadSlides(slides);
   let idx=0;
   const m=document.getElementById("modal");
-  const slideHtml=slides.map((u,i)=>`<div class="learn-slide" aria-hidden="${i===0?"false":"true"}"><img src="${u}" alt="${p.name} — image ${i+1}" width="800" height="800" loading="eager" decoding="async" fetchpriority="${i===0?"high":"low"}" /></div>`).join("");
+  const slideHtml=slides.map((u,i)=>`<div class="learn-slide" aria-hidden="${i===0?"false":"true"}"><img src="${u}" alt="${p.name}, image ${i+1}" width="800" height="800" loading="eager" decoding="async" fetchpriority="${i===0?"high":"low"}" /></div>`).join("");
   const pips=slides.map((_,i)=>`<button type="button" class="learn-pip ${i===0?"on":""}" data-i="${i}" aria-label="Image ${i+1} of ${slides.length}"></button>`).join("");
   const multi=slides.length>1;
   m.innerHTML=`<div class="learn-bg" id="learnbg" role="presentation">
@@ -967,7 +987,7 @@ function openChange(u){ const it=getItem(u); let pick=it.key; openSheet("Change 
 function openAdd(cat){ let pick=ADD[cat][0]; openSheet("Add device",`Choose a ${CAT[cat].toLowerCase()} device`,sheetOpts(ADD[cat],pick),()=>{ pushUndo(); S.kit.push({uid:uid(),key:pick,qty:1,colour:productOf(pick).colours[0]}); snackbar("Device added"); closeSheet(); render(); }); bindPicks(v=>{pick=v;}); }
 function openMonitoring(){
   const keys=monKeys(); let pick=keys.includes(S.monitoring)?S.monitoring:keys[0];
-  const opts=keys.map(k=>`<button type="button" class="sheet-opt ${k===pick?"on":""}" data-pick="${k}"><span class="radio-dot"></span><span class="choice-body"><strong>${MONITORING[k].name}${k!=="none"?` — ${monPriceText(k)}`:""}</strong><p>${MONITORING[k].desc}</p></span></button>`).join("");
+  const opts=keys.map(k=>`<button type="button" class="sheet-opt ${k===pick?"on":""}" data-pick="${k}"><span class="radio-dot"></span><span class="choice-body"><strong>${MONITORING[k].name}${k!=="none"?`, ${monPriceText(k)}`:""}</strong><p>${MONITORING[k].desc}</p></span></button>`).join("");
   openSheet("Monitoring","Choose how your alarm is monitored",opts,()=>{ S.monitoring=pick; closeSheet(); render(); });
   bindPicks(v=>{pick=v;});
 }
@@ -1006,7 +1026,7 @@ function submit(){
   const run=async()=>{
     if(!S.resolveToken){
       const priced=await resolveKit();
-      if(!priced.ok){ flash(priced.err||"Could not price your kit — try again"); return; }
+      if(!priced.ok){ flash(priced.err||"Could not price your kit, try again"); return; }
     }
     nx.disabled=true;
     try{
@@ -1020,11 +1040,12 @@ function submit(){
           phone:S.contact.phone,
           brand:"ajax",
           resolveToken:S.resolveToken,
+          otpVerifiedToken:S.otpVerifiedToken,
         }),
       });
       const data=await res.json();
       if(!res.ok||!data.ok){
-        flash(data.err||data.message||"Submission failed — please try again");
+        flash(data.err||data.message||"Submission failed, please try again");
         nx.disabled=false;
         return;
       }
@@ -1032,7 +1053,7 @@ function submit(){
       resetAll();
       rSuccess(c);
     }catch(e){
-      flash("Network error — please try again");
+      flash("Network error, please try again");
       nx.disabled=false;
     }
   };

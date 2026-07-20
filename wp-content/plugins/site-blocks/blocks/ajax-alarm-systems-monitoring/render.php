@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Alarm Systems — monitoring options row.
+ * Ajax Alarm Systems, monitoring options row.
  *
  * @package Site_Blocks
  *
@@ -60,7 +60,7 @@ $options = array(
 				</p>
 				<a class="sg-ajax-icon-card__link" href="<?php echo esc_url( home_url( '/contact/' ) ); ?>">
 					<?php esc_html_e( 'Talk to our team', 'site-blocks' ); ?>
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+					<?php site_blocks_lucide_icon( 'arrow-right', 14 ); ?>
 				</a>
 			</article>
 		</div>

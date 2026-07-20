@@ -443,7 +443,7 @@ class EstimateService
             $portalService->autoTransitionToReviewed($estimateId);
         }
 
-        // Keep local snapshot in sync — getEstimate reads snapshot first.
+        // Keep local snapshot in sync, getEstimate reads snapshot first.
         $record = $this->fetchEstimateRecordFromGhl($estimateId, (string) $altId, true);
         if (!is_wp_error($record) && is_array($record) && $record !== []) {
             $this->writeThroughEstimateSnapshot((string) $altId, $record);

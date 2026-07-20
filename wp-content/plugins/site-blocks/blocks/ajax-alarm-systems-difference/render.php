@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Alarm Systems — Safeguard Difference block render.
+ * Ajax Alarm Systems, Safeguard Difference block render.
  *
  * @package Site_Blocks
  *
@@ -33,10 +33,10 @@ $bullets = array(
 					<?php esc_html_e( 'An Ajax installer should do ', 'site-blocks' ); ?><span class="sg-accent"><?php esc_html_e( 'more', 'site-blocks' ); ?></span><br class="sg-ajax-difference__title-break" aria-hidden="true"><?php esc_html_e( 'than sell a starter kit.', 'site-blocks' ); ?>
 				</h2>
 				<p class="sg-ajax-difference__intro">
-					<?php esc_html_e( 'We design, install and support Ajax systems that actually suit your property — not a generic kit picked off a shelf.', 'site-blocks' ); ?>
+					<?php esc_html_e( 'We design, install and support Ajax systems that actually suit your property, not a generic kit picked off a shelf.', 'site-blocks' ); ?>
 				</p>
 				<p class="sg-ajax-difference__intro">
-					<?php esc_html_e( 'Start with a free instant online quote, then manage everything in your secure portal — no waiting days for a callback or a salesperson at your door.', 'site-blocks' ); ?>
+					<?php esc_html_e( 'Start with a free instant online quote, then manage everything in your secure portal, no waiting days for a callback or a salesperson at your door.', 'site-blocks' ); ?>
 				</p>
 				<ul class="sg-ajax-difference__list" role="list">
 					<?php foreach ( $bullets as $bullet ) : ?>

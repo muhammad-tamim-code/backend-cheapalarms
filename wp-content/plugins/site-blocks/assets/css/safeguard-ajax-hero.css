@@ -1,0 +1,431 @@
+/* Ajax-style split hero, reusable on Ajax + Monitoring pages */
+
+.sg-ajax-hero {
+  --sg-ajax-orange: #eb7916;
+  --sg-ajax-navy: #061b33;
+  --sg-ajax-muted: rgba(6, 27, 51, 0.62);
+  --sg-ajax-divider: rgba(6, 27, 51, 0.09);
+  --sg-ajax-card-shadow: 0 14px 36px rgba(6, 27, 51, 0.11), 0 3px 10px rgba(6, 27, 51, 0.05);
+  position: relative;
+  background: #fff;
+  padding-block: clamp(2rem, 5vw, 3.25rem);
+  overflow: hidden;
+}
+
+.sg-ajax-hero .sg-btn {
+  gap: 0.5rem;
+}
+
+.sg-ajax-hero .sg-btn__icon {
+  flex-shrink: 0;
+}
+
+.entry-content ul.sg-ajax-hero__trust-list,
+.entry-content ul.sg-ajax-hero__caption-list,
+body.safeguard-ajax-page .entry-content ul.sg-ajax-hero__trust-list,
+body.safeguard-ajax-page .entry-content ul.sg-ajax-hero__caption-list,
+body.safeguard-monitoring-page .entry-content ul.sg-ajax-hero__trust-list,
+body.safeguard-monitoring-page .entry-content ul.sg-ajax-hero__caption-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-content ul.sg-ajax-hero__trust-list > li,
+.entry-content ul.sg-ajax-hero__caption-list > li,
+body.safeguard-ajax-page .entry-content ul.sg-ajax-hero__trust-list > li,
+body.safeguard-ajax-page .entry-content ul.sg-ajax-hero__caption-list > li,
+body.safeguard-monitoring-page .entry-content ul.sg-ajax-hero__trust-list > li,
+body.safeguard-monitoring-page .entry-content ul.sg-ajax-hero__caption-list > li {
+  margin: 0;
+  list-style: none;
+}
+
+.sg-ajax-hero__grid-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #fff;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, #fff 100%),
+    radial-gradient(var(--sg-line) 1px, transparent 1.5px);
+  background-size: 100% 100%, 22px 22px;
+}
+
+.sg-ajax-hero > .sg-container {
+  position: relative;
+  z-index: 1;
+}
+
+.sg-ajax-hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  align-items: start;
+}
+
+.sg-ajax-hero__copy {
+  min-width: 0;
+}
+
+.sg-ajax-hero__eyebrow {
+  display: inline-block;
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 1.25rem;
+  background: var(--sg-blue-wash);
+  border: 1px solid #c5ddf0;
+  font-family: var(--sg-font-head);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-blue);
+}
+
+.sg-ajax-hero__title {
+  margin: 0 0 1rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(1.85rem, 5vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--sg-ajax-navy);
+  text-wrap: balance;
+  max-width: 20ch;
+}
+
+.sg-ajax-hero__lead {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1rem, 2.4vw, 1.125rem);
+  line-height: 1.65;
+  color: var(--sg-ajax-muted);
+  max-width: 46ch;
+}
+
+.sg-ajax-hero__actions {
+  max-width: 100%;
+}
+
+.sg-ajax-hero__ctas {
+  margin-bottom: 0;
+}
+
+.sg-ajax-hero__cta {
+  flex: 0 1 auto;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.sg-ajax-hero__trust {
+  margin-top: clamp(1.75rem, 3vw, 2.125rem);
+  padding: 0.65rem 0.7rem;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: var(--sg-ajax-card-shadow);
+}
+
+.sg-ajax-hero__trust-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-ajax-hero__trust-item {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+}
+
+.sg-ajax-hero__trust-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sg-ajax-hero__trust-icon .sg-ajax-hero__icon-img,
+.sg-ajax-hero__caption-icon .sg-ajax-hero__icon-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Lucide glyphs: 2rem inside 4.5rem slot (see --sg-icon-size) */
+.sg-ajax-hero__trust-icon .sg-lucide-icon,
+.sg-ajax-hero__caption-icon .sg-lucide-icon {
+  display: block;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  max-width: 100%;
+  max-height: 100%;
+  color: var(--sg-blue);
+}
+
+.sg-ajax-hero__icon-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8eef3 0%, #dce5ec 100%);
+  border: 1px dashed var(--sg-line);
+}
+
+.sg-ajax-hero__trust-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--sg-ajax-navy);
+}
+
+.sg-ajax-hero__trust-line {
+  display: block;
+}
+
+.sg-ajax-hero,
+.sg-ajax-hero__grid,
+.sg-ajax-hero__visual,
+.sg-ajax-hero__visual-frame {
+  overflow: visible;
+}
+
+.sg-ajax-hero__visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.sg-ajax-hero__visual-frame {
+  position: relative;
+  width: 100%;
+  max-width: 38.75rem;
+}
+
+.sg-ajax-hero__img,
+.sg-ajax-hero__img-placeholder {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 0;
+  margin-bottom: 0;
+  object-fit: contain;
+}
+
+.sg-ajax-hero__img-placeholder,
+.sg-ajax-hero__visual-frame .sg-cctv-media-placeholder {
+  min-height: 16rem;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #e8eef3 0%, #dce5ec 100%);
+}
+
+.sg-ajax-hero__caption {
+  position: relative;
+  z-index: 1;
+  width: 28.125rem;
+  max-width: 100%;
+  margin: -1.75rem auto 0;
+  padding: 0.7rem 1.35rem 0.65rem;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: var(--sg-ajax-card-shadow);
+}
+
+.sg-ajax-hero__caption-title {
+  margin: 0 0 0.45rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(0.95rem, 1.8vw, 1.125rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--sg-ajax-navy);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.sg-ajax-hero__caption-list {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-ajax-hero__caption-item {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0 0.75rem;
+  text-align: center;
+  border-right: 1px solid var(--sg-ajax-divider);
+}
+
+.sg-ajax-hero__caption-item:last-child {
+  border-right: none;
+}
+
+.sg-ajax-hero__caption-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 0.1rem;
+}
+
+.sg-ajax-hero__caption-label {
+  font-family: var(--sg-font-head);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--sg-ajax-navy);
+}
+
+.sg-ajax-hero__caption-desc {
+  font-size: 0.75rem;
+  line-height: 1.15;
+  color: var(--sg-ajax-muted);
+}
+
+@media (min-width: 960px) {
+  .sg-ajax-hero__grid {
+    grid-template-columns: repeat(12, 1fr);
+    gap: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  .sg-ajax-hero__copy {
+    grid-column: 1 / span 6;
+  }
+
+  .sg-ajax-hero__visual {
+    grid-column: 7 / span 6;
+  }
+
+  .sg-ajax-hero__title {
+    font-size: clamp(2.1rem, 2.8vw, 2.75rem);
+  }
+
+  .sg-ajax-hero__trust-label {
+    font-size: 0.8125rem;
+  }
+
+  .sg-ajax-hero__img {
+    margin-top: 3.75rem;
+  }
+
+  .sg-ajax-hero__caption {
+    width: 28.125rem;
+    max-width: 100%;
+    margin-top: -2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .sg-ajax-hero__copy {
+    grid-column: 1 / span 7;
+  }
+
+  .sg-ajax-hero__visual {
+    grid-column: 8 / span 5;
+  }
+
+  .sg-ajax-hero__trust-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .sg-ajax-hero__trust-item {
+    padding: 0 0.55rem;
+    border-right: 1px solid var(--sg-ajax-divider);
+  }
+
+  .sg-ajax-hero__trust-item:last-child {
+    border-right: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .sg-ajax-hero__trust-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.65rem;
+  }
+
+  .sg-ajax-hero__trust {
+    padding: 1rem;
+  }
+
+  .sg-ajax-hero__caption {
+    width: calc(100% - 1rem);
+    margin-top: -1.25rem;
+  }
+
+  .sg-ajax-hero__caption-list {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .sg-ajax-hero__caption-item {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    padding: 0;
+    border-right: none;
+    text-align: left;
+  }
+
+  .sg-ajax-hero__caption-icon {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .sg-ajax-hero__caption-item > span:not(.sg-ajax-hero__caption-icon) {
+    display: block;
+  }
+}
+
+@media (max-width: 519px) {
+  .sg-ajax-hero__ctas {
+    flex-direction: column;
+  }
+
+  .sg-ajax-hero__cta {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .sg-ajax-hero__actions {
+    max-width: 100%;
+  }
+
+  .sg-ajax-hero__trust-list {
+    grid-template-columns: 1fr;
+  }
+}

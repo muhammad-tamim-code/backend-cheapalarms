@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-portal",
+  "title": "Contact Portal Band",
+  "category": "site-blocks",
+  "description": "Customer portal band for the Contact page.",
+  "keywords": ["contact", "portal"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

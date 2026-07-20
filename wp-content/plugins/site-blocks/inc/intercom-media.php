@@ -77,7 +77,7 @@ function site_blocks_intercom_image( string $relative_path, string $alt = '', st
 }
 
 /**
- * Hero image — placeholder until intercom hero asset is provided.
+ * Hero image, placeholder until intercom hero asset is provided.
  */
 function site_blocks_intercom_hero_image(): void {
 	$hero = SITE_BLOCKS_DIR . 'assets/images/intercom/hero.webp';

@@ -1,6 +1,6 @@
 <?php
 /**
- * Homepage block pattern — Safeguard Security Services.
+ * Homepage block pattern, Safeguard Security Services.
  *
  * @package Site_Blocks
  */

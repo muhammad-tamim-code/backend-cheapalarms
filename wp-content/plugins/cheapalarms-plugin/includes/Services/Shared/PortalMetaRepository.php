@@ -58,7 +58,7 @@ class PortalMetaRepository
         $ok = update_option('ca_portal_meta_' . $estimateId, $encoded);
 
         // update_option returns false when the value is unchanged. That's not a failure for our
-        // purposes — listeners still want to see the latest meta. Always fire the action.
+        // purposes, listeners still want to see the latest meta. Always fire the action.
         do_action('ca_portal_meta_updated', $estimateId, $meta);
 
         return $ok;
@@ -269,7 +269,7 @@ class PortalMetaRepository
     {
         global $wpdb;
 
-        // Phase 0 — intentional last-resort scan (NOT for hot paths): used only when the indexed
+        // Phase 0, intentional last-resort scan (NOT for hot paths): used only when the indexed
         // invoice→estimate lookup misses, e.g. manually created GHL invoices not yet linked in portal meta.
         // Consider contact_snapshot-based narrowing in a future iteration if this becomes frequent.
 

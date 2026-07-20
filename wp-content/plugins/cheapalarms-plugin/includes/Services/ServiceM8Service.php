@@ -687,7 +687,7 @@ class ServiceM8Service
         if (is_array($result) && !empty($result) && !empty($result['uuid'] ?? '')) {
             $this->writeThroughJob($result);
         } elseif ($this->jobRepo) {
-            // API returned empty — schedule a single-event re-fetch so the snapshot stays fresh.
+            // API returned empty, schedule a single-event re-fetch so the snapshot stays fresh.
             // Don't write partial data that would overwrite good cached fields.
             wp_schedule_single_event(time() + 5, 'ca_sync_sm8_jobs');
         }

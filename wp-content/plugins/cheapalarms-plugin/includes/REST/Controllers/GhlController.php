@@ -57,7 +57,7 @@ class GhlController extends AdminController
             ],
         ]);
 
-        // List contacts endpoint — LOCAL-FIRST with stale-while-revalidate
+        // List contacts endpoint, LOCAL-FIRST with stale-while-revalidate
         register_rest_route('ca/v1', '/ghl/contacts/list', [
             'methods'             => 'GET',
             'permission_callback' => fn () => $this->isDevBypass() ?: $this->auth->requireCapability('ca_view_estimates'),
@@ -256,7 +256,7 @@ class GhlController extends AdminController
         $hasLocal = $this->contactSnapshotRepo->hasData($locationId);
 
         if (is_wp_error($hasLocal)) {
-            // DB error — fall through to GHL API
+            // DB error, fall through to GHL API
             $this->logger->warning('Contact snapshot hasData check failed, falling back to GHL', [
                 'error' => $hasLocal->get_error_message(),
             ]);
@@ -293,7 +293,7 @@ class GhlController extends AdminController
                 return $response;
             }
 
-            // Local read failed — log and fall through to GHL
+            // Local read failed, log and fall through to GHL
             $this->logger->warning('Contact snapshot listByLocation failed, falling back to GHL', [
                 'error' => $localResult->get_error_message(),
             ]);

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-faq",
+  "title": "Ajax Calculator FAQ",
+  "category": "site-blocks",
+  "description": "FAQ for the Ajax calculator page.",
+  "keywords": ["ajax", "calculator", "faq"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

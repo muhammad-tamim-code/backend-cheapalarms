@@ -72,7 +72,7 @@ site_blocks_render_pillar_hero(
 
 		'title_after'     => __( ' is.', 'site-blocks' ),
 
-		'lead'            => __( 'Planned, installed and supported across Sydney. Start your quote online — reviewed by our technicians.', 'site-blocks' ),
+		'lead'            => __( 'Planned, installed and supported across Sydney. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
 
 		'primary_label'   => __( 'Start My Quote', 'site-blocks' ),
 

@@ -72,7 +72,7 @@ site_blocks_render_pillar_hero(
 
 		'title_after'     => __( ' it.', 'site-blocks' ),
 
-		'lead'            => __( 'Video and audio intercoms for Sydney homes, apartments and businesses — see visitors, speak to them, and release the door from your monitor or phone.', 'site-blocks' ),
+		'lead'            => __( 'Video and audio intercoms for Sydney homes, apartments and businesses, see visitors, speak to them, and release the door from your monitor or phone.', 'site-blocks' ),
 
 		'primary_label'   => __( 'Start My Quote', 'site-blocks' ),
 

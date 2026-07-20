@@ -29,7 +29,7 @@ function site_blocks_render_safeguard_ajax_card( array $args = array() ): void {
 			<?php esc_html_e( 'professionally installed.', 'site-blocks' ); ?>
 		</h2>
 		<p class="sg-ajax-card__intro">
-			<?php esc_html_e( 'We partner with Ajax Systems to deliver intelligent, reliable security—installed and supported by experienced technicians.', 'site-blocks' ); ?>
+			<?php esc_html_e( 'We partner with Ajax Systems to deliver intelligent, reliable security, installed and supported by experienced technicians.', 'site-blocks' ); ?>
 		</p>
 		<div class="sg-ajax-visual">
 			<img
@@ -62,11 +62,11 @@ function site_blocks_render_safeguard_ajax_card( array $args = array() ): void {
 		<div class="sg-ajax-card__actions">
 			<a class="sg-btn sg-btn--ajax-primary" href="<?php echo esc_url( $calc_url ); ?>">
 				<?php esc_html_e( 'Start My Quote', 'site-blocks' ); ?>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+				<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 			</a>
 			<a class="sg-btn sg-btn--ajax-outline" href="<?php echo esc_url( $ajax_url ); ?>">
 				<?php esc_html_e( 'Explore Ajax', 'site-blocks' ); ?>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+				<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 			</a>
 		</div>
 	</div>

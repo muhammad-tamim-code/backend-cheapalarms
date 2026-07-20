@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/physical-security-hero",
+  "version": "1.0.0",
+  "title": "Physical Security Hero",
+  "category": "theme",
+  "icon": "shield",
+  "description": "Config-driven hero and trust strip for Physical Security silo pages.",
+  "keywords": ["physical security", "guards", "safeguard"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

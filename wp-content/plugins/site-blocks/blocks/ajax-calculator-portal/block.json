@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/ajax-calculator-portal",
+  "title": "Ajax Calculator Portal",
+  "category": "site-blocks",
+  "description": "Customer portal band for the Ajax calculator page.",
+  "keywords": ["ajax", "calculator", "portal"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

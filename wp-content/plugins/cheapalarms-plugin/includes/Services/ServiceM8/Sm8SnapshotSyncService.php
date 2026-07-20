@@ -74,7 +74,7 @@ class Sm8SnapshotSyncService
                 $normalized[] = Sm8JobSnapshotRepository::normalizeFromApi($job);
             }
 
-            // Batch upsert (SM8 typically has manageable volumes — hundreds, not thousands)
+            // Batch upsert (SM8 typically has manageable volumes, hundreds, not thousands)
             $batchSize = 100;
             $count     = 0;
 

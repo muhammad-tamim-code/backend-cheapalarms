@@ -38,7 +38,7 @@ function site_blocks_access_control_image( string $relative_path, string $alt = 
 }
 
 /**
- * Hero image — placeholder until asset is provided.
+ * Hero image, placeholder until asset is provided.
  */
 function site_blocks_access_control_hero_image(): void {
 	$hero = SITE_BLOCKS_DIR . 'assets/images/access-control/hero.webp';

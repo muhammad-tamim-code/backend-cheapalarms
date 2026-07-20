@@ -44,7 +44,7 @@ site_blocks_render_pillar_hero(
 		'badge'           => $eyebrow,
 		'title_before'    => __( 'Alarm systems that ', 'site-blocks' ),
 		'title_accent'    => __( 'earn their keep', 'site-blocks' ),
-		'lead'            => __( 'Wireless and smart alarms designed around your property — not an off-the-shelf kit. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
+		'lead'            => __( 'Wireless and smart alarms designed around your property, not an off-the-shelf kit. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
 		'primary_label'   => $cta_label,
 		'primary_url'     => home_url( $cta_url ),
 		'secondary_label' => $sec_label,

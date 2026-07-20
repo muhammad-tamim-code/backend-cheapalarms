@@ -81,4 +81,15 @@ return [
     'stripe_publishable_key' => '', // or set CA_STRIPE_PUBLISHABLE_KEY env var
     'stripe_secret_key'      => '', // or set CA_STRIPE_SECRET_KEY env var
     'stripe_webhook_secret'  => '', // or set CA_STRIPE_WEBHOOK_SECRET env var
+
+    // DeepSeek AI (website chat assistant, server-side only)
+    'deepseek_api_key'       => '', // or set CA_DEEPSEEK_API_KEY env var
+    'deepseek_model'         => 'deepseek-chat', // or deepseek-reasoner for harder tasks
+
+    // SMS OTP (quote calculator + chat, Twilio). Leave blank for dummy OTP (any 6 digits) until go-live.
+    'twilio_account_sid'     => '', // or CA_TWILIO_ACCOUNT_SID
+    'twilio_auth_token'      => '', // or CA_TWILIO_AUTH_TOKEN
+    'twilio_from_number'     => '', // E.164 e.g. +61400000000, or CA_TWILIO_FROM_NUMBER
+    // Optional: force dummy OTP even when Twilio is set (staging). Default dummy when Twilio missing.
+    // 'otp_demo_mode'       => true,
 ];

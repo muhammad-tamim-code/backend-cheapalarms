@@ -134,6 +134,14 @@ class HealthController implements ControllerInterface
             $status = 'unhealthy';
         }
 
+        $deepseekConfigured = $this->config->isDeepSeekConfigured();
+        $checks['deepseek'] = [
+            'status' => $deepseekConfigured ? 'ok' : 'skipped',
+            'message' => $deepseekConfigured
+                ? 'DeepSeek API key configured (' . $this->config->getDeepSeekModel() . ')'
+                : 'DeepSeek API key not configured',
+        ];
+
         // Check GHL API connectivity (with caching)
         $ghlCheck = $this->checkGhlApi($cached);
         $checks['ghl_api'] = $ghlCheck;

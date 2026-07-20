@@ -177,7 +177,7 @@ class AdminGhlContactsController extends AdminController
         }
 
         if ($ghlFailed) {
-            // Still return success with a warning — the local snapshot is cleaned up
+            // Still return success with a warning, the local snapshot is cleaned up
             // and the contact was likely already gone from GHL
             $result['ok'] = true;
             $result['ghl']['warning'] = 'GHL API returned an error (contact may already be deleted). Local snapshot removed.';

@@ -34,7 +34,9 @@ function site_blocks_handle_contact_form(): void {
 		exit;
 	}
 
-	$to      = get_option( 'admin_email' );
+	require_once SITE_BLOCKS_DIR . 'inc/safeguard-contact-details.php';
+	$details = site_blocks_get_safeguard_contact_details();
+	$to      = $details['email'];
 	$headers = array(
 		'Content-Type: text/plain; charset=UTF-8',
 		'Reply-To: ' . $name . ' <' . $email . '>',

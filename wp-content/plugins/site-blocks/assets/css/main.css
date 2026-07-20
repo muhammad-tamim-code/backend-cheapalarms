@@ -78,6 +78,32 @@
     color: var(--color-neutral);
 }
 
+  .contact-hero__phone {
+    margin-top: var(--space-md);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: var(--lh-snug);
+}
+
+  .contact-hero__phone-link {
+    color: var(--color-ink);
+    text-decoration-line: none;
+}
+
+  @media (hover: hover) {
+    .contact-hero__phone-link:hover {
+      color: var(--color-accent);
+    }
+  }
+
+  .contact-hero__phone-link:focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
+    outline-color: var(--color-focus);
+}
+
   /* ── Info panel ── */
   .contact-info {
     min-width: 0px;
@@ -165,6 +191,58 @@
     outline-color: var(--color-focus);
 }
 
+  .contact-info__maps-link {
+    margin-top: var(--space-xs);
+    display: inline-block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration-line: none;
+}
+
+  @media (hover: hover) {
+    .contact-info__maps-link:hover {
+      text-decoration-line: underline;
+    }
+  }
+
+  .contact-info__quote {
+    margin-top: var(--space-lg);
+    font-size: var(--text-sm);
+    line-height: var(--lh-relaxed);
+    color: var(--color-neutral);
+}
+
+  .contact-info__quote a {
+    font-weight: 600;
+    color: var(--color-ink);
+    text-decoration-line: none;
+}
+
+  @media (hover: hover) {
+    .contact-info__quote a:hover {
+      color: var(--color-accent);
+    }
+  }
+
+  .contact-info__map {
+    margin-top: var(--space-lg);
+    overflow: hidden;
+    border-width: 1px;
+    border-color: var(--color-rule);
+}
+
+  .contact-info__map-frame {
+    display: block;
+    height: 220px;
+    width: 100%;
+    border: 0;
+}
+
+  .sg-contact-main .contact-page-layout {
+    padding-top: var(--space-2xl);
+}
+
   /* ── Form card ── */
   .contact-form-wrap {
     min-width: 0px;
@@ -237,7 +315,7 @@
     position: relative;
 }
 
-  /* Input — 8 states */
+  /* Input, 8 states */
   .contact-form__input {
     box-sizing: border-box;
     display: block;
@@ -335,7 +413,7 @@
     color: var(--color-error);
 }
 
-  /* Submit button — 8 states */
+  /* Submit button, 8 states */
   .contact-form__submit {
     position: relative;
     display: inline-flex;
@@ -1018,7 +1096,7 @@
     transition-timing-function: var(--ease-out);
 }
 
-/* Hallmark · Split Studio contact page styles — tokens in kadence-child/assets/css/tokens.css */
+/* Hallmark · Split Studio contact page styles, tokens in kadence-child/assets/css/tokens.css */
 
 @keyframes contact-enter {
   from {
@@ -1803,12 +1881,25 @@
 }
 
 .home-hero-visual__orbit-cta-icon {
-    position: relative;
-    z-index: 1;
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 700;
+  position: relative;
+  z-index: 1;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
   color: oklch(14% 0.03 260);
+}
+
+.home-hero-visual__orbit .sg-lucide-icon {
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  color: oklch(78% 0.14 195);
+}
+
+.home-hero-visual__shield .sg-lucide-icon,
+.home-hero-visual__shield .sg-home-hero__shield-icon {
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
+  color: oklch(78% 0.14 195);
 }
 
 @keyframes hero-orbit-float {

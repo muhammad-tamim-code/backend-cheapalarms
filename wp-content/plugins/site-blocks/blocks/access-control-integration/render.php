@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — system integration.
+ * Access Control, system integration.
  *
  * @package Site_Blocks
  */
@@ -48,7 +48,7 @@ $links = array(
 			<span class="sg-accent"><?php esc_html_e( 'security stack', 'site-blocks' ); ?></span>
 		</h2>
 		<p class="sg-section-intro sg-section-intro--center">
-			<?php esc_html_e( 'Access control is strongest as part of a layered system — one team plans, installs and supports it all.', 'site-blocks' ); ?>
+			<?php esc_html_e( 'Access control is strongest as part of a layered system, one team plans, installs and supports it all.', 'site-blocks' ); ?>
 		</p>
 
 		<div class="sg-ac-integration__grid">

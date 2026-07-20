@@ -38,21 +38,28 @@ function site_blocks_ajax_calculator_shortcode(): string {
 add_shortcode( 'sg_ajax_calculator', 'site_blocks_ajax_calculator_shortcode' );
 
 /**
+ * Whether the Ajax calculator page is being viewed.
+ */
+function site_blocks_is_ajax_calculator_page(): bool {
+	return is_page( 'ajax-calculator' );
+}
+
+/**
  * Enqueue embed layout styles on the calculator page.
  */
 function site_blocks_ajax_calculator_enqueue(): void {
-	if ( ! is_page( 'ajax-calculator' ) ) {
+	if ( ! site_blocks_is_ajax_calculator_page() ) {
 		return;
 	}
 
 	wp_enqueue_style(
 		'site-blocks-ajax-calculator',
 		SITE_BLOCKS_URL . 'assets/css/ajax-calculator-embed.css',
-		array(),
+		array( 'safeguard-ajax-alarm-systems' ),
 		SITE_BLOCKS_VERSION
 	);
 }
-add_action( 'wp_enqueue_scripts', 'site_blocks_ajax_calculator_enqueue', 30 );
+add_action( 'wp_enqueue_scripts', 'site_blocks_ajax_calculator_enqueue', 35 );
 
 /**
  * Return block markup for the Ajax calculator page.
@@ -60,7 +67,15 @@ add_action( 'wp_enqueue_scripts', 'site_blocks_ajax_calculator_enqueue', 30 );
  * @return string
  */
 function site_blocks_get_ajax_calculator_page_content(): string {
-	return '<!-- wp:shortcode -->[sg_ajax_calculator]<!-- /wp:shortcode -->';
+	$pattern_file = SITE_BLOCKS_DIR . 'patterns/ajax-calculator-page.php';
+
+	if ( ! file_exists( $pattern_file ) ) {
+		return '<!-- wp:shortcode -->[sg_ajax_calculator]<!-- /wp:shortcode -->';
+	}
+
+	$pattern = include $pattern_file;
+
+	return is_array( $pattern ) && isset( $pattern['content'] ) ? (string) $pattern['content'] : '';
 }
 
 /**

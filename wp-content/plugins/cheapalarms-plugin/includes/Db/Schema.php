@@ -9,7 +9,7 @@ use function update_option;
 class Schema
 {
     public const OPTION_KEY = 'ca_db_schema_version';
-    public const VERSION    = '2026-06-20-01'; // Product snapshots (GHL catalog + prices local cache)
+    public const VERSION    = '2026-07-05-01'; // Chat conversations + messages
 
     public static function maybeMigrate(): void
     {
@@ -238,7 +238,7 @@ class Schema
 
         dbDelta($ghlWebhookSql);
 
-        // Create ServiceM8 jobs snapshot table (local read cache — SM8 has no webhooks)
+        // Create ServiceM8 jobs snapshot table (local read cache, SM8 has no webhooks)
         $sm8JobsTableName = $wpdb->prefix . 'ca_sm8_jobs';
         $sm8JobsSql = "CREATE TABLE {$sm8JobsTableName} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -311,7 +311,7 @@ class Schema
 
         dbDelta($linksSql);
 
-        // GHL product catalog + prices (local read cache for Quick Quote — avoids per-product GHL price calls).
+        // GHL product catalog + prices (local read cache for Quick Quote, avoids per-product GHL price calls).
         $productTableName = $wpdb->prefix . 'ca_product_snapshots';
         $productSql = "CREATE TABLE {$productTableName} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -334,6 +334,47 @@ class Schema
         ) {$charsetCollate};";
 
         dbDelta($productSql);
+
+        // Website chat conversations (Safeguard assistant, marketing widget).
+        $convTableName = $wpdb->prefix . 'ca_conversations';
+        $convSql       = "CREATE TABLE {$convTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            session_key VARCHAR(64) NOT NULL,
+            page_path VARCHAR(255) NULL,
+            page_service VARCHAR(64) NULL,
+            page_title VARCHAR(255) NULL,
+            status VARCHAR(32) NOT NULL DEFAULT 'open',
+            intent VARCHAR(64) NULL,
+            ghl_contact_id VARCHAR(64) NULL,
+            estimate_id VARCHAR(64) NULL,
+            quote_total DECIMAL(18,2) NULL,
+            message_count INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            last_user_message_at DATETIME NULL,
+            meta_json LONGTEXT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY session_key (session_key),
+            KEY idx_status_updated (status, updated_at),
+            KEY idx_service (page_service),
+            KEY idx_created (created_at)
+        ) {$charsetCollate};";
+
+        dbDelta($convSql);
+
+        $msgTableName = $wpdb->prefix . 'ca_messages';
+        $msgSql       = "CREATE TABLE {$msgTableName} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            conversation_id BIGINT(20) UNSIGNED NOT NULL,
+            role VARCHAR(16) NOT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            meta_json LONGTEXT NULL,
+            PRIMARY KEY (id),
+            KEY idx_conversation_created (conversation_id, created_at)
+        ) {$charsetCollate};";
+
+        dbDelta($msgSql);
     }
 }
 

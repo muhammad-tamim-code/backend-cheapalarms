@@ -6,7 +6,7 @@
   "title": "Contact Info",
   "category": "theme",
   "icon": "location",
-  "description": "Business contact details with semantic address markup.",
+  "description": "Business contact details with address, hours and map.",
   "keywords": ["contact", "address", "info"],
   "textdomain": "site-blocks",
   "supports": {
@@ -17,39 +17,47 @@
   "attributes": {
     "organizationName": {
       "type": "string",
-      "default": ""
+      "default": "Safeguard Security Services"
     },
     "streetAddress": {
       "type": "string",
-      "default": ""
+      "default": "2/2 Stennett Road"
     },
     "city": {
       "type": "string",
-      "default": ""
+      "default": "Ingleburn"
     },
     "region": {
       "type": "string",
-      "default": ""
+      "default": "NSW"
     },
     "postalCode": {
       "type": "string",
-      "default": ""
+      "default": "2565"
     },
     "country": {
       "type": "string",
-      "default": ""
+      "default": "Australia"
     },
     "phone": {
       "type": "string",
-      "default": ""
+      "default": "1300 225 276"
     },
     "email": {
       "type": "string",
-      "default": ""
+      "default": "sales@safeguardsecurity.com.au"
     },
     "hoursNote": {
       "type": "string",
-      "default": "We respond to messages within two business days."
+      "default": "Mon–Fri 8 AM – 6 PM · Sat–Sun closed"
+    },
+    "responseNote": {
+      "type": "string",
+      "default": "We aim to reply within one business day."
+    },
+    "showMap": {
+      "type": "boolean",
+      "default": true
     }
   },
   "render": "file:./render.php"

@@ -446,7 +446,7 @@ class AdminEstimateController extends AdminController
 
             $cfg = $this->container->get(Config::class);
             if (!$cfg->isGhlFetchAllowed()) {
-                error_log('[CA][ESTIMATE_CACHE] MISS — GHL fetch disabled; using local snapshot rows only');
+                error_log('[CA][ESTIMATE_CACHE] MISS, GHL fetch disabled; using local snapshot rows only');
                 $items = (!is_wp_error($snapshotItems) && is_array($snapshotItems)) ? $snapshotItems : [];
             } else {
                 // If snapshots are missing/empty, schedule a background sync and fall back to the current transient cache path.
@@ -926,7 +926,7 @@ class AdminEstimateController extends AdminController
             ];
         }
 
-        // Same shape as GET /ca/v1/estimate/photos — avoids a second round-trip on admin estimate detail (attachment scrub happens on dedicated photos endpoint).
+        // Same shape as GET /ca/v1/estimate/photos, avoids a second round-trip on admin estimate detail (attachment scrub happens on dedicated photos endpoint).
         $rawUploads = get_option('ca_estimate_uploads_' . $estimateId, '');
         $estimatePhotos = [
             'ok'     => true,

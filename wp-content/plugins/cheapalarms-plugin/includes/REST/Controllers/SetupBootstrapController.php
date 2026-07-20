@@ -105,7 +105,7 @@ class SetupBootstrapController implements ControllerInterface
 
         return $this->respond([
             'ok'      => true,
-            'message' => 'Configuration applied. Reload WordPress admin — full API is now active.',
+            'message' => 'Configuration applied. Reload WordPress admin, full API is now active.',
             'secretsFileWritten' => $written === true,
         ]);
     }
@@ -164,7 +164,7 @@ class SetupBootstrapController implements ControllerInterface
         }
 
         $export = var_export($secrets, true);
-        $php = "<?php\n\n/**\n * AUTO-BOOTSTRAPPED — do not commit.\n */\nreturn {$export};\n";
+        $php = "<?php\n\n/**\n * AUTO-BOOTSTRAPPED, do not commit.\n */\nreturn {$export};\n";
 
         if (file_put_contents($path, $php) === false) {
             return new WP_Error('write_failed', 'Failed to write secrets.php.', ['status' => 500]);

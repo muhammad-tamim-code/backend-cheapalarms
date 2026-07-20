@@ -38,6 +38,12 @@ class Config
         'email_from_name'        => '',
         'email_from_address'     => '',
         'estimate_number_prefix' => 'EST-',
+        'deepseek_api_key'       => '',
+        'deepseek_model'         => 'deepseek-chat',
+        'twilio_account_sid'     => '',
+        'twilio_auth_token'      => '',
+        'twilio_from_number'     => '',
+        'otp_demo_mode'          => false,
     ];
 
     private array $overrides = [];
@@ -593,6 +599,98 @@ class Config
         return $env !== '' ? 'env' : 'none';
     }
 
+    public function getDeepSeekApiKey(): string
+    {
+        $override = $this->fromOverrides('deepseek_api_key');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_DEEPSEEK_API_KEY', $this->defaults['deepseek_api_key']));
+    }
+
+    public function getDeepSeekModel(): string
+    {
+        $override = $this->fromOverrides('deepseek_model');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        $env = trim((string) $this->getEnv('CA_DEEPSEEK_MODEL', ''));
+        if ($env !== '') {
+            return $env;
+        }
+
+        return (string) $this->defaults['deepseek_model'];
+    }
+
+    public function isDeepSeekConfigured(): bool
+    {
+        return $this->getDeepSeekApiKey() !== '';
+    }
+
+    public function getTwilioAccountSid(): string
+    {
+        $override = $this->fromOverrides('twilio_account_sid');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TWILIO_ACCOUNT_SID', ''));
+    }
+
+    public function getTwilioAuthToken(): string
+    {
+        $override = $this->fromOverrides('twilio_auth_token');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TWILIO_AUTH_TOKEN', ''));
+    }
+
+    public function getTwilioFromNumber(): string
+    {
+        $override = $this->fromOverrides('twilio_from_number');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TWILIO_FROM_NUMBER', ''));
+    }
+
+    public function isOtpSmsConfigured(): bool
+    {
+        return $this->getTwilioAccountSid() !== ''
+            && $this->getTwilioAuthToken() !== ''
+            && $this->getTwilioFromNumber() !== '';
+    }
+
+    /**
+     * Dummy OTP when Twilio is not configured (staging/dev). Real SMS only when all Twilio creds are set.
+     */
+    public function isOtpDemoMode(): bool
+    {
+        if (!$this->isOtpSmsConfigured()) {
+            return true;
+        }
+
+        $override = $this->fromOverrides('otp_demo_mode');
+        if ($override === false || $override === 0 || $override === '0') {
+            return false;
+        }
+        if ($override === true || $override === 1 || $override === '1') {
+            return true;
+        }
+
+        $env = strtolower(trim((string) $this->getEnv('CA_OTP_DEMO', '')));
+        if ($env === '0' || $env === 'false' || $env === 'no') {
+            return false;
+        }
+
+        return $env === '1' || $env === 'true' || $env === 'yes';
+    }
+
     private function getEnv(string $key, $default = '')
     {
         if (defined($key)) {
@@ -613,7 +711,7 @@ class Config
     }
 
     /**
-     * WordPress site + Next.js portal — always allowed for CORS when lists are built.
+     * WordPress site + Next.js portal, always allowed for CORS when lists are built.
      *
      * @return string[]
      */

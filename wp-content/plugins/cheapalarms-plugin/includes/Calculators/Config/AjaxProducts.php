@@ -213,7 +213,7 @@ final class AjaxProducts
         'upgrade' => [
             'sku' => 'AX-WU-K1',
             'name' => 'Wired-to-Wireless Kit (AX-WU-K1)',
-            'description' => 'Hub + transmitter + battery — reuses your wiring',
+            'description' => 'Hub + transmitter + battery, reuses your wiring',
             'rrpExGst' => 1398.0,
             'cat' => 'hub',
             'icon' => 'hub',
@@ -224,7 +224,7 @@ final class AjaxProducts
         'cam_5mp' => [
             'sku' => 'CALC-CAM-5MP',
             'name' => '5MP Dome Camera',
-            'description' => 'Crisp Full-HD+ — ideal for most homes',
+            'description' => 'Crisp Full-HD+, ideal for most homes',
             'rrpExGst' => 360.0,
             'cat' => 'camera',
             'icon' => 'cam',

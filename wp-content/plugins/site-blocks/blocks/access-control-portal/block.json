@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/access-control-portal",
+  "title": "Access Control Portal",
+  "category": "site-blocks",
+  "description": "Customer portal band for the Access Control page.",
+  "keywords": ["access control", "portal"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}

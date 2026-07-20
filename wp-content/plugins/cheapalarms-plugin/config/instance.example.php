@@ -7,7 +7,7 @@
  * That generates config/instance.php (URLs) and updates local secrets.php.
  *
  * Precedence at runtime:
- * 1) instance.php (generated — URL keys)
+ * 1) instance.php (generated, URL keys)
  * 2) secrets.php (credentials)
  * 3) environment variables
  * 4) code defaults in Config.php
@@ -30,11 +30,11 @@ return [
 
     'estimate_number_prefix' => 'EST-',
 
-    // Next.js portal — email links, password reset, Xero callback host
+    // Next.js portal, email links, password reset, Xero callback host
     // Sync from cheapalarms.instance.json; do not hand-edit after sync.
     'frontend_url'       => 'https://headless-cheapalarms.vercel.app',
 
-    // Core integrations (credentials — keep in secrets.php or set here on server)
+    // Core integrations (credentials, keep in secrets.php or set here on server)
     'ghl_token'          => '',
     'ghl_location_id'    => '',
     'ghl_user_id'        => '',
@@ -47,7 +47,7 @@ return [
     'jwt_ttl_seconds'          => 3600,
     'jwt_remember_ttl_seconds' => 2592000,
 
-    // CORS — auto-synced from cheapalarms.instance.json
+    // CORS, auto-synced from cheapalarms.instance.json
     'upload_allowed_origins' => [
         'https://cheapalarms.com.au',
         'https://headless-cheapalarms.vercel.app',
@@ -60,7 +60,7 @@ return [
         'http://localhost:3000',
     ],
 
-    // Xero — derived from frontend_url when omitted
+    // Xero, derived from frontend_url when omitted
     'xero_client_id'          => '',
     'xero_client_secret'      => '',
     'xero_redirect_uri'       => 'https://headless-cheapalarms.vercel.app/xero/callback',

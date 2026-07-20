@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control — complete control and remote management.
+ * Access Control, complete control and remote management.
  *
  * @package Site_Blocks
  */
@@ -21,9 +21,9 @@ site_blocks_render_access_control_split(
 		'title_before' => __( 'Complete control, from ', 'site-blocks' ),
 		'title_accent' => __( 'anywhere', 'site-blocks' ),
 		'paragraphs'   => array(
-			__( 'Add a new employee, revoke a lost fob, or extend a contractor\'s access — without visiting the site or calling a locksmith.', 'site-blocks' ),
+			__( 'Add a new employee, revoke a lost fob, or extend a contractor\'s access, without visiting the site or calling a locksmith.', 'site-blocks' ),
 			__( 'Cloud-managed systems give you a live audit trail of every entry, plus alerts when doors are forced or held open.', 'site-blocks' ),
-			__( 'Multi-site businesses manage every location from one dashboard — consistent rules, one support team.', 'site-blocks' ),
+			__( 'Multi-site businesses manage every location from one dashboard, consistent rules, one support team.', 'site-blocks' ),
 		),
 		'visual'       => static function (): void {
 			site_blocks_access_control_image(

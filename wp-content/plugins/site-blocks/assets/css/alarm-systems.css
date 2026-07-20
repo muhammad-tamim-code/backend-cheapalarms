@@ -1,4 +1,4 @@
-/* Alarm Systems — hero (header/chrome from safeguard-home.css) */
+/* Alarm Systems, hero (header/chrome from safeguard-home.css) */
 
 body.safeguard-alarm-page .sg-btn--outline-primary {
   background: #fff;
@@ -20,7 +20,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   gap: 0.5rem;
 }
 
-/* Hero — legacy bleed layout (pillar pages use sg-hero--pillar instead) */
+/* Hero, legacy bleed layout (pillar pages use sg-hero--pillar instead) */
 .sg-alarm-hero:not(.sg-hero--pillar) {
   position: relative;
   background: #fff;
@@ -233,7 +233,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   }
 }
 
-/* Pillar pages (alarm, CCTV, intercom): center hero art — no right-edge crop */
+/* Pillar pages (alarm, CCTV, intercom): center hero art, no right-edge crop */
 .sg-alarm-hero--image-center .sg-alarm-hero__visual {
   left: 45%;
   display: flex;
@@ -299,7 +299,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   }
 }
 
-/* What we install — service cards */
+/* What we install, service cards */
 .sg-alarm-services__header {
   margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
 }
@@ -337,10 +337,11 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   margin-bottom: 1rem;
 }
 
-.sg-alarm-service-card__icon svg {
+.sg-alarm-service-card__icon svg,
+.sg-alarm-service-card__icon .sg-lucide-icon {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
 }
 
 .sg-alarm-service-card__title {
@@ -423,7 +424,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   }
 }
 
-/* Why Safeguard — three-column value panel */
+/* Why Safeguard, three-column value panel */
 .sg-alarm-why {
   background: #fff;
 }
@@ -481,10 +482,11 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   margin-bottom: 1.25rem;
 }
 
-.sg-alarm-why__icon svg {
+.sg-alarm-why__icon svg,
+.sg-alarm-why__icon .sg-lucide-icon {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
 }
 
 .sg-alarm-why__item-title {
@@ -517,7 +519,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   }
 }
 
-/* Safeguard + Ajax — compact partnership band */
+/* Safeguard + Ajax, compact partnership band */
 .sg-alarm-ajax {
   padding: 1.75rem 0;
   background: var(--sg-blue-wash);
@@ -628,7 +630,7 @@ body.safeguard-alarm-page .sg-alarm-hero .sg-btn {
   }
 }
 
-/* How it works — four connected steps */
+/* How it works, four connected steps */
 .sg-alarm-steps {
   position: relative;
   padding: clamp(2.5rem, 6vw, 4.5rem) 0;
@@ -742,10 +744,11 @@ body.safeguard-alarm-page .entry-content ol.sg-alarm-steps__list {
   margin: 0.5rem auto 1rem;
 }
 
-.sg-alarm-step-card__icon svg {
+.sg-alarm-step-card__icon svg,
+.sg-alarm-step-card__icon .sg-lucide-icon {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: var(--sg-icon-size, 2rem);
+  height: var(--sg-icon-size, 2rem);
 }
 
 .sg-alarm-step-card__title {

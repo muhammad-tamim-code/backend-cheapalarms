@@ -3,6 +3,7 @@
 namespace CheapAlarms\Plugin;
 
 use CheapAlarms\Plugin\Admin\UserCapabilities;
+use CheapAlarms\Plugin\Admin\ChatConversationsAdmin;
 use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\Db\Schema;
 use CheapAlarms\Plugin\Frontend\PortalPage;
@@ -27,6 +28,7 @@ use CheapAlarms\Plugin\Services\Product\ProductSnapshotSyncService;
 use CheapAlarms\Plugin\REST\Controllers\HealthController;
 use CheapAlarms\Plugin\REST\Controllers\SetupBootstrapController;
 use CheapAlarms\Plugin\REST\Controllers\CalculatorController;
+use CheapAlarms\Plugin\REST\Controllers\ChatController;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8JobSnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8CompanySnapshotRepository;
 use CheapAlarms\Plugin\Services\ServiceM8\Sm8SnapshotSyncService;
@@ -195,7 +197,7 @@ class Plugin
 
         // One-time backfill of the link index from existing portal meta.
         // Runs only when the table is empty (i.e. immediately after the schema migration that
-        // created it). Idempotent — safe to re-run; bounded by N portal-meta rows.
+        // created it). Idempotent, safe to re-run; bounded by N portal-meta rows.
         $this->maybeBackfillInvoiceEstimateLinks();
 
         // Background sync hook for contact snapshots (WP-Cron).
@@ -315,7 +317,7 @@ class Plugin
             wp_schedule_single_event(time() + 1, 'ca_retry_failed_ghl_webhooks');
         });
 
-        // ── ServiceM8 snapshot sync (no webhooks — poll-based) ─────────────
+        // ── ServiceM8 snapshot sync (no webhooks, poll-based) ─────────────
         // Single-event hook: sync SM8 jobs
         add_action('ca_sync_sm8_jobs', function () {
             $this->container->get(Sm8SnapshotSyncService::class)->syncJobs();
@@ -347,7 +349,7 @@ class Plugin
             wp_schedule_single_event(time() + 1, 'ca_sync_sm8_companies');
         });
 
-        // Recurring: full SM8 sync daily (jobs + companies — catches anything missed)
+        // Recurring: full SM8 sync daily (jobs + companies, catches anything missed)
         if (!wp_next_scheduled('ca_sync_sm8_all_daily')) {
             wp_schedule_event(time() + DAY_IN_SECONDS, 'daily', 'ca_sync_sm8_all_daily');
         }
@@ -686,6 +688,37 @@ class Plugin
             $this->container->get(Config::class),
             $this->container->get(Logger::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Services\DeepSeekService::class, fn () => new \CheapAlarms\Plugin\Services\DeepSeekService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatLeadService::class, fn () => new \CheapAlarms\Plugin\Services\ChatLeadService(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalService::class),
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\OtpVerificationService::class, fn () => new \CheapAlarms\Plugin\Services\OtpVerificationService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatQuoteService::class, fn () => new \CheapAlarms\Plugin\Services\ChatQuoteService(
+            $this->container->get(\CheapAlarms\Plugin\Services\DeepSeekService::class),
+            $this->container,
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\Chat\ChatConversationRepository::class, fn () => new \CheapAlarms\Plugin\Services\Chat\ChatConversationRepository());
+        $this->container->set(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class, fn () => new \CheapAlarms\Plugin\Services\Chat\ChatMessageRepository());
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatConversationService::class, fn () => new \CheapAlarms\Plugin\Services\ChatConversationService(
+            $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatConversationRepository::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatRouterService::class, fn () => new \CheapAlarms\Plugin\Services\ChatRouterService());
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatUiSuggester::class, fn () => new \CheapAlarms\Plugin\Services\ChatUiSuggester(
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatRouterService::class)
+        ));
         $this->container->set(\CheapAlarms\Plugin\Services\EstimateService::class, fn () => new \CheapAlarms\Plugin\Services\EstimateService(
             $this->container->get(Config::class),
             $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
@@ -721,7 +754,7 @@ class Plugin
             $this->container->get(Sm8CompanySnapshotRepository::class)
         ));
 
-        // ServiceM8 snapshot repositories + sync service (local read cache — SM8 has no webhooks)
+        // ServiceM8 snapshot repositories + sync service (local read cache, SM8 has no webhooks)
         $this->container->set(Sm8JobSnapshotRepository::class, fn () => new Sm8JobSnapshotRepository());
         $this->container->set(Sm8CompanySnapshotRepository::class, fn () => new Sm8CompanySnapshotRepository());
         $this->container->set(Sm8SnapshotSyncService::class, fn () => new Sm8SnapshotSyncService(
@@ -906,7 +939,7 @@ class Plugin
     }
 
     /**
-     * Minimal API when secrets.php is missing — public calculator catalog/resolve only.
+     * Minimal API when secrets.php is missing, public calculator catalog/resolve only.
      */
     private function bootstrapPublicCalculatorApi(Config $config, string $missingStr): void
     {
@@ -933,10 +966,49 @@ class Plugin
             $this->container->get(ProductSnapshotRepository::class)
         ));
 
+        $this->container->set(\CheapAlarms\Plugin\Services\DeepSeekService::class, fn () => new \CheapAlarms\Plugin\Services\DeepSeekService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\GhlSignalService::class, fn () => new \CheapAlarms\Plugin\Services\GhlSignalService(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
+            $this->container->get(Logger::class),
+            $this->container->get(Config::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatLeadService::class, fn () => new \CheapAlarms\Plugin\Services\ChatLeadService(
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\GhlSignalService::class),
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\OtpVerificationService::class, fn () => new \CheapAlarms\Plugin\Services\OtpVerificationService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatQuoteService::class, fn () => new \CheapAlarms\Plugin\Services\ChatQuoteService(
+            $this->container->get(\CheapAlarms\Plugin\Services\DeepSeekService::class),
+            $this->container,
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\Chat\ChatConversationRepository::class, fn () => new \CheapAlarms\Plugin\Services\Chat\ChatConversationRepository());
+        $this->container->set(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class, fn () => new \CheapAlarms\Plugin\Services\Chat\ChatMessageRepository());
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatConversationService::class, fn () => new \CheapAlarms\Plugin\Services\ChatConversationService(
+            $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatConversationRepository::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatRouterService::class, fn () => new \CheapAlarms\Plugin\Services\ChatRouterService());
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatUiSuggester::class, fn () => new \CheapAlarms\Plugin\Services\ChatUiSuggester(
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatRouterService::class)
+        ));
+
         add_action('rest_api_init', function () {
             (new HealthController($this->container))->register();
             (new SetupBootstrapController($this->container))->register();
             (new CalculatorController($this->container))->register();
+            (new ChatController($this->container))->register();
+            (new \CheapAlarms\Plugin\REST\Controllers\OtpController($this->container))->register();
         });
 
         if (is_admin()) {
@@ -1001,6 +1073,7 @@ class Plugin
     {
         if (is_admin()) {
             new UserCapabilities($this->container);
+            (new ChatConversationsAdmin($this->container))->register();
         }
     }
 

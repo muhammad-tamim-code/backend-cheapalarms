@@ -103,7 +103,7 @@ class PasswordResetController implements ControllerInterface
         // Auto-provisioning on a public endpoint enables mass account creation attacks
         $userId = email_exists($email);
         if (!$userId) {
-            // SECURITY: Return a generic, account-enumeration-safe message — the
+            // SECURITY: Return a generic, account-enumeration-safe message, the
             // response body does NOT reveal whether the email exists. We still
             // log a warning server-side so ops can spot real customers who are
             // silently stuck (e.g. mistyped their email, account never created).
@@ -138,7 +138,7 @@ class PasswordResetController implements ControllerInterface
         }
 
         // Get frontend URL (Next.js). Always sourced from Config so this flow
-        // and the quote-request flow stay in lockstep — previously this
+        // and the quote-request flow stay in lockstep, previously this
         // controller had a private getFrontendUrl() that produced a different
         // value (pointing at the WP backend itself when /wp wasn't in the URL).
         $frontendUrl = $this->config->getFrontendUrl();

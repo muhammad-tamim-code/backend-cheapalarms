@@ -16,6 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function site_blocks_render_safeguard_homepage(): void {
 	require_once SITE_BLOCKS_DIR . 'inc/safeguard-chrome.php';
+	require_once SITE_BLOCKS_DIR . 'inc/safeguard-section-icons.php';
+	require_once SITE_BLOCKS_DIR . 'inc/lucide-icons.php';
+	require_once SITE_BLOCKS_DIR . 'inc/safeguard-process-flow.php';
+	require_once SITE_BLOCKS_DIR . 'inc/safeguard-process-flow-configs.php';
 
 	$hero_house  = site_blocks_asset_url( 'images/hero/house.png' );
 	$hero_dash   = site_blocks_asset_url( 'images/hero/dashboard.png' );
@@ -92,7 +96,7 @@ function site_blocks_render_safeguard_homepage(): void {
 						<?php esc_html_e( 'Most security quotes take days. Yours takes ', 'site-blocks' ); ?>
 						<span class="sg-hero__title-accent"><?php esc_html_e( 'minutes', 'site-blocks' ); ?></span><?php esc_html_e( '.', 'site-blocks' ); ?>
 					</h1>
-					<p class="sg-hero__sub sg-hero__sub--dark"><?php esc_html_e( 'Build it online and get your price on the spot — or within 24 hours for complex sites, checked by a real technician. No 48-hour wait, no salesperson at your door.', 'site-blocks' ); ?></p>
+					<p class="sg-hero__sub sg-hero__sub--dark"><?php esc_html_e( 'Build it online and get your price on the spot, or within 24 hours for complex sites, checked by a real technician. No 48-hour wait, no salesperson at your door.', 'site-blocks' ); ?></p>
 					<div class="sg-hero__ctas">
 						<a class="sg-btn sg-btn--primary" href="<?php echo $quote; ?>"><?php esc_html_e( 'Start My Quote', 'site-blocks' ); ?></a>
 						<a class="sg-btn sg-btn--ghost-dark" href="<?php echo $design; ?>"><?php esc_html_e( 'Help Me Choose', 'site-blocks' ); ?></a>
@@ -143,40 +147,20 @@ function site_blocks_render_safeguard_homepage(): void {
 			</div>
 		</section>
 
-		<section class="sg-band sg-band--blue sg-reveal" aria-labelledby="sg-steps-heading">
-			<div class="sg-container">
-				<h2 id="sg-steps-heading" class="sg-section-title sg-section-title--center sg-section-title--ink">
-					<?php esc_html_e( 'A ', 'site-blocks' ); ?><span class="sg-accent"><?php esc_html_e( 'smarter', 'site-blocks' ); ?></span><?php esc_html_e( ' way to plan your security system', 'site-blocks' ); ?>
-				</h2>
+		<?php
+		site_blocks_render_logo_marquee(
+			array(
+				'title'      => __( 'Brands we have worked with', 'site-blocks' ),
+				'subtitle'   => __( 'A selection of sites and businesses across retail, logistics and commercial property.', 'site-blocks' ),
+				'source'     => 'portfolio',
+				'variant'    => 'wash',
+				'heading_id' => 'sg-home-portfolio-heading',
+				'class'      => 'sg-logo-marquee--home',
+			)
+		);
+		?>
 
-				<ol class="sg-steps sg-steps--connected" role="list">
-					<li class="sg-step-card">
-						<span class="sg-step-card__num" aria-hidden="true">1</span>
-						<div class="sg-step-card__icon" aria-hidden="true"><?php site_blocks_sg_icon_step_clipboard(); ?></div>
-						<h3><?php esc_html_e( 'Tell us what you need', 'site-blocks' ); ?></h3>
-						<p><?php esc_html_e( 'Answer a few simple questions about your property, goals and security needs.', 'site-blocks' ); ?></p>
-					</li>
-					<li class="sg-step-card">
-						<span class="sg-step-card__num" aria-hidden="true">2</span>
-						<div class="sg-step-card__icon" aria-hidden="true"><?php site_blocks_sg_icon_step_camera(); ?></div>
-						<h3><?php esc_html_e( 'Share your site details and photos', 'site-blocks' ); ?></h3>
-						<p><?php esc_html_e( 'Upload photos and site details so our team can understand your space.', 'site-blocks' ); ?></p>
-					</li>
-					<li class="sg-step-card">
-						<span class="sg-step-card__num" aria-hidden="true">3</span>
-						<div class="sg-step-card__icon" aria-hidden="true"><?php site_blocks_sg_icon_step_calculator(); ?></div>
-						<h3><?php esc_html_e( 'Receive a tailored estimate', 'site-blocks' ); ?></h3>
-						<p><?php esc_html_e( 'We design the right solution and send you one clear package estimate.', 'site-blocks' ); ?></p>
-					</li>
-					<li class="sg-step-card">
-						<span class="sg-step-card__num" aria-hidden="true">4</span>
-						<div class="sg-step-card__icon" aria-hidden="true"><?php site_blocks_sg_icon_step_review(); ?></div>
-						<h3><?php esc_html_e( 'Expert review before you approve', 'site-blocks' ); ?></h3>
-						<p><?php esc_html_e( 'Our technicians review your site and proposal, then you approve with confidence.', 'site-blocks' ); ?></p>
-					</li>
-				</ol>
-			</div>
-		</section>
+		<?php site_blocks_render_process_flow( site_blocks_process_flow_config( 'homepage' ) ); ?>
 
 		<section class="sg-band sg-band--white sg-reveal" aria-labelledby="sg-funnel-heading">
 			<div class="sg-container">
@@ -234,7 +218,7 @@ function site_blocks_render_safeguard_homepage(): void {
 								<?php esc_html_e( 'Safeguard + Ajax,', 'site-blocks' ); ?><br>
 								<?php esc_html_e( 'professionally installed.', 'site-blocks' ); ?>
 							</h2>
-							<p class="sg-ajax-card__intro"><?php esc_html_e( 'We partner with Ajax Systems to deliver intelligent, reliable security—installed and supported by experienced technicians.', 'site-blocks' ); ?></p>
+							<p class="sg-ajax-card__intro"><?php esc_html_e( 'We partner with Ajax Systems to deliver intelligent, reliable security, installed and supported by experienced technicians.', 'site-blocks' ); ?></p>
 							<div class="sg-ajax-visual">
 								<img
 									src="<?php echo $ajax_img; ?>"
@@ -266,11 +250,11 @@ function site_blocks_render_safeguard_homepage(): void {
 							<div class="sg-ajax-card__actions">
 								<a class="sg-btn sg-btn--ajax-primary" href="<?php echo $quote; ?>">
 									<?php esc_html_e( 'Start My Quote', 'site-blocks' ); ?>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+									<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 								</a>
 								<a class="sg-btn sg-btn--ajax-outline" href="<?php echo $ajax_page; ?>">
 									<?php esc_html_e( 'Explore Ajax', 'site-blocks' ); ?>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+									<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 								</a>
 							</div>
 						</div>
@@ -437,49 +421,34 @@ function site_blocks_render_safeguard_homepage(): void {
 				</div>
 			</div>
 
-			<div class="sg-value-row sg-value-row--peach">
-				<div class="sg-container sg-value-row__grid">
-					<div class="sg-value-row__copy">
-						<h2 class="sg-value-row__title" id="sg-faq-heading">
-							<?php esc_html_e( 'Frequently asked ', 'site-blocks' ); ?><span class="sg-accent"><?php esc_html_e( 'questions', 'site-blocks' ); ?></span>
-						</h2>
-					</div>
-					<div class="sg-value-row__content sg-value-row__content--faq">
-						<div class="sg-value-faq">
-							<div class="sg-value-faq__column">
-								<?php
-								foreach ( array_slice( $faq_items, 0, 3 ) as $faq_index => $faq_item ) {
-									site_blocks_render_value_faq_item( $faq_item, $faq_index + 1 );
-								}
-								?>
-							</div>
-							<div class="sg-value-faq__column">
-								<?php
-								foreach ( array_slice( $faq_items, 3 ) as $faq_index => $faq_item ) {
-									site_blocks_render_value_faq_item( $faq_item, $faq_index + 4 );
-								}
-								?>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+			<?php
+			site_blocks_render_faq_section(
+				$faq_items,
+				array(
+					'heading_id'     => 'sg-faq-heading',
+					'heading_before' => __( 'Frequently asked ', 'site-blocks' ),
+					'heading_accent' => __( 'questions', 'site-blocks' ),
+					'id_prefix'      => 'sg-faq-',
+					'element'        => 'div',
+					'alignfull'      => false,
+					'columns_split'  => 3,
+				)
+			);
+			?>
 		</section>
 
-		<section class="sg-cta sg-reveal" aria-labelledby="sg-cta-heading">
-			<div class="sg-container">
-				<div class="sg-cta-card">
-					<h2 id="sg-cta-heading" class="sg-cta-card__head">
-						<?php esc_html_e( 'A clearer path to the right system ', 'site-blocks' ); ?><span class="sg-accent"><?php esc_html_e( 'starts here.', 'site-blocks' ); ?></span>
-					</h2>
-					<p class="sg-cta-card__text"><?php esc_html_e( 'Start your quote today and let our technicians design the right solution for your site.', 'site-blocks' ); ?></p>
-					<div class="sg-cta-card__btns">
-						<a class="sg-btn sg-btn--primary" href="<?php echo $quote; ?>"><?php esc_html_e( 'Start My Quote', 'site-blocks' ); ?></a>
-						<a class="sg-btn sg-btn--cta-ghost" href="<?php echo $design; ?>"><?php esc_html_e( 'Help Me Choose', 'site-blocks' ); ?></a>
-					</div>
-				</div>
-			</div>
-		</section>
+		<?php
+		site_blocks_render_quote_cta(
+			array(
+				'heading_id'    => 'sg-cta-heading',
+				'before'        => __( 'A clearer path to the right system ', 'site-blocks' ),
+				'accent'        => __( 'starts here.', 'site-blocks' ),
+				'sub'           => __( 'Start your quote today and let our technicians design the right solution for your site.', 'site-blocks' ),
+				'section_class' => 'sg-reveal',
+				'alignfull'     => false,
+			)
+		);
+		?>
 	</main>
 
 	<?php
@@ -492,33 +461,17 @@ function site_blocks_render_safeguard_homepage(): void {
 }
 
 function site_blocks_sg_icon_portal_check(): void {
-	echo '<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="#1769A1"/><path d="M7 11.2L9.6 13.8L15 8.4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+	site_blocks_lucide_icon( 'circle-check', 22, 'sg-lucide-icon--filled-check' );
 }
 
 function site_blocks_sg_icon_feature_shield(): void {
-	echo '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>';
+	site_blocks_lucide_icon( 'shield-check', 18 );
 }
 
 function site_blocks_sg_icon_feature_target(): void {
-	echo '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/></svg>';
+	site_blocks_lucide_icon( 'target', 18 );
 }
 
 function site_blocks_sg_icon_feature_gear(): void {
-	echo '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
-}
-
-function site_blocks_sg_icon_step_clipboard(): void {
-	echo '<svg width="72" height="66" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="22" y="10" width="28" height="42" rx="3" stroke="#1769A1" stroke-width="3"/><path d="M42 10V20H50" stroke="#1769A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 28H44M28 35H40M28 42H36" stroke="#1769A1" stroke-width="3" stroke-linecap="round"/><path d="M47 43L57 33C58.2 31.8 60.2 31.8 61.4 33L62 33.6C63.2 34.8 63.2 36.8 62 38L52 48L46 50L47 43Z" stroke="#1769A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M56 34L61 39" stroke="#FB7523" stroke-width="3" stroke-linecap="round"/></svg>';
-}
-
-function site_blocks_sg_icon_step_camera(): void {
-	echo '<svg width="72" height="66" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="13" y="20" width="38" height="30" rx="5" stroke="#1769A1" stroke-width="3"/><path d="M25 20L28 14H38L41 20" stroke="#1769A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="35" r="8" stroke="#1769A1" stroke-width="3"/><circle cx="45" cy="27" r="2" fill="#FB7523"/><path d="M54 33L62 36V43C62 50 58 55 54 57C50 55 46 50 46 43V36L54 33Z" stroke="#1769A1" stroke-width="3" stroke-linejoin="round"/><path d="M51 44L53.5 46.5L58 41.5" stroke="#FB7523" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-}
-
-function site_blocks_sg_icon_step_calculator(): void {
-	echo '<svg width="72" height="66" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="20" y="10" width="32" height="52" rx="4" stroke="#1769A1" stroke-width="3"/><rect x="26" y="17" width="20" height="11" rx="2" stroke="#1769A1" stroke-width="3"/><circle cx="27" cy="38" r="2" fill="#1769A1"/><circle cx="36" cy="38" r="2" fill="#1769A1"/><circle cx="45" cy="38" r="2" fill="#1769A1"/><circle cx="27" cy="47" r="2" fill="#1769A1"/><circle cx="36" cy="47" r="2" fill="#1769A1"/><circle cx="45" cy="47" r="2" fill="#1769A1"/><path d="M28 56H44" stroke="#FB7523" stroke-width="3" stroke-linecap="round"/></svg>';
-}
-
-function site_blocks_sg_icon_step_review(): void {
-	echo '<svg width="72" height="66" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M30 10L48 17V30C48 42 40.5 50 30 55C19.5 50 12 42 12 30V17L30 10Z" stroke="#1769A1" stroke-width="3" stroke-linejoin="round"/><path d="M23 31L28 36L38 25" stroke="#FB7523" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="53" cy="31" r="6" stroke="#1769A1" stroke-width="3"/><path d="M42 58C43.5 50 48 45 53 45C58 45 62.5 50 64 58" stroke="#1769A1" stroke-width="3" stroke-linecap="round"/></svg>';
+	site_blocks_lucide_icon( 'settings', 18 );
 }

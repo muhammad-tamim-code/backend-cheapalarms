@@ -24,6 +24,8 @@ use CheapAlarms\Plugin\REST\Controllers\GhlWebhookController;
 use CheapAlarms\Plugin\REST\Controllers\HealthController;
 use CheapAlarms\Plugin\REST\Controllers\SetupBootstrapController;
 use CheapAlarms\Plugin\REST\Controllers\LogController;
+use CheapAlarms\Plugin\REST\Controllers\ChatController;
+use CheapAlarms\Plugin\REST\Controllers\OtpController;
 use CheapAlarms\Plugin\Services\Container;
 
 class ApiKernel
@@ -57,6 +59,8 @@ class ApiKernel
             new StripeController($this->container),
             new GhlWebhookController($this->container),
             new LogController($this->container),
+            new ChatController($this->container),
+            new OtpController($this->container),
         ];
 
         foreach ($controllers as $controller) {

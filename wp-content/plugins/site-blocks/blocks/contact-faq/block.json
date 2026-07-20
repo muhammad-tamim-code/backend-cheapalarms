@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/contact-faq",
+  "title": "Contact FAQ",
+  "category": "site-blocks",
+  "description": "FAQ section for the Contact page.",
+  "keywords": ["contact", "faq"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false },
+  "render": "file:./render.php"
+}
