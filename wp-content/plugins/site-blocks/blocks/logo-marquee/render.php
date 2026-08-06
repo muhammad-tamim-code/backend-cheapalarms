@@ -24,7 +24,7 @@ $heading_id = 'sg-logo-marquee-' . wp_unique_id();
 
 site_blocks_render_logo_marquee(
 	array(
-		'title'        => isset( $attributes['title'] ) ? (string) $attributes['title'] : __( 'Brands we have worked with', 'site-blocks' ),
+		'title'        => isset( $attributes['title'] ) ? (string) $attributes['title'] : __( 'Clients Portfolio', 'site-blocks' ),
 		'subtitle'     => isset( $attributes['subtitle'] ) ? (string) $attributes['subtitle'] : '',
 		'source'       => $source,
 		'variant'      => $variant,

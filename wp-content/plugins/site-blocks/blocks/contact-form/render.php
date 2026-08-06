@@ -31,7 +31,7 @@ $status_messages = array(
 
 $status_message = isset( $status_messages[ $form_status ] ) ? $status_messages[ $form_status ] : '';
 ?>
-<div class="sg-contact-form-card" aria-labelledby="sg-contact-form-heading">
+<div id="sg-contact-form" class="sg-contact-form-card" aria-labelledby="sg-contact-form-heading">
 	<h2 id="sg-contact-form-heading" class="sg-contact-form-card__title">
 		<?php echo esc_html( $form_title ); ?>
 	</h2>

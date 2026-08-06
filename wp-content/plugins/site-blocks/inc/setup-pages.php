@@ -654,3 +654,106 @@ function site_blocks_create_monitoring_pages(): void {
 		site_blocks_apply_safeguard_page_meta( (int) $page_id );
 	}
 }
+
+/**
+ * Return pattern markup for the Electronic Security hub page.
+ */
+function site_blocks_get_electronic_security_hub_page_content(): string {
+	$pattern_file = SITE_BLOCKS_DIR . 'patterns/electronic-security-hub-page.php';
+
+	if ( ! file_exists( $pattern_file ) ) {
+		return '';
+	}
+
+	$pattern = include $pattern_file;
+
+	return is_array( $pattern ) && isset( $pattern['content'] ) ? $pattern['content'] : '';
+}
+
+/**
+ * Create or update Electronic Security hub page.
+ */
+function site_blocks_create_electronic_security_pages(): void {
+	$hub_content = site_blocks_get_electronic_security_hub_page_content();
+
+	if ( '' === $hub_content ) {
+		return;
+	}
+
+	$existing_hub = get_page_by_path( 'electronic-security' );
+
+	$hub_data = array(
+		'post_title'   => __( 'Electronic Security', 'site-blocks' ),
+		'post_name'    => 'electronic-security',
+		'post_content' => $hub_content,
+		'post_status'  => 'publish',
+		'post_type'    => 'page',
+		'post_author'  => 1,
+		'post_parent'  => 0,
+	);
+
+	if ( $existing_hub instanceof WP_Post ) {
+		$hub_data['ID'] = $existing_hub->ID;
+		$hub_id         = wp_update_post( $hub_data, true );
+	} else {
+		$hub_id = wp_insert_post( $hub_data, true );
+	}
+
+	if ( is_wp_error( $hub_id ) || ! $hub_id ) {
+		return;
+	}
+
+	site_blocks_apply_safeguard_page_meta( (int) $hub_id );
+}
+
+/**
+ * Return pattern markup for the ManPower hub page.
+ */
+function site_blocks_get_manpower_hub_page_content(): string {
+	$pattern_file = SITE_BLOCKS_DIR . 'patterns/manpower-hub-page.php';
+
+	if ( ! file_exists( $pattern_file ) ) {
+		return '';
+	}
+
+	$pattern = include $pattern_file;
+
+	return is_array( $pattern ) && isset( $pattern['content'] ) ? $pattern['content'] : '';
+}
+
+/**
+ * Create or update ManPower hub page.
+ */
+function site_blocks_create_manpower_pages(): void {
+	$hub_content = site_blocks_get_manpower_hub_page_content();
+
+	if ( '' === $hub_content ) {
+		return;
+	}
+
+	$existing_hub = get_page_by_path( 'manpower' );
+
+	$hub_data = array(
+		'post_title'   => __( 'ManPower', 'site-blocks' ),
+		'post_name'    => 'manpower',
+		'post_content' => $hub_content,
+		'post_status'  => 'publish',
+		'post_type'    => 'page',
+		'post_author'  => 1,
+		'post_parent'  => 0,
+	);
+
+	if ( $existing_hub instanceof WP_Post ) {
+		$hub_data['ID'] = $existing_hub->ID;
+		$hub_id         = wp_update_post( $hub_data, true );
+	} else {
+		$hub_id = wp_insert_post( $hub_data, true );
+	}
+
+	if ( is_wp_error( $hub_id ) || ! $hub_id ) {
+		return;
+	}
+
+	site_blocks_apply_safeguard_page_meta( (int) $hub_id );
+}
+

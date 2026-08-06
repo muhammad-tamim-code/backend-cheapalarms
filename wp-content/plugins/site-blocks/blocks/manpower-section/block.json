@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/manpower-section",
+  "version": "1.0.0",
+  "title": "ManPower Section",
+  "category": "theme",
+  "icon": "layout",
+  "description": "Renders a config-driven section for the current ManPower page.",
+  "keywords": ["manpower", "section", "safeguard"],
+  "textdomain": "site-blocks",
+  "attributes": {
+    "section": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": { "html": false, "align": ["full"], "multiple": true },
+  "render": "file:./render.php"
+}

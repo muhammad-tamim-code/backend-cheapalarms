@@ -174,10 +174,10 @@ function site_blocks_render_ajax_style_hero( array $config ): void {
 
 					<div class="sg-ajax-hero__actions">
 						<div class="sg-hero__ctas sg-ajax-hero__ctas">
-							<a class="sg-btn sg-btn--primary sg-ajax-hero__cta" href="<?php echo esc_url( $primary_url ); ?>">
+							<a class="sg-btn sg-btn--soft-blue sg-ajax-hero__cta" href="<?php echo esc_url( $primary_url ); ?>">
 								<?php echo esc_html( $primary_label ); ?>
 							</a>
-							<a class="sg-btn sg-btn--ghost-dark sg-ajax-hero__cta" href="<?php echo esc_attr( $secondary_url ); ?>">
+							<a class="sg-btn sg-btn--secondary sg-ajax-hero__cta" href="<?php echo esc_attr( $secondary_url ); ?>">
 								<?php echo esc_html( $secondary_label ); ?>
 							</a>
 						</div>

@@ -72,7 +72,7 @@ while ( have_posts() ) :
 						<a class="sg-btn sg-btn--primary" href="<?php echo esc_url( home_url( '/contact/' ) ); ?>">
 							<?php esc_html_e( 'Book a site assessment', 'site-blocks' ); ?>
 						</a>
-						<a class="sg-btn sg-btn--ghost-dark" href="<?php echo esc_url( $hub_url ); ?>">
+						<a class="sg-btn sg-btn--ghost" href="<?php echo esc_url( $hub_url ); ?>">
 							<?php esc_html_e( 'Back to Enterprise Solutions', 'site-blocks' ); ?>
 						</a>
 					</footer>

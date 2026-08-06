@@ -1,6 +1,6 @@
 <?php
 /**
- * Access Control hero block.
+ * Access Control hero — Electronic Security product stage hero.
  *
  * @package Site_Blocks
  */
@@ -11,14 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once SITE_BLOCKS_DIR . 'inc/access-control-media.php';
-require_once SITE_BLOCKS_DIR . 'inc/pillar-hero.php';
+require_once SITE_BLOCKS_DIR . 'inc/safeguard-stage-hero.php';
 
-site_blocks_render_pillar_hero(
+site_blocks_render_stage_hero(
 	array(
-		'id'              => 'sg-access-control-hero-heading',
-		'class'           => 'sg-access-control-hero',
-		'breadcrumb'      => array(
+		'id'          => 'sg-access-control-hero-heading',
+		'class'       => 'sg-access-control-hero',
+		'breadcrumb'  => array(
 			array(
 				'label' => __( 'Home', 'site-blocks' ),
 				'url'   => home_url( '/' ),
@@ -32,31 +31,24 @@ site_blocks_render_pillar_hero(
 				'current' => true,
 			),
 		),
-		'badge'           => __( 'Access Control · Sydney', 'site-blocks' ),
-		'title_before'    => __( 'Replace keys with access you can ', 'site-blocks' ),
-		'title_accent'    => __( 'control', 'site-blocks' ),
-		'title_after'     => __( '.', 'site-blocks' ),
-		'lead'            => __( 'Cards, mobile credentials, PINs and biometrics, designed, installed and supported across Sydney. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
-		'primary_label'   => __( 'Start My Quote', 'site-blocks' ),
-		'primary_url'     => home_url( '/get-an-instant-quote/' ),
-		'secondary_label' => __( 'Help Me Choose', 'site-blocks' ),
-		'secondary_url'   => home_url( '/design-my-solution/' ),
-		'footnote'        => __( 'Licensed installers · Master Licence #000103619 · ASIAL member', 'site-blocks' ),
-		'visual'          => static function (): void {
-			site_blocks_access_control_hero_image();
-		},
-	)
-);
-
-site_blocks_render_trust_strip(
-	array(
-		'items' => array(
-			__( 'Master Licence #000103619', 'site-blocks' ),
-			__( 'ASIAL member', 'site-blocks' ),
-			__( 'Commercial & residential', 'site-blocks' ),
+		'eyebrow'     => __( 'Access Control · Sydney', 'site-blocks' ),
+		'title'       => __( 'Replace keys with access you can control.', 'site-blocks' ),
+		'lead'        => __( 'Cards, mobile credentials, PINs and biometrics, designed, installed and supported across Sydney. Start your quote online, reviewed by our technicians.', 'site-blocks' ),
+		'trust'       => array(
 			array(
-				'html' => '<a href="tel:1300225276">' . esc_html__( '1300 225 276', 'site-blocks' ) . '</a>',
+				'icon'  => 'award',
+				'label' => __( 'Master Licence #000103619', 'site-blocks' ),
+			),
+			array(
+				'icon'  => 'shield',
+				'label' => __( 'ASIAL member', 'site-blocks' ),
+			),
+			array(
+				'icon'  => 'house',
+				'label' => __( 'Commercial & residential', 'site-blocks' ),
 			),
 		),
+		'frame_image' => 'images/access-control/hero.webp',
+		'frame_alt'   => __( 'Access control card reader at a Sydney building entrance', 'site-blocks' ),
 	)
 );

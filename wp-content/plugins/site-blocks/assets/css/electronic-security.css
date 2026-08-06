@@ -1,0 +1,269 @@
+/* Electronic Security silo, layouts on top of access-control.css */
+
+/* -------------------------------------------------------------------------
+   Light product hero — white canvas, brand blue accents (Intercom pattern)
+   ------------------------------------------------------------------------- */
+
+.sg-es-product-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2.5rem, 5vw, 4rem) 1.25rem clamp(2rem, 4vw, 3rem);
+  color: var(--sg-navy);
+  background: #fff;
+}
+
+.sg-es-product-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sg-es-product-hero__copy {
+  max-width: 38rem;
+}
+
+.sg-es-product-hero__eyebrow {
+  margin: 0 0 0.75rem;
+  font-family: var(--sg-font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sg-blue);
+}
+
+.sg-es-product-hero__title {
+  margin: 0 0 1rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(1.875rem, 4.2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--sg-navy);
+}
+
+.sg-es-product-hero__lead {
+  margin: 0 0 1.5rem;
+  max-width: 42ch;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--sg-navy) 62%, #8a96a3);
+}
+
+.sg-es-product-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+/* Soft blue CTA styles live globally in safeguard-home.css */
+
+body.safeguard-electronic-security-page .sg-es-product-hero__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.125rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 0.8125rem;
+  border-color: color-mix(in srgb, var(--sg-navy) 18%, transparent);
+  color: var(--sg-navy);
+  font-weight: 600;
+  font-size: 0.96875rem;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  background: #fff;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__phone:hover,
+body.safeguard-electronic-security-page .sg-es-product-hero__phone:focus-visible {
+  border-color: var(--sg-blue);
+  color: var(--sg-blue);
+  background: #fff;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__phone-icon {
+  display: inline-flex;
+  color: var(--sg-blue);
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__phone-icon .sg-lucide-icon {
+  --sg-icon-size: 1.125rem;
+  width: var(--sg-icon-size);
+  height: var(--sg-icon-size);
+  stroke-width: 1.75;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__features,
+.sg-es-product-hero__features {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: start;
+  justify-items: start;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 0 -2px;
+  padding: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  column-gap: 1.5rem;
+  row-gap: 1.375rem;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__features > li,
+.sg-es-product-hero__features > li {
+  display: flex;
+  align-items: center;
+  gap: 0.6875rem;
+  margin: 0;
+  padding: 0;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__feature-icon,
+.sg-es-product-hero__feature-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sg-blue);
+  box-shadow: none;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__feature-icon .sg-lucide-icon,
+.sg-es-product-hero__feature-icon .sg-lucide-icon {
+  --sg-icon-size: 1.375rem;
+  display: block;
+  width: var(--sg-icon-size);
+  height: var(--sg-icon-size);
+  color: var(--sg-blue);
+  stroke: currentColor;
+  stroke-width: 1.75;
+}
+
+body.safeguard-electronic-security-page .sg-es-product-hero__feature-label,
+.sg-es-product-hero__feature-label {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--sg-navy) 68%, #8a96a3);
+  white-space: nowrap;
+}
+
+.sg-es-product-hero__visual {
+  min-width: 0;
+}
+
+.sg-es-product-hero__figure {
+  margin: 0;
+  background: transparent;
+}
+
+.sg-es-product-hero__img,
+.sg-es-product-hero__figure .sg-cctv-media-placeholder {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1024 / 880;
+  object-fit: contain;
+}
+
+@media (min-width: 480px) {
+  body.safeguard-electronic-security-page .sg-es-product-hero__features,
+  .sg-es-product-hero__features {
+    grid-template-columns: max-content max-content;
+  }
+}
+
+@media (min-width: 960px) {
+  .sg-es-product-hero__inner {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  body.safeguard-electronic-security-page .sg-es-product-hero__features,
+  .sg-es-product-hero__features {
+    column-gap: 1.625rem;
+    row-gap: 1.5rem;
+  }
+}
+
+body.safeguard-electronic-security-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-electronic-security-page .entry-content ul.sg-es-services__grid,
+body.safeguard-electronic-security-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-electronic-security-page .entry-content ul.sg-ac-options__cta-checks,
+body.safeguard-electronic-security-page .entry-content .sg-ac-install__grid,
+body.safeguard-electronic-security-page .entry-content ol.sg-alarm-steps__list {
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-electronic-security-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-electronic-security-page .entry-content ul.sg-es-services__grid,
+body.safeguard-electronic-security-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-electronic-security-page .entry-content .sg-ac-install__grid,
+body.safeguard-electronic-security-page .entry-content ol.sg-alarm-steps__list {
+  margin: 0;
+}
+
+body.safeguard-electronic-security-page .entry-content ul.sg-ac-trust-strip__list > li,
+body.safeguard-electronic-security-page .entry-content ul.sg-es-services__grid > li,
+body.safeguard-electronic-security-page .entry-content ul.sg-hub-services__grid > li,
+body.safeguard-electronic-security-page .entry-content ul.sg-ac-options__cta-checks > li,
+body.safeguard-electronic-security-page .entry-content .sg-ac-install__grid > article,
+body.safeguard-electronic-security-page .entry-content ol.sg-alarm-steps__list > li {
+  margin: 0;
+  list-style: none;
+}
+
+/* Hero placeholder */
+.sg-es-hero-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+}
+
+@media (min-width: 768px) {
+  .sg-es-hero-placeholder {
+    min-height: 100%;
+  }
+}
+
+.sg-es-media-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+}
+
+/* Portrait split — cover fill, no letterbox frame */
+body.safeguard-electronic-security-page .sg-ac-split__visual {
+  aspect-ratio: 3 / 4;
+  align-self: start;
+  background: transparent;
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.safeguard-electronic-security-page .sg-ac-split__visual img,
+body.safeguard-electronic-security-page .sg-ac-split__visual .sg-cctv-media-placeholder {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}

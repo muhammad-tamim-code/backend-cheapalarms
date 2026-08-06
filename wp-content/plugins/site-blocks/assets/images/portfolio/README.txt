@@ -2,7 +2,7 @@ Portfolio / client logo strip (Safeguard homepage)
 
 
 
-Heading copy (per Nafizul): "Brands we have worked with", not "clients" unless you have written permission.
+Heading copy (per Nafizul, Jul 2026): "Clients Portfolio".
 
 
 

@@ -1,34 +1,6 @@
 /* Safeguard contact page — matches site brand tokens */
 
-.sg-contact-hero {
-  padding-top: 1.5rem;
-  padding-bottom: 1.25rem;
-}
-
-.sg-contact-hero .sg-pillar-hero__breadcrumb {
-  margin-bottom: 0.75rem;
-}
-
-.sg-contact-hero__intro {
-  margin-bottom: 0.75rem;
-}
-
-.sg-contact-hero__phone {
-  margin: 0;
-  font-family: var(--sg-font-head);
-  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.sg-contact-hero__phone-link {
-  color: var(--sg-blue);
-  text-decoration: none;
-}
-
-.sg-contact-hero__phone-link:hover {
-  color: var(--sg-blue-hover);
-}
+/* Contact hero uses V5 editorial (.sg-hv--editorial); keep page body styles below. */
 
 .sg-contact-body {
   background: var(--sg-blue-wash);

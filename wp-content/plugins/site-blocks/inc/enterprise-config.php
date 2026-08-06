@@ -333,41 +333,79 @@ function site_blocks_enterprise_challenges_config(): array {
 }
 
 /**
- * Hub solutions grid cards (six services).
+ * Hub solutions grid cards for the simple text grid.
  *
  * @return array<int, array{title: string, desc: string, url: string}>
  */
 function site_blocks_enterprise_hub_solutions(): array {
+	$items = site_blocks_enterprise_hub_photo_solutions();
+	$out   = array();
+
+	foreach ( $items as $item ) {
+		$out[] = array(
+			'title' => (string) $item['title'],
+			'desc'  => (string) $item['desc'],
+			'url'   => (string) $item['url'],
+		);
+	}
+
+	return $out;
+}
+
+/**
+ * Hub solutions cards for the photo-options template.
+ *
+ * @return array<int, array{title: string, desc: string, url: string, image: string, alt: string, icon: string}>
+ */
+function site_blocks_enterprise_hub_photo_solutions(): array {
 	return array(
 		array(
 			'title' => __( 'CCTV & Video Surveillance', 'site-blocks' ),
 			'desc'  => __( 'Business-grade cameras with secure remote viewing and analytics-ready footage across every entrance, dock and perimeter.', 'site-blocks' ),
 			'url'   => home_url( '/cctv-security-cameras/' ),
+			'image' => 'images/cctv/commercial.webp',
+			'alt'   => __( 'Commercial CCTV covering entrances and perimeters', 'site-blocks' ),
+			'icon'  => 'cctv',
 		),
 		array(
 			'title' => __( 'Access Control', 'site-blocks' ),
 			'desc'  => __( 'Card, mobile and biometric entry with lift control and full audit trails for offices, factories and multi-tenant sites.', 'site-blocks' ),
 			'url'   => home_url( '/access-control/' ),
+			'image' => 'images/access-control/hero.webp',
+			'alt'   => __( 'Enterprise access control at a multi-tenant site', 'site-blocks' ),
+			'icon'  => 'lock',
 		),
 		array(
 			'title' => __( 'Alarm Systems', 'site-blocks' ),
 			'desc'  => __( 'Monitored intrusion detection (wired, wireless or hybrid) matched to your site\'s risk profile.', 'site-blocks' ),
 			'url'   => home_url( '/alarm-systems/' ),
+			'image' => 'images/alarm/alarm-hero.webp',
+			'alt'   => __( 'Monitored commercial alarm system installation', 'site-blocks' ),
+			'icon'  => 'bell-ring',
 		),
 		array(
 			'title' => __( '24/7 Monitoring', 'site-blocks' ),
 			'desc'  => __( 'Back-to-base and virtual-patrol response with video verification and clear escalation, from an Australian centre.', 'site-blocks' ),
 			'url'   => home_url( '/monitoring/' ),
+			'image' => 'images/monitoring/hub-hero.webp',
+			'alt'   => __( 'Australian monitoring centre providing 24/7 response', 'site-blocks' ),
+			'icon'  => 'headset',
 		),
 		array(
 			'title' => __( 'Physical Security & Guards', 'site-blocks' ),
 			'desc'  => __( 'Licensed static guards and mobile patrols for staffed deterrence and rapid on-site response.', 'site-blocks' ),
 			'url'   => home_url( '/physical-security/' ),
+			'image' => 'images/physical-security/hub-hero.webp',
+			'alt'   => __( 'Licensed security officers protecting a commercial site', 'site-blocks' ),
+			'icon'  => 'user',
 		),
 		array(
 			'title' => __( 'Safeguard Solutions Platform', 'site-blocks' ),
 			'desc'  => __( 'Cloud video, AI analytics and multi-site management in one console: the software layer that unifies your sites.', 'site-blocks' ),
 			'url'   => home_url( '/safeguard-solutions/' ),
+			'image' => 'images/enterprise/ss-cloud-video.webp',
+			'alt'   => __( 'Safeguard Solutions cloud video and multi-site console', 'site-blocks' ),
+			'icon'  => 'monitor',
 		),
 	);
 }

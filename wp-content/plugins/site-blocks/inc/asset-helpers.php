@@ -37,13 +37,22 @@ function site_blocks_resolve_asset_path( string $relative_path ): string {
  * Build a public URL for a file under site-blocks/assets/.
  *
  * Raster paths (.png, .jpg, .jpeg) automatically use a sibling .webp file when present.
+ * Image paths under images/ prefer the Media Library URL after import.
  *
  * @param string $relative_path Path relative to assets/, e.g. images/hero/house.png.
  */
 function site_blocks_asset_url( string $relative_path ): string {
 	$relative_path = site_blocks_resolve_asset_path( $relative_path );
-	$segments      = explode( '/', $relative_path );
-	$encoded       = implode( '/', array_map( 'rawurlencode', $segments ) );
+
+	if ( 0 === strpos( $relative_path, 'images/' ) && function_exists( 'site_blocks_media_library_url' ) ) {
+		$ml = site_blocks_media_library_url( $relative_path );
+		if ( '' !== $ml ) {
+			return esc_url( $ml );
+		}
+	}
+
+	$segments = explode( '/', $relative_path );
+	$encoded  = implode( '/', array_map( 'rawurlencode', $segments ) );
 
 	return esc_url( SITE_BLOCKS_URL . 'assets/' . $encoded );
 }

@@ -140,6 +140,8 @@ class SetupBootstrapController implements ControllerInterface
             'stripe_publishable_key' => sanitize_text_field((string) ($body['stripe_publishable_key'] ?? '')),
             'stripe_secret_key'      => sanitize_text_field((string) ($body['stripe_secret_key'] ?? '')),
             'stripe_webhook_secret'  => sanitize_text_field((string) ($body['stripe_webhook_secret'] ?? '')),
+            'deepseek_api_key'       => sanitize_text_field((string) ($body['deepseek_api_key'] ?? '')),
+            'deepseek_model'         => sanitize_text_field((string) ($body['deepseek_model'] ?? 'deepseek-chat')),
         ];
     }
 

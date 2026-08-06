@@ -20,10 +20,12 @@ function site_blocks_get_safeguard_footer_services(): array {
 	return array(
 		'/enterprise-solutions/'  => __( 'Enterprise Solutions', 'site-blocks' ),
 		'/safeguard-solutions/'   => __( 'Safeguard Solutions', 'site-blocks' ),
+		'/electronic-security/'   => __( 'Electronic Security', 'site-blocks' ),
 		'/alarm-systems/'         => __( 'Alarm Systems', 'site-blocks' ),
 		'/cctv-security-cameras/' => __( 'CCTV & Security Cameras', 'site-blocks' ),
 		'/access-control/'        => __( 'Access Control', 'site-blocks' ),
 		'/physical-security/'     => __( 'Physical Security', 'site-blocks' ),
+		'/manpower/'              => __( 'ManPower', 'site-blocks' ),
 		'/intercom-systems/'      => __( 'Intercoms', 'site-blocks' ),
 		'/monitoring/'            => __( 'Alarm Monitoring', 'site-blocks' ),
 	);
@@ -117,7 +119,7 @@ function site_blocks_render_safeguard_mobile_bar(): void {
 	?>
 	<div class="sg-mobile-bar" id="sg-mobile-bar" aria-hidden="true">
 		<a class="sg-btn sg-btn--primary" href="<?php echo esc_url( $contact['quote'] ); ?>"><?php esc_html_e( 'Instant Quote', 'site-blocks' ); ?></a>
-		<a class="sg-btn sg-btn--secondary" href="<?php echo esc_attr( $contact['phone_href'] ); ?>"><?php esc_html_e( 'Call', 'site-blocks' ); ?></a>
+		<a class="sg-btn sg-btn--orange" href="<?php echo esc_attr( $contact['phone_href'] ); ?>"><?php esc_html_e( 'Call', 'site-blocks' ); ?></a>
 	</div>
 	<?php
 }

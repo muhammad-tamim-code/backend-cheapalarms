@@ -30,6 +30,7 @@ class ChatLeadService
         'alarms',
         'intercom',
         'monitoring',
+        'agent_handoff',
     ];
 
     private const ALLOWED_PROPERTY_TYPES = [
@@ -68,10 +69,17 @@ class ChatLeadService
         $phoneRaw  = sanitize_text_field((string) ($body['phone'] ?? ''));
         $email     = sanitize_email((string) ($body['email'] ?? ''));
         $suburb    = sanitize_text_field((string) ($body['suburb'] ?? ''));
+        $address   = sanitize_text_field((string) ($body['address'] ?? ''));
         $intent    = sanitize_text_field((string) ($body['intent'] ?? 'quote'));
         $property  = sanitize_text_field((string) ($body['propertyType'] ?? ''));
         $pagePath  = sanitize_text_field((string) ($body['pagePath'] ?? ''));
         $pageTitle = sanitize_text_field((string) ($body['pageTitle'] ?? ''));
+
+        if (!in_array($intent, self::ALLOWED_INTENTS, true)) {
+            $intent = 'quote';
+        }
+
+        $isHandoff = $intent === 'agent_handoff';
 
         if ($firstName === '' || $lastName === '' || $phoneRaw === '') {
             return new WP_Error(
@@ -81,17 +89,47 @@ class ChatLeadService
             );
         }
 
-        $phone = AustralianPhone::toE164($phoneRaw);
-        if ($phone === null) {
-            return new WP_Error(
-                'invalid_phone',
-                __('Please enter a valid Australian phone number (e.g. 04XX XXX XXX).', 'cheapalarms'),
-                ['status' => 400]
-            );
-        }
+        if ($isHandoff) {
+            if ($email === '') {
+                return new WP_Error(
+                    'missing_email',
+                    __('Please enter your email address so our team can follow up.', 'cheapalarms'),
+                    ['status' => 400]
+                );
+            }
+            if ($address === '' && $suburb === '') {
+                return new WP_Error(
+                    'missing_address',
+                    __('Please enter your address or suburb.', 'cheapalarms'),
+                    ['status' => 400]
+                );
+            }
+            if ($address === '') {
+                $address = $suburb;
+            }
+            if ($suburb === '') {
+                $suburb = $address;
+            }
 
-        if (!in_array($intent, self::ALLOWED_INTENTS, true)) {
-            $intent = 'quote';
+            // Temporary: any number with more than 9 digits (no AU format check).
+            $digitsOnly = preg_replace('/\D+/', '', $phoneRaw) ?? '';
+            if (strlen($digitsOnly) <= 9) {
+                return new WP_Error(
+                    'invalid_phone',
+                    __('Please enter a phone number with more than 9 digits.', 'cheapalarms'),
+                    ['status' => 400]
+                );
+            }
+            $phone = $digitsOnly;
+        } else {
+            $phone = AustralianPhone::toE164($phoneRaw);
+            if ($phone === null) {
+                return new WP_Error(
+                    'invalid_phone',
+                    __('Please enter a valid Australian phone number (e.g. 04XX XXX XXX).', 'cheapalarms'),
+                    ['status' => 400]
+                );
+            }
         }
 
         if ($property !== '' && !in_array($property, self::ALLOWED_PROPERTY_TYPES, true)) {
@@ -124,6 +162,9 @@ class ChatLeadService
         }
 
         $tags = ['website_chat', 'chat_lead', 'chat_intent_' . $intent];
+        if ($isHandoff) {
+            $tags[] = 'chat_agent_handoff';
+        }
         foreach ($tags as $tag) {
             $tagResult = $this->signalService->mergePortalTag($contactId, $locationId, $tag);
             if (is_wp_error($tagResult)) {
@@ -142,7 +183,8 @@ class ChatLeadService
             $suburb,
             $pagePath,
             $pageTitle,
-            $transcript
+            $transcript,
+            $address
         );
 
         $noteResult = $this->signalService->postContactTimelineNote($contactId, $locationId, $noteBody);
@@ -159,10 +201,24 @@ class ChatLeadService
             'suburb'    => $suburb,
         ]);
 
+        $message = $isHandoff
+            ? __('Thanks, we\'ve got your details. Connecting you with our team now…', 'cheapalarms')
+            : __('Thanks, our team will call you shortly.', 'cheapalarms');
+
         return [
             'ok'        => true,
             'contactId' => $contactId,
-            'message'   => __('Thanks, our team will call you shortly.', 'cheapalarms'),
+            'intent'    => $intent,
+            'handoff'   => $isHandoff,
+            'contact'   => [
+                'firstName' => $firstName,
+                'lastName'  => $lastName,
+                'name'      => trim($firstName . ' ' . $lastName),
+                'email'     => $email,
+                'phone'     => $phone,
+                'address'   => $address !== '' ? $address : $suburb,
+            ],
+            'message'   => $message,
         ];
     }
 
@@ -337,7 +393,8 @@ class ChatLeadService
         string $suburb,
         string $pagePath,
         string $pageTitle,
-        array $transcript
+        array $transcript,
+        string $address = ''
     ): string {
         $lines   = [];
         $lines[] = 'Website chat lead, ' . current_time('Y-m-d H:i');
@@ -347,7 +404,11 @@ class ChatLeadService
             $lines[] = 'Property: ' . $this->propertyLabel($property);
         }
 
-        if ($suburb !== '') {
+        if ($address !== '') {
+            $lines[] = 'Address: ' . $address;
+        }
+
+        if ($suburb !== '' && $suburb !== $address) {
             $lines[] = 'Suburb: ' . $suburb;
         }
 
@@ -381,6 +442,7 @@ class ChatLeadService
             'alarms'         => 'Alarm systems',
             'intercom'       => 'Intercom',
             'monitoring'     => 'Monitoring',
+            'agent_handoff'  => 'Live agent handoff',
             default          => 'General enquiry',
         };
     }

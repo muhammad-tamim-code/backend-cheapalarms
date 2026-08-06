@@ -5,6 +5,7 @@ namespace CheapAlarms\Plugin\REST\Controllers;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\Services\AuthorizationService;
 use CheapAlarms\Plugin\Services\Container;
+use CheapAlarms\Plugin\Services\CustomerService;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -18,6 +19,7 @@ use function sanitize_text_field;
 use function wp_create_user;
 use function wp_delete_user;
 use function wp_generate_password;
+use function __;
 
 class RolesController implements ControllerInterface
 {
@@ -205,17 +207,26 @@ class RolesController implements ControllerInterface
 
         $assign = $this->authorization->assignProductRole($target, $roleKey, $actor, $allowedLocationIds);
         if (is_wp_error($assign)) {
-            if (!function_exists('wp_delete_user')) {
-                require_once ABSPATH . 'wp-admin/includes/user.php';
-            }
-            wp_delete_user($userId);
+            $this->deleteCreatedUser((int) $userId);
             return $this->errorResponse($assign);
+        }
+
+        // Refresh user after role assignment so invite email uses correct access path.
+        $target = get_user_by('id', $userId) ?: $target;
+
+        /** @var CustomerService $customerService */
+        $customerService = $this->container->get(CustomerService::class);
+        $invite = $customerService->sendAccountInviteEmail($target);
+        if (is_wp_error($invite)) {
+            $this->deleteCreatedUser((int) $userId);
+            return $this->errorResponse($invite);
         }
 
         $resolved = $this->authorization->resolveForUser($target);
 
         $response = new WP_REST_Response([
             'ok'   => true,
+            'inviteSent' => (bool) ($invite['inviteSent'] ?? false),
             'user' => [
                 'id'                   => $target->ID,
                 'email'                => $target->user_email,
@@ -229,6 +240,17 @@ class RolesController implements ControllerInterface
         $this->addSecurityHeaders($response);
 
         return $response;
+    }
+
+    private function deleteCreatedUser(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        if (!function_exists('wp_delete_user')) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+        }
+        wp_delete_user($userId);
     }
 
     private function requireAuthenticated(): bool|WP_Error

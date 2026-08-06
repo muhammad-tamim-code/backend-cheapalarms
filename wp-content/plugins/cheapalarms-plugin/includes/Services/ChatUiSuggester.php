@@ -49,8 +49,9 @@ class ChatUiSuggester
         $leadDone    = !empty($clientState['leadSubmitted']);
         $quoteDone   = !empty($clientState['quoteSubmitted']);
         $quoteReady  = !empty($context['quoteSession']['resolveToken']);
+        $handoffOn   = !empty($clientState['handoffActive']);
 
-        if ($quoteDone || $quoteReady) {
+        if ($quoteDone || $quoteReady || $handoffOn) {
             return null;
         }
 
@@ -114,7 +115,25 @@ class ChatUiSuggester
 
         if (
 
-            $this->matches($haystack, '/\b(call me back|callback|call back|ring me|speak to|talk to someone|contact me|my details|phone number|get a quote|request a quote|leave my details)\b/u')
+            $this->matches($haystack, '/\b(speak to (a )?(real |human |live )?person|talk to (a )?(real |human |live )?(person|agent|someone|human)|real (person|human|agent)|live (agent|chat|person)|human agent)\b/u')
+
+        ) {
+
+            return [
+
+                'type'   => 'agent_handoff',
+
+                'intent' => 'agent_handoff',
+
+            ];
+
+        }
+
+
+
+        if (
+
+            $this->matches($haystack, '/\b(call me back|callback|call back|ring me|contact me|my details|phone number|get a quote|request a quote|leave my details)\b/u')
 
         ) {
 

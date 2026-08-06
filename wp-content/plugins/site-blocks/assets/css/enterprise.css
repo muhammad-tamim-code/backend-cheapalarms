@@ -18,17 +18,28 @@ body.safeguard-enterprise-page .entry-content ul.sg-hub-services__grid,
 body.safeguard-enterprise-page .entry-content ul.sg-enterprise-challenges__grid,
 body.safeguard-enterprise-page .entry-content ul.sg-enterprise-promo__list,
 body.safeguard-enterprise-page .entry-content ul.sg-enterprise-capabilities__list,
+body.safeguard-enterprise-page .entry-content ul.sg-ac-options__cta-checks,
+body.safeguard-enterprise-page .entry-content .sg-enterprise-insights__grid,
+body.safeguard-enterprise-page .entry-content .sg-enterprise-spokes__grid {
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-enterprise-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-enterprise-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-enterprise-page .entry-content ul.sg-enterprise-challenges__grid,
+body.safeguard-enterprise-page .entry-content ul.sg-enterprise-promo__list,
+body.safeguard-enterprise-page .entry-content ul.sg-enterprise-capabilities__list,
 body.safeguard-enterprise-page .entry-content .sg-enterprise-insights__grid,
 body.safeguard-enterprise-page .entry-content .sg-enterprise-spokes__grid {
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 body.safeguard-enterprise-page .entry-content ul.sg-hub-services__grid > li,
 body.safeguard-enterprise-page .entry-content .sg-enterprise-challenges__grid > article,
 body.safeguard-enterprise-page .entry-content ul.sg-enterprise-promo__list > li,
 body.safeguard-enterprise-page .entry-content ul.sg-enterprise-capabilities__list > li,
+body.safeguard-enterprise-page .entry-content ul.sg-ac-options__cta-checks > li,
 body.safeguard-enterprise-page .entry-content .sg-enterprise-insights__grid > article,
 body.safeguard-enterprise-page .entry-content .sg-enterprise-spokes__grid > article {
   margin: 0;

@@ -27,6 +27,9 @@ class Config
         'stripe_publishable_key' => '',
         'stripe_secret_key'      => '',
         'stripe_webhook_secret'  => '',
+        'payments_enabled'       => true,
+        'xero_enabled'           => true,
+        'xero_direct_invoicing'  => false,
         'brand_name'             => 'CheapAlarms',
         'brand_tagline'          => 'Your Security Partner',
         'brand_primary_color'    => '#171717',
@@ -40,10 +43,20 @@ class Config
         'estimate_number_prefix' => 'EST-',
         'deepseek_api_key'       => '',
         'deepseek_model'         => 'deepseek-chat',
+        'telegram_bot_token'     => '',
+        'telegram_staff_chat_id' => '',
+        'telegram_webhook_secret'=> '',
         'twilio_account_sid'     => '',
         'twilio_auth_token'      => '',
         'twilio_from_number'     => '',
         'otp_demo_mode'          => false,
+        'wasabi_access_key'      => '',
+        'wasabi_secret_key'      => '',
+        'wasabi_bucket'          => '',
+        'wasabi_region'          => 'ap-southeast-2',
+        'wasabi_endpoint'        => 'https://s3.ap-southeast-2.wasabisys.com',
+        'wasabi_prefix'          => 'estimate-photos',
+        'wasabi_signed_url_ttl'  => 3600,
     ];
 
     private array $overrides = [];
@@ -334,6 +347,83 @@ class Config
             $mb = (int) $this->getEnv('CA_UPLOAD_MAX_MB', $this->defaults['upload_max_mb']);
         }
         return $mb * 1024 * 1024;
+    }
+
+    public function isWasabiConfigured(): bool
+    {
+        return $this->getWasabiAccessKey() !== ''
+            && $this->getWasabiSecretKey() !== ''
+            && $this->getWasabiBucket() !== '';
+    }
+
+    public function getWasabiAccessKey(): string
+    {
+        return (string) ($this->fromOverrides('wasabi_access_key')
+            ?: $this->getEnv('CA_WASABI_ACCESS_KEY', $this->defaults['wasabi_access_key']));
+    }
+
+    public function getWasabiSecretKey(): string
+    {
+        return (string) ($this->fromOverrides('wasabi_secret_key')
+            ?: $this->getEnv('CA_WASABI_SECRET_KEY', $this->defaults['wasabi_secret_key']));
+    }
+
+    public function getWasabiBucket(): string
+    {
+        return sanitize_text_field((string) ($this->fromOverrides('wasabi_bucket')
+            ?: $this->getEnv('CA_WASABI_BUCKET', $this->defaults['wasabi_bucket'])));
+    }
+
+    public function getWasabiRegion(): string
+    {
+        $region = sanitize_text_field((string) ($this->fromOverrides('wasabi_region')
+            ?: $this->getEnv('CA_WASABI_REGION', $this->defaults['wasabi_region'])));
+
+        return $region !== '' ? $region : 'ap-southeast-2';
+    }
+
+    /**
+     * Full endpoint URL (with or without scheme). Used by WasabiS3Client.
+     */
+    public function getWasabiEndpoint(): string
+    {
+        $endpoint = trim((string) ($this->fromOverrides('wasabi_endpoint')
+            ?: $this->getEnv('CA_WASABI_ENDPOINT', $this->defaults['wasabi_endpoint'])));
+
+        if ($endpoint === '') {
+            $endpoint = 'https://s3.' . $this->getWasabiRegion() . '.wasabisys.com';
+        }
+
+        if (!preg_match('#^https?://#i', $endpoint)) {
+            $endpoint = 'https://' . ltrim($endpoint, '/');
+        }
+
+        return rtrim($endpoint, '/');
+    }
+
+    public function getWasabiEndpointHost(): string
+    {
+        $host = parse_url($this->getWasabiEndpoint(), PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? $host : 's3.ap-southeast-2.wasabisys.com';
+    }
+
+    public function getWasabiPrefix(): string
+    {
+        $prefix = sanitize_text_field((string) ($this->fromOverrides('wasabi_prefix')
+            ?: $this->getEnv('CA_WASABI_PREFIX', $this->defaults['wasabi_prefix'])));
+
+        return $prefix !== '' ? $prefix : 'estimate-photos';
+    }
+
+    public function getWasabiSignedUrlTtl(): int
+    {
+        $ttl = $this->fromOverrides('wasabi_signed_url_ttl');
+        if ($ttl === null || $ttl === '') {
+            $ttl = $this->getEnv('CA_WASABI_SIGNED_URL_TTL', $this->defaults['wasabi_signed_url_ttl']);
+        }
+
+        return max(60, (int) $ttl);
     }
 
     /**
@@ -629,6 +719,41 @@ class Config
         return $this->getDeepSeekApiKey() !== '';
     }
 
+    public function getTelegramBotToken(): string
+    {
+        $override = $this->fromOverrides('telegram_bot_token');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TELEGRAM_BOT_TOKEN', ''));
+    }
+
+    public function getTelegramStaffChatId(): string
+    {
+        $override = $this->fromOverrides('telegram_staff_chat_id');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TELEGRAM_STAFF_CHAT_ID', ''));
+    }
+
+    public function getTelegramWebhookSecret(): string
+    {
+        $override = $this->fromOverrides('telegram_webhook_secret');
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        return trim((string) $this->getEnv('CA_TELEGRAM_WEBHOOK_SECRET', ''));
+    }
+
+    public function isTelegramConfigured(): bool
+    {
+        return $this->getTelegramBotToken() !== '' && $this->getTelegramStaffChatId() !== '';
+    }
+
     public function getTwilioAccountSid(): string
     {
         $override = $this->fromOverrides('twilio_account_sid');
@@ -797,14 +922,13 @@ class Config
      */
     public function isXeroDirectInvoicingEnabled(): bool
     {
+        if (!$this->isXeroIntegrationsEnabled()) {
+            return false;
+        }
+
         $override = $this->fromOverrides('xero_direct_invoicing');
         if ($override !== null && $override !== '') {
-            if (is_bool($override)) {
-                return $override;
-            }
-            $s = strtolower(trim((string) $override));
-
-            return in_array($s, ['1', 'true', 'yes', 'on'], true);
+            return $this->toConfigBool($override);
         }
 
         $env = strtolower(trim((string) $this->getEnv('CA_XERO_DIRECT_INVOICING', '')));
@@ -815,6 +939,56 @@ class Config
         $opt = get_option('ca_xero_direct_invoicing', '0');
 
         return $opt === '1' || $opt === 1 || $opt === true;
+    }
+
+    /**
+     * Portal card payments (Stripe). Off for invoice-only launches.
+     */
+    public function isPaymentsEnabled(): bool
+    {
+        $override = $this->fromOverrides('payments_enabled');
+        if ($override !== null && $override !== '') {
+            return $this->toConfigBool($override);
+        }
+
+        $env = strtolower(trim((string) $this->getEnv('CA_PAYMENTS_ENABLED', '')));
+        if ($env !== '') {
+            return $this->toConfigBool($env);
+        }
+
+        return $this->getStripeSecretKey() !== '';
+    }
+
+    /**
+     * Xero OAuth + invoice/payment sync. Off when Xero is not used for this launch.
+     */
+    public function isXeroIntegrationsEnabled(): bool
+    {
+        $override = $this->fromOverrides('xero_enabled');
+        if ($override !== null && $override !== '') {
+            return $this->toConfigBool($override);
+        }
+
+        $env = strtolower(trim((string) $this->getEnv('CA_XERO_ENABLED', '')));
+        if ($env !== '') {
+            return $this->toConfigBool($env);
+        }
+
+        return $this->getXeroClientId() !== '' && $this->getXeroClientSecret() !== '';
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function toConfigBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $s = strtolower(trim((string) $value));
+
+        return in_array($s, ['1', 'true', 'yes', 'on'], true);
     }
 
     /**

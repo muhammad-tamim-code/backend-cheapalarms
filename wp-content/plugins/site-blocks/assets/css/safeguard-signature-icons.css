@@ -1,0 +1,244 @@
+/**
+ * Safeguard signature icon pack
+ * Navy circle (#0C2D44 / --sg-navy) + white Lucide line glyph.
+ *
+ * Use on decorative / feature icons. Do NOT apply to:
+ * buttons, header chrome, chat UI, accordion chevrons, inline arrows.
+ */
+
+:root {
+  --sg-sig-icon-bg: var(--sg-navy, #0c2d44);
+  --sg-sig-icon-fg: #ffffff;
+  --sg-sig-icon-size: 2.75rem;
+  --sg-sig-icon-glyph: 1.35rem;
+  --sg-sig-icon-size-sm: 2rem;
+  --sg-sig-icon-glyph-sm: 1rem;
+  --sg-sig-icon-size-lg: 3.25rem;
+  --sg-sig-icon-glyph-lg: 1.5rem;
+}
+
+/* ── Shared decorative icon slots ── */
+.sg-alarm-service-card__icon,
+.sg-alarm-why__icon,
+.sg-alarm-step-card__icon,
+.sg-cctv-icon,
+.sg-cctv-bento__icon,
+.sg-cctv-layered__card-icon,
+.sg-ajax-icon-card__icon,
+.sg-ajax-process__icon,
+.sg-ajax-hero__trust-icon,
+.sg-ajax-hero__caption-icon,
+.sg-ajax-trust__icon,
+.sg-related-services__icon,
+.sg-scenario-grid__icon,
+.sg-monitoring-package__icon,
+.sg-service-card__icon,
+.sg-funnel-card__icon,
+.sg-benefit-card__icon,
+.sg-benefit-trust-card__icon,
+.sg-team-card__icon,
+.sg-design-card__icon,
+.sg-step-card__icon,
+.sg-enterprise-trust__icon,
+.sg-ac-options__icon,
+.sg-ac-options__cta-icon,
+.sg-contact-detail__icon,
+.sg-hero__feature-icon,
+.sg-home-hero__shield-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--sg-sig-icon-size) !important;
+  height: var(--sg-sig-icon-size) !important;
+  min-width: var(--sg-sig-icon-size);
+  min-height: var(--sg-sig-icon-size);
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: var(--sg-sig-icon-bg) !important;
+  color: var(--sg-sig-icon-fg) !important;
+  box-shadow: var(--sg-shadow, rgba(0, 0, 0, 0.08) 0px 4px 12px);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Centered slots keep auto horizontal margin where used */
+.sg-service-card__icon,
+.sg-benefit-card__icon,
+.sg-design-card__icon,
+.sg-step-card__icon,
+.sg-alarm-step-card__icon,
+.sg-alarm-why__icon {
+  margin-inline: auto;
+}
+
+.sg-related-services__icon,
+.sg-scenario-grid__icon,
+.sg-ajax-icon-card__icon,
+.sg-monitoring-package__icon {
+  margin-bottom: 0.75rem;
+}
+
+/* Glyphs inside signature circles */
+.sg-alarm-service-card__icon .sg-lucide-icon,
+.sg-alarm-why__icon .sg-lucide-icon,
+.sg-alarm-step-card__icon .sg-lucide-icon,
+.sg-cctv-icon .sg-lucide-icon,
+.sg-cctv-bento__icon .sg-lucide-icon,
+.sg-cctv-layered__card-icon .sg-lucide-icon,
+.sg-ajax-icon-card__icon .sg-lucide-icon,
+.sg-ajax-process__icon .sg-lucide-icon,
+.sg-ajax-hero__trust-icon .sg-lucide-icon,
+.sg-ajax-hero__caption-icon .sg-lucide-icon,
+.sg-ajax-trust__icon .sg-lucide-icon,
+.sg-related-services__icon .sg-lucide-icon,
+.sg-scenario-grid__icon .sg-lucide-icon,
+.sg-monitoring-package__icon .sg-lucide-icon,
+.sg-service-card__icon .sg-lucide-icon,
+.sg-funnel-card__icon .sg-lucide-icon,
+.sg-benefit-card__icon .sg-lucide-icon,
+.sg-benefit-trust-card__icon .sg-lucide-icon,
+.sg-team-card__icon .sg-lucide-icon,
+.sg-design-card__icon .sg-lucide-icon,
+.sg-step-card__icon .sg-lucide-icon,
+.sg-step-card__icon svg,
+.sg-enterprise-trust__icon .sg-lucide-icon,
+.sg-ac-options__icon .sg-lucide-icon,
+.sg-ac-options__cta-icon .sg-lucide-icon,
+.sg-contact-detail__icon .sg-lucide-icon,
+.sg-hero__feature-icon .sg-lucide-icon,
+.sg-hero__feature-icon svg,
+.sg-home-hero__shield-icon,
+.sg-alarm-service-card__icon svg,
+.sg-alarm-why__icon svg,
+.sg-funnel-card__icon svg,
+.sg-benefit-card__icon svg,
+.sg-benefit-trust-card__icon svg,
+.sg-team-card__icon svg,
+.sg-service-card__icon svg,
+.sg-design-card__icon svg,
+.sg-ajax-trust__icon svg {
+  display: block !important;
+  width: var(--sg-sig-icon-glyph) !important;
+  height: var(--sg-sig-icon-glyph) !important;
+  max-width: var(--sg-sig-icon-glyph);
+  max-height: var(--sg-sig-icon-glyph);
+  color: var(--sg-sig-icon-fg) !important;
+  stroke: var(--sg-sig-icon-fg) !important;
+  fill: none;
+}
+
+/* Raster icons (legacy PNG) → white on navy */
+.sg-related-services__icon-img,
+.sg-scenario-grid__icon-img,
+.sg-ajax-icon-card__icon .sg-ajax-hero__icon-img,
+.sg-ajax-process__icon .sg-ajax-hero__icon-img,
+.sg-cctv-icon__img,
+.sg-alarm-service-card__icon img,
+.sg-alarm-why__icon img,
+.sg-alarm-step-card__icon img {
+  display: block !important;
+  width: var(--sg-sig-icon-glyph) !important;
+  height: var(--sg-sig-icon-glyph) !important;
+  max-width: var(--sg-sig-icon-glyph);
+  max-height: var(--sg-sig-icon-glyph);
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+/* Placeholders match circle size */
+.sg-related-services__icon-placeholder,
+.sg-scenario-grid__icon-placeholder,
+.sg-ajax-hero__icon-placeholder {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 50%;
+}
+
+/* Small signature (inline / compact rows) */
+.sg-contact-detail__icon,
+.sg-hero__feature-icon,
+.sg-team-card__icon {
+  width: var(--sg-sig-icon-size-sm) !important;
+  height: var(--sg-sig-icon-size-sm) !important;
+  min-width: var(--sg-sig-icon-size-sm);
+  min-height: var(--sg-sig-icon-size-sm);
+}
+
+.sg-contact-detail__icon .sg-lucide-icon,
+.sg-hero__feature-icon .sg-lucide-icon,
+.sg-hero__feature-icon svg,
+.sg-team-card__icon .sg-lucide-icon,
+.sg-team-card__icon svg {
+  width: var(--sg-sig-icon-glyph-sm) !important;
+  height: var(--sg-sig-icon-glyph-sm) !important;
+}
+
+/* Large signature (bento / related / scenario) */
+.sg-related-services__icon,
+.sg-scenario-grid__icon,
+.sg-ajax-icon-card__icon,
+.sg-ajax-process__icon,
+.sg-alarm-why__icon,
+.sg-monitoring-package__icon {
+  width: var(--sg-sig-icon-size-lg) !important;
+  height: var(--sg-sig-icon-size-lg) !important;
+  min-width: var(--sg-sig-icon-size-lg);
+  min-height: var(--sg-sig-icon-size-lg);
+}
+
+.sg-related-services__icon .sg-lucide-icon,
+.sg-scenario-grid__icon .sg-lucide-icon,
+.sg-ajax-icon-card__icon .sg-lucide-icon,
+.sg-ajax-process__icon .sg-lucide-icon,
+.sg-alarm-why__icon .sg-lucide-icon,
+.sg-monitoring-package__icon .sg-lucide-icon,
+.sg-related-services__icon-img,
+.sg-scenario-grid__icon-img,
+.sg-ajax-icon-card__icon .sg-ajax-hero__icon-img,
+.sg-ajax-process__icon .sg-ajax-hero__icon-img {
+  width: var(--sg-sig-icon-glyph-lg) !important;
+  height: var(--sg-sig-icon-glyph-lg) !important;
+}
+
+/* ── Exclusions: UI chrome keeps currentColor ── */
+.sg-btn .sg-lucide-icon,
+.sg-btn__icon.sg-lucide-icon,
+.sg-header__phone .sg-lucide-icon,
+.sg-related-services__arrow .sg-lucide-icon,
+.sg-ac-options__cta-chevron .sg-lucide-icon,
+.sg-value-faq__chevron,
+.sg-accordion__chevron,
+.sg-process-flow__arrow-btn .sg-lucide-icon,
+.sg-chat .sg-lucide-icon {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  color: currentColor !important;
+  stroke: currentColor !important;
+  filter: none !important;
+}
+
+.sg-btn .sg-lucide-icon,
+.sg-btn__icon.sg-lucide-icon,
+.sg-header__phone .sg-lucide-icon,
+.sg-related-services__arrow .sg-lucide-icon {
+  width: var(--sg-icon-size-sm, 1.125rem) !important;
+  height: var(--sg-icon-size-sm, 1.125rem) !important;
+}
+
+/* Portal success checks stay filled blue (not signature circles) */
+.sg-portal-band__check,
+.sg-lucide-icon--filled-check,
+.sg-lucide-icon--success {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}

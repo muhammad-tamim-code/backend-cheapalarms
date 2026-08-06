@@ -143,19 +143,32 @@ function site_blocks_enterprise_render_challenges(): void {
 }
 
 /**
- * Hub solutions cards grid.
+ * Hub solutions cards grid (photo-options template).
  */
 function site_blocks_enterprise_render_solutions(): void {
-	$heading = site_blocks_enterprise_solutions_heading();
-
-	site_blocks_render_hub_services_grid(
+	site_blocks_render_photo_options_grid(
 		array(
 			'heading_id'    => 'sg-enterprise-solutions-heading',
 			'section_class' => 'sg-enterprise-solutions',
-			'title'         => $heading['title'],
-			'intro'         => $heading['intro'],
-			'services'      => site_blocks_enterprise_hub_solutions(),
 			'band'          => 'white',
+			'eyebrow'       => __( 'Enterprise Solutions', 'site-blocks' ),
+			'title_before'  => __( 'Everything your operation needs, ', 'site-blocks' ),
+			'title_accent'  => __( 'integrated', 'site-blocks' ),
+			'intro'         => __( 'CCTV, access, alarms, monitoring, guarding and cloud software under one commercial partner.', 'site-blocks' ),
+			'items'         => site_blocks_enterprise_hub_photo_solutions(),
+			'cta'           => array(
+				'title'        => __( 'Security built for multi-site operations.', 'site-blocks' ),
+				'checks'       => array(
+					__( 'Multi-site Ready', 'site-blocks' ),
+					__( 'Australian Monitoring', 'site-blocks' ),
+					__( 'Licensed Guarding', 'site-blocks' ),
+					__( 'Cloud Console', 'site-blocks' ),
+					__( 'Single Partner', 'site-blocks' ),
+				),
+				'button_label' => __( 'Request a Quote', 'site-blocks' ),
+				'button_url'   => home_url( '/contact/' ),
+				'icon'         => 'shield-check',
+			),
 		)
 	);
 }
@@ -384,7 +397,7 @@ function site_blocks_enterprise_render_quote(): void {
 				<a class="sg-btn sg-btn--primary" href="<?php echo esc_url( $config['url'] ); ?>">
 					<?php echo esc_html( $config['label'] ); ?>
 				</a>
-				<a class="sg-btn sg-btn--ghost-dark" href="<?php echo esc_url( 'tel:1300225276' ); ?>">
+				<a class="sg-btn sg-btn--ghost" href="<?php echo esc_url( 'tel:1300225276' ); ?>">
 					<?php echo esc_html( $config['phone'] ); ?>
 				</a>
 			</div>

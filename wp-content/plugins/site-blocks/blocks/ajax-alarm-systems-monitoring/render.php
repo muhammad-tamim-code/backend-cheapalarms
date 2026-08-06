@@ -59,7 +59,7 @@ $options = array(
 					<?php esc_html_e( 'Every property is different. We can recommend the right monitoring setup based on how you want to manage security.', 'site-blocks' ); ?>
 				</p>
 				<a class="sg-ajax-icon-card__link" href="<?php echo esc_url( home_url( '/contact/' ) ); ?>">
-					<?php esc_html_e( 'Talk to our team', 'site-blocks' ); ?>
+					<?php esc_html_e( 'Speak to Us', 'site-blocks' ); ?>
 					<?php site_blocks_lucide_icon( 'arrow-right', 14 ); ?>
 				</a>
 			</article>

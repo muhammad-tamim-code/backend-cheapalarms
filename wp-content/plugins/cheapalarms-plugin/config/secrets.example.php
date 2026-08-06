@@ -40,6 +40,15 @@ return [
     'upload_shared_secret'   => '', // or set CA_UPLOAD_SHARED_SECRET env var
     'upload_max_mb'          => 10,
 
+    // Wasabi (S3-compatible) — portal estimate photos. Prefer env vars in production.
+    // 'wasabi_access_key'    => '', // or CA_WASABI_ACCESS_KEY
+    // 'wasabi_secret_key'    => '', // or CA_WASABI_SECRET_KEY
+    // 'wasabi_bucket'        => 'safeguardportal', // or CA_WASABI_BUCKET
+    // 'wasabi_region'        => 'ap-southeast-2',
+    // 'wasabi_endpoint'      => 'https://s3.ap-southeast-2.wasabisys.com',
+    // 'wasabi_prefix'        => 'estimate-photos',
+    // 'wasabi_signed_url_ttl'=> 3600,
+
     // CORS Configuration - Allowed Origins for Photo Uploads
     'upload_allowed_origins' => [
         'https://cheapalarms.com.au',
@@ -85,6 +94,16 @@ return [
     // DeepSeek AI (website chat assistant, server-side only)
     'deepseek_api_key'       => '', // or set CA_DEEPSEEK_API_KEY env var
     'deepseek_model'         => 'deepseek-chat', // or deepseek-reasoner for harder tasks
+
+    // Feature gates (invoice-only launch: set both false)
+    'payments_enabled'       => true,  // false = no Stripe in portal
+    'xero_enabled'           => true,  // false = no Xero connect/sync
+    'xero_direct_invoicing'  => false,
+
+    // Telegram live-chat staff bridge (optional)
+    'telegram_bot_token'      => '', // or CA_TELEGRAM_BOT_TOKEN
+    'telegram_staff_chat_id'  => '', // e.g. -100..., or CA_TELEGRAM_STAFF_CHAT_ID
+    'telegram_webhook_secret' => '', // optional shared secret for webhook header
 
     // SMS OTP (quote calculator + chat, Twilio). Leave blank for dummy OTP (any 6 digits) until go-live.
     'twilio_account_sid'     => '', // or CA_TWILIO_ACCOUNT_SID

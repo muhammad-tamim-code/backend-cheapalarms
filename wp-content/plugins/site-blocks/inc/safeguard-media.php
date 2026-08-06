@@ -18,9 +18,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function site_blocks_silo_image_directories(): array {
 	return array(
-		'monitoring'         => 'images/monitoring/',
-		'physical-security'  => 'images/physical-security/',
-		'enterprise'         => 'images/enterprise/',
+		'monitoring'           => 'images/monitoring/',
+		'physical-security'    => 'images/physical-security/',
+		'enterprise'           => 'images/enterprise/',
+		'electronic-security'  => 'images/electronic-security/',
+		'manpower'             => 'images/manpower/',
 	);
 }
 
@@ -31,9 +33,11 @@ function site_blocks_silo_image_directories(): array {
  */
 function site_blocks_silo_placeholder_classes(): array {
 	return array(
-		'monitoring'         => 'sg-monitoring-media-placeholder',
-		'physical-security'  => 'sg-ps-media-placeholder',
-		'enterprise'         => 'sg-enterprise-media-placeholder',
+		'monitoring'           => 'sg-monitoring-media-placeholder',
+		'physical-security'    => 'sg-ps-media-placeholder',
+		'enterprise'           => 'sg-enterprise-media-placeholder',
+		'electronic-security'  => 'sg-es-media-placeholder',
+		'manpower'             => 'sg-mp-media-placeholder',
 	);
 }
 
@@ -44,9 +48,11 @@ function site_blocks_silo_placeholder_classes(): array {
  */
 function site_blocks_silo_hero_placeholder_classes(): array {
 	return array(
-		'monitoring'         => 'sg-monitoring-hero-placeholder',
-		'physical-security'  => 'sg-ps-hero-placeholder',
-		'enterprise'         => 'sg-enterprise-media-placeholder',
+		'monitoring'           => 'sg-monitoring-hero-placeholder',
+		'physical-security'    => 'sg-ps-hero-placeholder',
+		'enterprise'           => 'sg-enterprise-media-placeholder',
+		'electronic-security'  => 'sg-es-hero-placeholder',
+		'manpower'             => 'sg-mp-hero-placeholder',
 	);
 }
 
@@ -64,21 +70,13 @@ function site_blocks_silo_image( string $silo, string $filename, string $alt = '
 	$placeholders  = site_blocks_silo_placeholder_classes();
 	$relative_base = $dirs[ $silo ] ?? 'images/monitoring/';
 	$relative_path = $relative_base . ltrim( $filename, '/' );
-	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 	$placeholder   = $placeholders[ $silo ] ?? 'sg-monitoring-media-placeholder';
 
-	if ( ! is_readable( $disk ) ) {
-		printf( '<span class="sg-cctv-media-placeholder %s" aria-hidden="true"></span>', esc_attr( $placeholder ) );
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative_path, $alt, $class, $loading ) ) {
 		return;
 	}
 
-	printf(
-		'<img class="%s" src="%s" alt="%s" loading="%s" decoding="async" />',
-		esc_attr( $class ),
-		esc_url( site_blocks_asset_url( $relative_path ) ),
-		esc_attr( $alt ),
-		esc_attr( $loading )
-	);
+	printf( '<span class="sg-cctv-media-placeholder %s" aria-hidden="true"></span>', esc_attr( $placeholder ) );
 }
 
 /**
@@ -89,14 +87,18 @@ function site_blocks_silo_image( string $silo, string $filename, string $alt = '
  * @param string $alt      Alt text.
  */
 function site_blocks_silo_hero_image( string $silo, string $filename, string $alt ): void {
-	$dirs         = site_blocks_silo_image_directories();
-	$placeholders = site_blocks_silo_hero_placeholder_classes();
+	$dirs          = site_blocks_silo_image_directories();
+	$placeholders  = site_blocks_silo_hero_placeholder_classes();
 	$relative_base = $dirs[ $silo ] ?? 'images/monitoring/';
 	$relative_path = $relative_base . ltrim( $filename, '/' );
-	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 	$placeholder   = $placeholders[ $silo ] ?? 'sg-monitoring-hero-placeholder';
 
-	if ( is_readable( $disk ) ) {
+	if ( function_exists( 'site_blocks_media_source_exists' ) && site_blocks_media_source_exists( $relative_path ) ) {
+		site_blocks_silo_image( $silo, $filename, $alt, 'sg-hero__pillar-img', 'eager' );
+		return;
+	}
+
+	if ( is_readable( SITE_BLOCKS_DIR . 'assets/' . $relative_path ) ) {
 		site_blocks_silo_image( $silo, $filename, $alt, 'sg-hero__pillar-img', 'eager' );
 		return;
 	}

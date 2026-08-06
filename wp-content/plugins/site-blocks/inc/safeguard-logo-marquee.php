@@ -77,7 +77,7 @@ function site_blocks_get_logo_marquee_brands( string $source = 'portfolio' ): ar
  */
 function site_blocks_render_logo_marquee( array $args = array() ): void {
 	$defaults = array(
-		'title'        => __( 'Brands we have worked with', 'site-blocks' ),
+		'title'        => __( 'Clients Portfolio', 'site-blocks' ),
 		'subtitle'     => '',
 		'source'       => 'portfolio',
 		'brands'       => null,

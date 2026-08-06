@@ -1,0 +1,429 @@
+/* ManPower silo, layouts on top of access-control.css */
+
+/* -------------------------------------------------------------------------
+   Trio hero — features | portrait | copy (matches design mockup)
+   ------------------------------------------------------------------------- */
+
+.sg-mp-trio-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2rem, 4vw, 3.5rem) 1.25rem clamp(2.5rem, 5vw, 4rem);
+  color: var(--sg-navy);
+  background: #fff;
+}
+
+.sg-mp-trio-hero__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sg-mp-trio-hero__breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 1.5rem;
+  font-family: var(--sg-font-body);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--sg-navy) 45%, transparent);
+}
+
+.sg-mp-trio-hero__breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sg-mp-trio-hero__breadcrumb a:hover {
+  color: var(--sg-navy);
+}
+
+.sg-mp-trio-hero__breadcrumb [aria-current="page"] {
+  color: var(--sg-blue);
+  font-weight: 600;
+}
+
+.sg-mp-trio-hero__crumb-sep {
+  opacity: 0.55;
+}
+
+.sg-mp-trio-hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  align-items: center;
+}
+
+@keyframes sg-mp-trio-in-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sg-mp-trio-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sg-mp-trio-hero__copy {
+  animation: sg-mp-trio-in-from-right 0.75s var(--sg-ease, cubic-bezier(0.16, 1, 0.3, 1)) 0.12s both;
+}
+
+.sg-mp-trio-hero__feature {
+  animation: sg-mp-trio-in-from-left 0.65s var(--sg-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.sg-mp-trio-hero__feature:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.sg-mp-trio-hero__feature:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.sg-mp-trio-hero__feature:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sg-mp-trio-hero__copy,
+  .sg-mp-trio-hero__feature {
+    animation: none;
+  }
+}
+
+/* Left features */
+.sg-mp-trio-hero__features {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-mp-trio-hero__feature {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+}
+
+.sg-mp-trio-hero__feature-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid color-mix(in srgb, var(--sg-navy) 8%, transparent);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--sg-blue);
+  box-shadow: 0 2px 8px rgba(12, 45, 68, 0.05);
+}
+
+.sg-mp-trio-hero__feature-icon .sg-lucide-icon {
+  --sg-icon-size: 1.125rem;
+  width: var(--sg-icon-size);
+  height: var(--sg-icon-size);
+  stroke-width: 1.75;
+}
+
+.sg-mp-trio-hero__feature-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding-top: 0;
+}
+
+.sg-mp-trio-hero__feature-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--sg-navy);
+}
+
+.sg-mp-trio-hero__feature-desc {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--sg-navy) 55%, #8a96a3);
+}
+
+/* Center portrait */
+.sg-mp-trio-hero__visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  order: -1; /* photo first on mobile */
+}
+
+.sg-mp-trio-hero__figure {
+  margin: 0;
+  width: 100%;
+  max-width: 28rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.sg-mp-trio-hero__img,
+.sg-mp-trio-hero__figure .sg-cctv-media-placeholder {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto;
+  object-fit: contain;
+  object-position: center center;
+}
+
+/* Right copy — keep compact so stack fits beside portrait height */
+.sg-mp-trio-hero__copy {
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sg-mp-trio-hero__eyebrow {
+  margin: 0 0 0.5rem;
+  font-family: var(--sg-font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sg-blue);
+}
+
+.sg-mp-trio-hero__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--sg-navy);
+}
+
+.sg-mp-trio-hero__title::after {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin-top: 0.625rem;
+  background: var(--sg-blue);
+  border-radius: 2px;
+}
+
+.sg-mp-trio-hero__lead {
+  margin: 0 0 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--sg-navy) 62%, #8a96a3);
+}
+
+.sg-mp-trio-hero__lead:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.sg-mp-trio-hero__ctas {
+  margin: 0 0 1.125rem;
+}
+
+.sg-mp-trio-hero__stats {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 1.25rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  width: auto;
+  max-width: 100%;
+}
+
+body.safeguard-manpower-page .entry-content ul.sg-mp-trio-hero__stats {
+  margin: 0;
+  padding: 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.sg-mp-trio-hero__stats > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.sg-mp-trio-hero__stat-value {
+  font-family: var(--sg-font-head);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--sg-navy);
+}
+
+.sg-mp-trio-hero__stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--sg-navy) 50%, #8a96a3);
+}
+
+@media (min-width: 768px) {
+  .sg-mp-trio-hero__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem 1.5rem;
+  }
+
+  .sg-mp-trio-hero__visual {
+    order: 0;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    justify-content: flex-start;
+  }
+
+  .sg-mp-trio-hero__copy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .sg-mp-trio-hero__features {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .sg-mp-trio-hero__figure {
+    max-width: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sg-mp-trio-hero__grid {
+    grid-template-columns: minmax(12rem, 0.9fr) minmax(18rem, 1.2fr) minmax(16rem, 1.05fr);
+    gap: 1.5rem 2rem;
+    align-items: stretch;
+  }
+
+  .sg-mp-trio-hero__features {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    justify-content: space-evenly;
+    gap: 0;
+    padding: 0.75rem 0;
+  }
+
+  .sg-mp-trio-hero__visual {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: center;
+    align-self: stretch;
+    align-items: center;
+  }
+
+  .sg-mp-trio-hero__copy {
+    grid-column: 3;
+    grid-row: 1;
+    max-width: none;
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .sg-mp-trio-hero__figure {
+    max-width: 32rem;
+  }
+}
+
+/* List resets */
+body.safeguard-manpower-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-manpower-page .entry-content ul.sg-mp-services__grid,
+body.safeguard-manpower-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-manpower-page .entry-content ul.sg-ac-options__cta-checks,
+body.safeguard-manpower-page .entry-content .sg-ac-install__grid,
+body.safeguard-manpower-page .entry-content ol.sg-alarm-steps__list {
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-manpower-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-manpower-page .entry-content ul.sg-mp-services__grid,
+body.safeguard-manpower-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-manpower-page .entry-content .sg-ac-install__grid,
+body.safeguard-manpower-page .entry-content ol.sg-alarm-steps__list {
+  margin: 0;
+}
+
+body.safeguard-manpower-page .entry-content ul.sg-ac-trust-strip__list > li,
+body.safeguard-manpower-page .entry-content ul.sg-mp-services__grid > li,
+body.safeguard-manpower-page .entry-content ul.sg-hub-services__grid > li,
+body.safeguard-manpower-page .entry-content ul.sg-ac-options__cta-checks > li,
+body.safeguard-manpower-page .entry-content .sg-ac-install__grid > article,
+body.safeguard-manpower-page .entry-content ol.sg-alarm-steps__list > li {
+  margin: 0;
+  list-style: none;
+}
+
+.sg-mp-hero-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+}
+
+@media (min-width: 768px) {
+  .sg-mp-hero-placeholder {
+    min-height: 100%;
+  }
+}
+
+.sg-mp-media-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+}
+
+body.safeguard-manpower-page .sg-ac-split__visual {
+  aspect-ratio: 3 / 4;
+  align-self: start;
+  background: transparent;
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.safeguard-manpower-page .sg-ac-split__visual img,
+body.safeguard-manpower-page .sg-ac-split__visual .sg-cctv-media-placeholder {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}

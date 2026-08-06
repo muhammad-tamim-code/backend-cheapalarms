@@ -139,10 +139,10 @@ function site_blocks_render_quote_cta( array $config ): void {
 				</h2>
 				<p class="sg-cta-card__text"><?php echo esc_html( $sub ); ?></p>
 				<div class="sg-cta-card__btns">
-					<a class="sg-btn sg-btn--primary" href="<?php echo esc_url( $primary_url ); ?>">
+					<a class="sg-btn sg-btn--orange" href="<?php echo esc_url( $primary_url ); ?>">
 						<?php echo esc_html( $primary_label ); ?>
 					</a>
-					<a class="sg-btn sg-btn--cta-ghost" href="<?php echo esc_url( $secondary_url ); ?>">
+					<a class="sg-btn sg-btn--ghost" href="<?php echo esc_url( $secondary_url ); ?>">
 						<?php echo esc_html( $secondary_label ); ?>
 					</a>
 				</div>
@@ -253,6 +253,182 @@ function site_blocks_render_hub_services_grid( array $config ): void {
 		</div>
 	</section>
 	<?php
+}
+
+/**
+ * Photo + number + icon options grid (Access Control options template).
+ *
+ * @param array{
+ *   heading_id: string,
+ *   section_class?: string,
+ *   band?: string,
+ *   eyebrow?: string,
+ *   title?: string,
+ *   title_before?: string,
+ *   title_accent?: string,
+ *   title_after?: string,
+ *   intro?: string,
+ *   items: array<int, array{
+ *     title: string,
+ *     desc: string,
+ *     image: string,
+ *     alt?: string,
+ *     icon?: string,
+ *     best?: string,
+ *     url?: string,
+ *   }>,
+ *   cta?: array{
+ *     title?: string,
+ *     text?: string,
+ *     checks?: array<int, string>,
+ *     button_label?: string,
+ *     button_url?: string,
+ *     icon?: string,
+ *   },
+ * } $config Section content. `image` is a path under assets/ (e.g. images/access-control/option-01.webp).
+ */
+function site_blocks_render_photo_options_grid( array $config ): void {
+	$items = $config['items'] ?? array();
+
+	if ( $items === array() ) {
+		return;
+	}
+
+	require_once SITE_BLOCKS_DIR . 'inc/lucide-icons.php';
+
+	$heading_id    = (string) ( $config['heading_id'] ?? 'sg-photo-options-heading' );
+	$section_class = (string) ( $config['section_class'] ?? '' );
+	$band          = isset( $config['band'] ) ? (string) $config['band'] : 'white';
+	$eyebrow       = isset( $config['eyebrow'] ) ? (string) $config['eyebrow'] : '';
+	$intro         = isset( $config['intro'] ) ? (string) $config['intro'] : '';
+	$cta           = isset( $config['cta'] ) && is_array( $config['cta'] ) ? $config['cta'] : null;
+	$classes       = trim( 'sg-band sg-band--' . $band . ' sg-photo-options ' . $section_class . ' alignfull' );
+	?>
+	<section class="<?php echo esc_attr( $classes ); ?>" aria-labelledby="<?php echo esc_attr( $heading_id ); ?>">
+		<div class="sg-container">
+			<header class="sg-ac-options__header">
+				<?php if ( '' !== $eyebrow ) : ?>
+					<p class="sg-ac-options__eyebrow"><?php echo esc_html( $eyebrow ); ?></p>
+				<?php endif; ?>
+				<h2 id="<?php echo esc_attr( $heading_id ); ?>" class="sg-section-title sg-section-title--center sg-section-title--ink">
+					<?php if ( isset( $config['title'] ) && '' !== (string) $config['title'] ) : ?>
+						<?php echo esc_html( (string) $config['title'] ); ?>
+					<?php else : ?>
+						<?php echo esc_html( (string) ( $config['title_before'] ?? '' ) ); ?>
+						<?php if ( ! empty( $config['title_accent'] ) ) : ?>
+							<span class="sg-accent"><?php echo esc_html( (string) $config['title_accent'] ); ?></span>
+						<?php endif; ?>
+						<?php echo esc_html( (string) ( $config['title_after'] ?? '' ) ); ?>
+					<?php endif; ?>
+				</h2>
+				<?php if ( '' !== $intro ) : ?>
+					<p class="sg-section-intro sg-section-intro--center sg-ac-options__intro"><?php echo esc_html( $intro ); ?></p>
+				<?php endif; ?>
+			</header>
+
+			<div class="sg-ac-options__grid" role="list">
+				<?php foreach ( $items as $index => $item ) : ?>
+					<?php
+					$num   = sprintf( '%02d', $index + 1 );
+					$url   = isset( $item['url'] ) ? (string) $item['url'] : '';
+					$best  = isset( $item['best'] ) ? (string) $item['best'] : '';
+					$icon  = isset( $item['icon'] ) ? (string) $item['icon'] : 'shield';
+					$alt   = isset( $item['alt'] ) ? (string) $item['alt'] : (string) ( $item['title'] ?? '' );
+					$tag   = '' !== $url ? 'a' : 'article';
+					$class = 'sg-ac-options__card' . ( '' !== $url ? ' sg-ac-options__card--link' : '' );
+					?>
+					<?php if ( 'a' === $tag ) : ?>
+						<a class="<?php echo esc_attr( $class ); ?>" href="<?php echo esc_url( $url ); ?>" role="listitem">
+					<?php else : ?>
+						<article class="<?php echo esc_attr( $class ); ?>" role="listitem">
+					<?php endif; ?>
+						<div class="sg-ac-options__media" aria-hidden="true">
+							<?php site_blocks_render_photo_options_image( (string) ( $item['image'] ?? '' ), $alt ); ?>
+						</div>
+						<div class="sg-ac-options__body">
+							<span class="sg-ac-options__num"><?php echo esc_html( $num ); ?></span>
+							<h3 class="sg-ac-options__title">
+								<?php echo esc_html( (string) ( $item['title'] ?? '' ) ); ?>
+								<?php if ( '' !== $url ) : ?>
+									<span class="sg-ac-options__title-chevron" aria-hidden="true"><?php site_blocks_lucide_icon( 'chevron-right', 16 ); ?></span>
+								<?php endif; ?>
+							</h3>
+							<p class="sg-ac-options__desc"><?php echo esc_html( (string) ( $item['desc'] ?? '' ) ); ?></p>
+							<?php if ( '' !== $best ) : ?>
+								<p class="sg-ac-options__best">
+									<span class="sg-ac-options__best-label"><?php esc_html_e( 'Best for:', 'site-blocks' ); ?></span>
+									<?php echo esc_html( ' ' . $best ); ?>
+								</p>
+							<?php endif; ?>
+						</div>
+						<span class="sg-ac-options__icon" aria-hidden="true">
+							<?php site_blocks_lucide_icon( $icon, 22 ); ?>
+						</span>
+					<?php if ( 'a' === $tag ) : ?>
+						</a>
+					<?php else : ?>
+						</article>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
+
+			<?php if ( null !== $cta ) : ?>
+				<?php
+				$cta_title  = (string) ( $cta['title'] ?? '' );
+				$cta_text   = (string) ( $cta['text'] ?? '' );
+				$cta_checks = isset( $cta['checks'] ) && is_array( $cta['checks'] ) ? $cta['checks'] : array();
+				$cta_label  = (string) ( $cta['button_label'] ?? __( 'Request a Quote', 'site-blocks' ) );
+				$cta_url    = (string) ( $cta['button_url'] ?? home_url( '/contact/' ) );
+				$cta_icon   = (string) ( $cta['icon'] ?? 'shield-check' );
+				?>
+				<div class="sg-ac-options__cta<?php echo $cta_checks !== array() ? ' sg-ac-options__cta--checks' : ''; ?>">
+					<div class="sg-ac-options__cta-icon" aria-hidden="true">
+						<?php site_blocks_lucide_icon( $cta_icon, 22 ); ?>
+					</div>
+					<div class="sg-ac-options__cta-copy">
+						<?php if ( '' !== $cta_title ) : ?>
+							<p class="sg-ac-options__cta-title"><?php echo esc_html( $cta_title ); ?></p>
+						<?php endif; ?>
+						<?php if ( $cta_checks !== array() ) : ?>
+							<ul class="sg-ac-options__cta-checks">
+								<?php foreach ( $cta_checks as $check ) : ?>
+									<li class="sg-ac-options__cta-check">
+										<span class="sg-ac-options__cta-check-icon" aria-hidden="true"><?php site_blocks_lucide_icon( 'circle-check', 16 ); ?></span>
+										<?php echo esc_html( (string) $check ); ?>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+						<?php elseif ( '' !== $cta_text ) : ?>
+							<p class="sg-ac-options__cta-text"><?php echo esc_html( $cta_text ); ?></p>
+						<?php endif; ?>
+					</div>
+					<?php if ( '' !== $cta_label && '' !== $cta_url ) : ?>
+						<a class="sg-btn sg-btn--primary sg-ac-options__cta-btn" href="<?php echo esc_url( $cta_url ); ?>">
+							<?php echo esc_html( $cta_label ); ?>
+							<span class="sg-ac-options__cta-chevron" aria-hidden="true"><?php site_blocks_lucide_icon( 'chevron-right', 18 ); ?></span>
+						</a>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+	</section>
+	<?php
+}
+
+/**
+ * Image or placeholder for photo-options cards.
+ *
+ * @param string $relative_path Path under assets/.
+ * @param string $alt           Alt text.
+ */
+function site_blocks_render_photo_options_image( string $relative_path, string $alt = '' ): void {
+	$relative_path = ltrim( $relative_path, '/' );
+
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative_path, $alt, 'sg-ac-options__img', 'lazy' ) ) {
+		return;
+	}
+
+	printf( '<span class="sg-cctv-media-placeholder sg-ac-media-placeholder" aria-hidden="true"></span>' );
 }
 
 /**
@@ -691,12 +867,12 @@ function site_blocks_render_ajax_quote_cta( array $config ): void {
 						</h2>
 						<p class="sg-ajax-quote-cta__lead"><?php echo esc_html( $lead ); ?></p>
 						<div class="sg-ajax-quote-cta__actions">
-							<a class="sg-btn sg-ajax-quote-cta__btn sg-ajax-quote-cta__btn--primary" href="<?php echo esc_url( $primary_url ); ?>">
+							<a class="sg-btn sg-btn--orange" href="<?php echo esc_url( $primary_url ); ?>">
 								<?php echo esc_html( $primary_label ); ?>
 								<?php site_blocks_lucide_icon( 'arrow-right', 16, 'sg-btn__icon' ); ?>
 							</a>
 							<?php if ( '' !== $secondary_label && '' !== $secondary_url ) : ?>
-								<a class="sg-btn sg-ajax-quote-cta__btn sg-ajax-quote-cta__btn--outline" href="<?php echo esc_attr( $secondary_url ); ?>">
+								<a class="sg-btn sg-btn--ghost" href="<?php echo esc_attr( $secondary_url ); ?>">
 									<?php site_blocks_lucide_icon( 'phone', 16, 'sg-btn__icon' ); ?>
 									<?php echo esc_html( $secondary_label ); ?>
 								</a>

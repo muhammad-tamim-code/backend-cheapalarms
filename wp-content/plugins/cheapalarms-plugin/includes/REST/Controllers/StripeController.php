@@ -40,11 +40,19 @@ class StripeController extends AdminController
             'callback'            => function (WP_REST_Request $request) {
                 /** @var Config $config */
                 $config = $this->container->get(Config::class);
+                if (!$config->isPaymentsEnabled()) {
+                    return $this->respond([
+                        'ok'             => true,
+                        'publishableKey' => null,
+                        'paymentsEnabled'=> false,
+                    ], $request);
+                }
                 $key    = $config->getStripePublishableKey();
 
                 return $this->respond([
                     'ok'             => true,
                     'publishableKey' => $key !== '' ? $key : null,
+                    'paymentsEnabled'=> true,
                 ], $request);
             },
         ]);
@@ -176,6 +184,15 @@ class StripeController extends AdminController
 
     private function createPaymentIntent(WP_REST_Request $request): WP_REST_Response
     {
+        $config = $this->container->get(Config::class);
+        if (!$config->isPaymentsEnabled()) {
+            return $this->respond(new WP_Error(
+                'payments_disabled',
+                __('Online payments are not available. Your invoice will be handled outside the portal.', 'cheapalarms'),
+                ['status' => 503]
+            ));
+        }
+
         $body = $request->get_json_params();
         $amount = isset($body['amount']) ? (float) $body['amount'] : null;
         $currency = sanitize_text_field($body['currency'] ?? 'aud');

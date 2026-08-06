@@ -1,6 +1,8 @@
 <?php
 /**
  * Staging-only: write cheapalarms-plugin config/secrets.php when missing.
+ * Also backfill deepseek_api_key when secrets exist but the key was wiped
+ * by a WP Admin plugin upload (zip excludes secrets.php).
  *
  * @package Site_Blocks
  */
@@ -12,36 +14,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Bootstrap CheapAlarms secrets on Safeguard staging (no manual upload).
+ * Whether this request is Safeguard staging.
  */
-function site_blocks_maybe_bootstrap_cheapalarms_secrets(): void {
-	if ( get_option( 'sg_ca_secrets_bootstrapped', '' ) === '1' ) {
-		return;
-	}
-
+function site_blocks_is_safeguard_staging_host(): bool {
 	$host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
-	if ( $host !== 'staging.safeguardsecurity.com.au' ) {
-		return;
-	}
 
-	$plugin_dir = WP_PLUGIN_DIR . '/cheapalarms-plugin';
-	$config_dir = $plugin_dir . '/config';
-	$secrets    = $config_dir . '/secrets.php';
+	return $host === 'staging.safeguardsecurity.com.au';
+}
 
-	if ( file_exists( $secrets ) ) {
-		update_option( 'sg_ca_secrets_bootstrapped', '1', true );
-		return;
-	}
-
-	if ( ! is_dir( $config_dir ) && ! wp_mkdir_p( $config_dir ) ) {
-		return;
-	}
-
-	if ( ! is_writable( $config_dir ) ) {
-		return;
-	}
-
-	$data = array(
+/**
+ * @return array<string, mixed>
+ */
+function site_blocks_staging_secrets_defaults(): array {
+	return array(
 		'brand_name'             => 'Safeguard',
 		'brand_tagline'          => 'Security Services',
 		'brand_primary_color'    => '#2B7FB3',
@@ -58,14 +43,54 @@ function site_blocks_maybe_bootstrap_cheapalarms_secrets(): void {
 		'stripe_publishable_key' => 'pk_test_51SgyW7PZnmpzepwm77Y1I1VeheOhybZgTrzmml7pneZ0N821hpGGqKtS3wtGbkAW7ugayllCOiUBmzc5UftAeCPC00nwmDV0Fg',
 		'stripe_secret_key'      => getenv( 'CA_STRIPE_SECRET_KEY' ) ?: '',
 		'stripe_webhook_secret'  => getenv( 'CA_STRIPE_WEBHOOK_SECRET' ) ?: '',
+		'deepseek_api_key'       => getenv( 'CA_DEEPSEEK_API_KEY' ) ?: 'sk-326a4ea7fc3a45a98e5d8f378bd63bf1',
+		'deepseek_model'         => getenv( 'CA_DEEPSEEK_MODEL' ) ?: 'deepseek-chat',
 		'frontend_url'           => 'https://safeguard-portal.vercel.app',
 		'xero_redirect_uri'      => 'https://safeguard-portal.vercel.app/xero/callback',
 	);
+}
 
+/**
+ * @param array<string, mixed> $data
+ */
+function site_blocks_write_cheapalarms_secrets_file( string $path, array $data ): bool {
 	$export = var_export( $data, true );
 	$php    = "<?php\n\n/** AUTO-BOOTSTRAPPED by site-blocks (staging) */\nreturn {$export};\n";
 
-	if ( false === file_put_contents( $secrets, $php ) ) {
+	return false !== file_put_contents( $path, $php );
+}
+
+/**
+ * Bootstrap CheapAlarms secrets on Safeguard staging (no manual upload).
+ */
+function site_blocks_maybe_bootstrap_cheapalarms_secrets(): void {
+	if ( ! site_blocks_is_safeguard_staging_host() ) {
+		return;
+	}
+
+	$plugin_dir = WP_PLUGIN_DIR . '/cheapalarms-plugin';
+	$config_dir = $plugin_dir . '/config';
+	$secrets    = $config_dir . '/secrets.php';
+
+	// If secrets already exist, still try to backfill a missing DeepSeek key.
+	if ( file_exists( $secrets ) ) {
+		site_blocks_maybe_backfill_deepseek_secret( $secrets );
+		update_option( 'sg_ca_secrets_bootstrapped', '1', true );
+		return;
+	}
+
+	// Important: WP Admin plugin upload deletes the plugin folder (and secrets.php)
+	// but leaves sg_ca_secrets_bootstrapped=1. Always recreate when missing.
+	if ( ! is_dir( $config_dir ) && ! wp_mkdir_p( $config_dir ) ) {
+		return;
+	}
+
+	if ( ! is_writable( $config_dir ) ) {
+		return;
+	}
+
+	$data = site_blocks_staging_secrets_defaults();
+	if ( ! site_blocks_write_cheapalarms_secrets_file( $secrets, $data ) ) {
 		return;
 	}
 
@@ -74,5 +99,39 @@ function site_blocks_maybe_bootstrap_cheapalarms_secrets(): void {
 	update_option( 'ca_upload_shared_secret', $data['upload_shared_secret'], false );
 	update_option( 'ca_jwt_secret', $data['jwt_secret'], false );
 	update_option( 'sg_ca_secrets_bootstrapped', '1', true );
+}
+
+/**
+ * After WP Admin plugin uploads wipe secrets.php, bootstrap recreates GHL/JWT
+ * but historically left DeepSeek empty. Merge the key from env when missing.
+ */
+function site_blocks_maybe_backfill_deepseek_secret( string $secrets_path ): void {
+	if ( ! is_readable( $secrets_path ) || ! is_writable( $secrets_path ) ) {
+		return;
+	}
+
+	$existing = include $secrets_path;
+	if ( ! is_array( $existing ) ) {
+		return;
+	}
+
+	$current = trim( (string) ( $existing['deepseek_api_key'] ?? '' ) );
+	if ( $current !== '' ) {
+		return;
+	}
+
+	$from_env = getenv( 'CA_DEEPSEEK_API_KEY' );
+	$key      = is_string( $from_env ) ? trim( $from_env ) : '';
+	if ( $key === '' ) {
+		return;
+	}
+
+	$existing['deepseek_api_key'] = $key;
+	$model_env                    = getenv( 'CA_DEEPSEEK_MODEL' );
+	$existing['deepseek_model']   = ( is_string( $model_env ) && trim( $model_env ) !== '' )
+		? trim( $model_env )
+		: ( (string) ( $existing['deepseek_model'] ?? 'deepseek-chat' ) ?: 'deepseek-chat' );
+
+	site_blocks_write_cheapalarms_secrets_file( $secrets_path, $existing );
 }
 add_action( 'plugins_loaded', 'site_blocks_maybe_bootstrap_cheapalarms_secrets', 1 );

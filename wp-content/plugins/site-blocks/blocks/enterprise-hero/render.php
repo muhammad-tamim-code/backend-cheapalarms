@@ -2,6 +2,8 @@
 /**
  * Enterprise hero block.
  *
+ * Hub keeps Ajax-style V0. Safeguard Solutions uses V3 range deck.
+ *
  * @package Site_Blocks
  */
 
@@ -14,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once SITE_BLOCKS_DIR . 'inc/enterprise-config.php';
 require_once SITE_BLOCKS_DIR . 'inc/enterprise-media.php';
 require_once SITE_BLOCKS_DIR . 'inc/safeguard-ajax-hero.php';
-require_once SITE_BLOCKS_DIR . 'inc/pillar-hero.php';
+require_once SITE_BLOCKS_DIR . 'inc/hero-variants.php';
 
 $page_key = site_blocks_get_enterprise_page_key();
 
@@ -31,12 +33,22 @@ if ( null === $config ) {
 $hero_image = (string) $config['hero_image'];
 $hero_alt   = (string) $config['hero_alt'];
 
-if ( 'safeguard-solutions' === $page_key && ! empty( $config['breadcrumb'] ) ) {
-	site_blocks_render_pillar_hero(
+if ( 'safeguard-solutions' === $page_key ) {
+	$deck_cards = array();
+	foreach ( array_slice( site_blocks_safeguard_solutions_spoke_teasers(), 0, 3 ) as $teaser ) {
+		$deck_cards[] = array(
+			'title' => (string) $teaser['title'],
+			'desc'  => (string) $teaser['desc'],
+			'url'   => home_url( '/contact/' ),
+		);
+	}
+
+	site_blocks_render_hero_variant(
+		'deck',
 		array(
 			'id'              => (string) $config['id'],
 			'class'           => (string) $config['class'],
-			'breadcrumb'      => $config['breadcrumb'],
+			'breadcrumb'      => $config['breadcrumb'] ?? array(),
 			'badge'           => (string) $config['badge'],
 			'title_before'    => (string) $config['title_before'],
 			'title_accent'    => (string) $config['title_accent'],
@@ -46,9 +58,7 @@ if ( 'safeguard-solutions' === $page_key && ! empty( $config['breadcrumb'] ) ) {
 			'primary_url'     => (string) $config['primary_url'],
 			'secondary_label' => (string) $config['secondary_label'],
 			'secondary_url'   => (string) $config['secondary_url'],
-			'visual'          => static function () use ( $hero_image, $hero_alt ): void {
-				site_blocks_enterprise_hero_image( $hero_image, $hero_alt );
-			},
+			'cards'           => $deck_cards,
 		)
 	);
 	return;

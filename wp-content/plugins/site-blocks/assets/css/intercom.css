@@ -1,5 +1,205 @@
 /* Intercom Systems category page, overrides on top of cctv.css / alarm-systems.css */
 
+/* -------------------------------------------------------------------------
+   Light product hero (Akuvox composition)
+   ------------------------------------------------------------------------- */
+
+.sg-intercom-product-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2.5rem, 5vw, 4rem) 1.25rem clamp(2rem, 4vw, 3rem);
+  color: var(--sg-navy);
+  background:
+    radial-gradient(ellipse 70% 55% at 88% 42%, rgba(251, 117, 35, 0.12) 0%, transparent 62%),
+    linear-gradient(165deg, #f7f4ef 0%, #fbfaf7 48%, #f3f0ea 100%);
+}
+
+.sg-intercom-product-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sg-intercom-product-hero__copy {
+  max-width: 34rem;
+}
+
+.sg-intercom-product-hero__breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.875rem;
+  font-family: var(--sg-font-body);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--sg-navy) 45%, transparent);
+}
+
+.sg-intercom-product-hero__breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sg-intercom-product-hero__breadcrumb a:hover {
+  color: var(--sg-navy);
+}
+
+.sg-intercom-product-hero__eyebrow {
+  margin: 0 0 0.75rem;
+  font-family: var(--sg-font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sg-orange);
+}
+
+.sg-intercom-product-hero__title {
+  margin: 0 0 1rem;
+  font-family: var(--sg-font-head);
+  font-size: clamp(1.875rem, 4.2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--sg-navy);
+}
+
+.sg-intercom-product-hero__lead {
+  margin: 0 0 1.5rem;
+  max-width: 36ch;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--sg-navy) 62%, #8a96a3);
+}
+
+.sg-intercom-product-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem; /* 12px to features */
+  padding: 0;
+}
+
+/* Soft premium CTA styles live globally in safeguard-home.css */
+
+/*
+ * Feature cluster — compact 2×2 under the CTA.
+ * width: max-content keeps the group on the same left axis as the button
+ * (avoids stretched columns that look indented / far apart).
+ */
+body.safeguard-intercom-page .sg-intercom-product-hero__features,
+.sg-intercom-product-hero__features {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: start;
+  justify-items: start;
+  align-content: start;
+  width: max-content;
+  max-width: 100%;
+  /* Optical: Lucide viewBox padding vs solid CTA edge */
+  margin: 0 0 0 -2px;
+  padding: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  column-gap: 1.5rem; /* 24px */
+  row-gap: 1.375rem; /* 22px */
+}
+
+body.safeguard-intercom-page .sg-intercom-product-hero__features > li,
+.sg-intercom-product-hero__features > li {
+  display: flex;
+  align-items: center;
+  gap: 0.6875rem; /* 11px */
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+body.safeguard-intercom-page .sg-intercom-product-hero__feature-icon,
+.sg-intercom-product-hero__feature-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--sg-orange);
+}
+
+body.safeguard-intercom-page .sg-intercom-product-hero__feature-icon .sg-lucide-icon,
+.sg-intercom-product-hero__feature-icon .sg-lucide-icon {
+  --sg-icon-size: 1.375rem; /* 22px */
+  display: block;
+  width: var(--sg-icon-size);
+  height: var(--sg-icon-size);
+  color: var(--sg-orange);
+  stroke: currentColor;
+  stroke-width: 1.75;
+}
+
+body.safeguard-intercom-page .sg-intercom-product-hero__feature-label,
+.sg-intercom-product-hero__feature-label {
+  font-size: 1rem; /* 16px */
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--sg-navy) 68%, #8a96a3); /* near lead, slightly stronger */
+  white-space: nowrap;
+}
+
+.sg-intercom-product-hero__visual {
+  min-width: 0;
+}
+
+.sg-intercom-product-hero__figure {
+  margin: 0;
+  background: transparent;
+}
+
+.sg-intercom-product-hero__img,
+.sg-intercom-product-hero__figure .sg-cctv-media-placeholder {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1230 / 1024;
+  object-fit: contain;
+}
+
+@media (min-width: 480px) {
+  body.safeguard-intercom-page .sg-intercom-product-hero__features,
+  .sg-intercom-product-hero__features {
+    grid-template-columns: max-content max-content;
+    column-gap: 1.5rem;
+    row-gap: 1.375rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .sg-intercom-product-hero__inner {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  .sg-intercom-product-hero__copy {
+    max-width: 40rem;
+  }
+
+  body.safeguard-intercom-page .sg-intercom-product-hero__features,
+  .sg-intercom-product-hero__features {
+    column-gap: 1.625rem; /* 26px — one group, not two lists */
+    row-gap: 1.5rem; /* 24px */
+  }
+}
+
 .sg-intercom-hero-placeholder {
   display: block;
   width: 100%;

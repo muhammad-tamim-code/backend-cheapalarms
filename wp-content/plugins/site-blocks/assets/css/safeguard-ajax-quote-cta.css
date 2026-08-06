@@ -1,7 +1,7 @@
 /* Dark Ajax-style quote CTA panel, reusable via site_blocks_render_ajax_quote_cta() */
 
 .sg-ajax-quote-cta {
-  --sg-ajax-card-shadow: 0 14px 36px rgba(6, 27, 51, 0.11), 0 3px 10px rgba(6, 27, 51, 0.05);
+  --sg-ajax-card-shadow: var(--sg-shadow);
   padding-block: clamp(2rem, 4vw, 3rem);
   background: #fff;
 }
@@ -83,46 +83,11 @@ body.safeguard-ajax-page .entry-content ul.sg-ajax-quote-cta__trust-list > li {
 }
 
 .sg-ajax-quote-cta .sg-btn {
-  gap: 0.5rem;
+  gap: var(--sg-btn-gap);
 }
 
 .sg-ajax-quote-cta .sg-btn__icon {
   flex-shrink: 0;
-}
-
-.sg-ajax-quote-cta__btn {
-  gap: 0.5rem;
-  min-height: 3rem;
-  height: auto;
-  padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: normal;
-}
-
-.sg-ajax-quote-cta__btn--primary {
-  background: var(--sg-orange);
-  border-color: var(--sg-orange);
-  color: #fff;
-}
-
-.sg-ajax-quote-cta__btn--primary:hover {
-  background: var(--sg-orange-deep);
-  border-color: var(--sg-orange-deep);
-  color: #fff;
-}
-
-.sg-ajax-quote-cta__btn--outline {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.42);
-  color: #fff;
-}
-
-.sg-ajax-quote-cta__btn--outline:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.65);
-  color: #fff;
 }
 
 .sg-ajax-quote-cta__features {

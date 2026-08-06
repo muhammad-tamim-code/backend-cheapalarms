@@ -60,11 +60,11 @@ function site_blocks_render_safeguard_ajax_card( array $args = array() ): void {
 			</li>
 		</ul>
 		<div class="sg-ajax-card__actions">
-			<a class="sg-btn sg-btn--ajax-primary" href="<?php echo esc_url( $calc_url ); ?>">
+			<a class="sg-btn sg-btn--orange" href="<?php echo esc_url( $calc_url ); ?>">
 				<?php esc_html_e( 'Start My Quote', 'site-blocks' ); ?>
 				<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 			</a>
-			<a class="sg-btn sg-btn--ajax-outline" href="<?php echo esc_url( $ajax_url ); ?>">
+			<a class="sg-btn sg-btn--secondary" href="<?php echo esc_url( $ajax_url ); ?>">
 				<?php esc_html_e( 'Explore Ajax', 'site-blocks' ); ?>
 				<?php site_blocks_lucide_icon( 'arrow-right', 16 ); ?>
 			</a>

@@ -58,6 +58,8 @@ function site_blocks_enqueue_contact_page_assets(): void {
 
 	$dep = site_blocks_enqueue_safeguard_style( 'safeguard-home', 'safeguard-home.css', 'safeguard-contact-fonts' );
 
+	$dep = site_blocks_enqueue_safeguard_style( 'safeguard-hero-variants', 'safeguard-hero-variants.css', $dep );
+
 	$dep = site_blocks_enqueue_safeguard_style( 'safeguard-contact', 'safeguard-contact.css', $dep );
 
 	site_blocks_enqueue_safeguard_home_script();

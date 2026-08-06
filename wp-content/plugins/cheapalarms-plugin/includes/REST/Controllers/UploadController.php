@@ -43,9 +43,25 @@ class UploadController extends AdminController
             'methods'             => 'POST',
             'permission_callback' => fn () => true,
             'callback'            => function (WP_REST_Request $request) {
-                $this->auth->ensureConfigured();
-                $result = $this->service->handle($request);
-                return $this->respond($result);
+                try {
+                    $this->auth->ensureConfigured();
+                    $result = $this->service->handle($request);
+                    return $this->respond($result);
+                } catch (\Throwable $e) {
+                    if (function_exists('error_log')) {
+                        error_log(sprintf(
+                            '[CA] Upload fatal: %s in %s:%d',
+                            $e->getMessage(),
+                            $e->getFile(),
+                            $e->getLine()
+                        ));
+                    }
+                    return $this->respond(new \WP_Error(
+                        'upload_fatal',
+                        __('Upload failed unexpectedly.', 'cheapalarms') . ' ' . $e->getMessage(),
+                        ['status' => 500]
+                    ));
+                }
             },
         ]);
     }

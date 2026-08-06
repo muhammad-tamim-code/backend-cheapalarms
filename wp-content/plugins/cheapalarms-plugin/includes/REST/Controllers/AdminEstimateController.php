@@ -15,6 +15,7 @@ use CheapAlarms\Plugin\Services\Invoice\InvoiceSnapshotRepository;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\InvoiceService;
 use CheapAlarms\Plugin\Services\PortalService;
+use CheapAlarms\Plugin\Services\WasabiS3Client;
 use CheapAlarms\Plugin\Support\EstimateNumber;
 use CheapAlarms\Plugin\Support\GhlLineItemHtml;
 use WP_Error;
@@ -935,6 +936,12 @@ class AdminEstimateController extends AdminController
         if ($rawUploads !== '' && $rawUploads !== false) {
             $uploadsDecoded = json_decode((string) $rawUploads, true);
             if (is_array($uploadsDecoded)) {
+                if (!empty($uploadsDecoded['uploads']) && is_array($uploadsDecoded['uploads'])) {
+                    /** @var WasabiS3Client $wasabi */
+                    $wasabi = $this->container->get(WasabiS3Client::class);
+                    $refreshed = $wasabi->refreshUploadUrls($uploadsDecoded['uploads']);
+                    $uploadsDecoded['uploads'] = $refreshed['uploads'];
+                }
                 $estimatePhotos['stored'] = $uploadsDecoded;
             }
         }

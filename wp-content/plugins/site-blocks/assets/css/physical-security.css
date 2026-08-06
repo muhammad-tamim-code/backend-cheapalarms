@@ -3,16 +3,25 @@
 body.safeguard-physical-security-page .entry-content ul.sg-ac-trust-strip__list,
 body.safeguard-physical-security-page .entry-content ul.sg-ps-services__grid,
 body.safeguard-physical-security-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-physical-security-page .entry-content ul.sg-ac-options__cta-checks,
+body.safeguard-physical-security-page .entry-content .sg-ac-install__grid,
+body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list {
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-physical-security-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-physical-security-page .entry-content ul.sg-ps-services__grid,
+body.safeguard-physical-security-page .entry-content ul.sg-hub-services__grid,
 body.safeguard-physical-security-page .entry-content .sg-ac-install__grid,
 body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list {
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 body.safeguard-physical-security-page .entry-content ul.sg-ac-trust-strip__list > li,
 body.safeguard-physical-security-page .entry-content ul.sg-ps-services__grid > li,
 body.safeguard-physical-security-page .entry-content ul.sg-hub-services__grid > li,
+body.safeguard-physical-security-page .entry-content ul.sg-ac-options__cta-checks > li,
 body.safeguard-physical-security-page .entry-content .sg-ac-install__grid > article,
 body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list > li {
   margin: 0;
@@ -40,29 +49,55 @@ body.safeguard-physical-security-page .entry-content ol.sg-alarm-steps__list > l
   min-height: 12rem;
 }
 
-/* Split photos, portrait-heavy; don't crop faces (override access-control 4:3 cover) */
+/* Portrait split — cover fill */
 body.safeguard-physical-security-page .sg-ac-split__visual {
-  aspect-ratio: auto;
+  aspect-ratio: 3 / 4;
+  align-self: start;
+  background: transparent;
+  display: block;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
 body.safeguard-physical-security-page .sg-ac-split__visual img,
 body.safeguard-physical-security-page .sg-ac-split__visual .sg-cctv-media-placeholder {
   width: 100%;
-  height: auto;
-  max-height: clamp(20rem, 44vw, 34rem);
-  object-fit: contain;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
   object-position: center center;
+  display: block;
 }
 
+/*
+ * Static-guards navy copy splits: same size, navy on copy only,
+ * image flush to column edges (intro + integration).
+ */
 @media (min-width: 900px) {
-  body.safeguard-physical-security-page .sg-ac-split__visual img,
-  body.safeguard-physical-security-page .sg-ac-split__visual .sg-cctv-media-placeholder {
-    max-height: min(34rem, 72vh);
+  body.safeguard-physical-security-page .sg-static-guards-intro .sg-ac-split__grid,
+  body.safeguard-physical-security-page .sg-static-guards-integration .sg-ac-split__grid {
+    gap: 0;
+    align-items: stretch;
+  }
+
+  body.safeguard-physical-security-page .sg-static-guards-intro .sg-ac-split__copy,
+  body.safeguard-physical-security-page .sg-static-guards-integration .sg-ac-split__copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--sg-navy);
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    color: #fff;
+  }
+
+  body.safeguard-physical-security-page .sg-static-guards-intro .sg-section-title,
+  body.safeguard-physical-security-page .sg-static-guards-integration .sg-section-title {
+    color: #fff;
+  }
+
+  body.safeguard-physical-security-page .sg-static-guards-intro .sg-ac-split__copy p,
+  body.safeguard-physical-security-page .sg-static-guards-integration .sg-ac-split__copy p {
+    color: rgba(255, 255, 255, 0.78);
   }
 }
 

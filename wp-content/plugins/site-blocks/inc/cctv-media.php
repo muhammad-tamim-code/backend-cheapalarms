@@ -23,6 +23,9 @@ function site_blocks_cctv_image_dimensions( string $relative_path ): array {
 		'images/cctv/install-band.webp' => array( 'width' => 1600, 'height' => 439 ),
 		'images/cctv/residential.webp'  => array( 'width' => 1448, 'height' => 1086 ),
 		'images/cctv/commercial.webp'   => array( 'width' => 1448, 'height' => 1086 ),
+		'images/cctv/spotlight.webp'       => array( 'width' => 680, 'height' => 920 ),
+		'images/cctv/spotlight-camera.webp' => array( 'width' => 1024, 'height' => 819 ),
+		'images/cctv/hero-phone.webp'      => array( 'width' => 444, 'height' => 886 ),
 	);
 
 	if ( isset( $defaults[ $relative_path ] ) ) {
@@ -49,41 +52,32 @@ function site_blocks_cctv_image_dimensions( string $relative_path ): array {
  */
 function site_blocks_cctv_image( string $relative_path, string $alt = '', string $class = 'sg-cctv-media__img', string $loading = 'lazy' ): void {
 	$relative_path = ltrim( $relative_path, '/' );
-	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 
-	if ( ! is_readable( $disk ) ) {
-		printf( '<span class="sg-cctv-media-placeholder" aria-hidden="true"></span>' );
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative_path, $alt, $class, $loading ) ) {
 		return;
 	}
 
-	$dims = site_blocks_cctv_image_dimensions( $relative_path );
-
-	$attrs = sprintf(
-		'class="%s" src="%s" alt="%s"',
-		esc_attr( $class ),
-		esc_url( site_blocks_asset_url( $relative_path ) ),
-		esc_attr( $alt )
-	);
-
-	if ( $dims['width'] > 0 && $dims['height'] > 0 ) {
-		$attrs .= sprintf( ' width="%d" height="%d"', $dims['width'], $dims['height'] );
-	}
-
-	printf(
-		'<img %s loading="%s" decoding="async" />',
-		$attrs,
-		esc_attr( $loading )
-	);
+	printf( '<span class="sg-cctv-media-placeholder" aria-hidden="true"></span>' );
 }
 
 /**
  * Hero image, falls back to alarm hero until CCTV asset is provided.
  */
 function site_blocks_cctv_hero_image(): void {
-	$cctv = SITE_BLOCKS_DIR . 'assets/images/cctv/hero.webp';
-	if ( is_readable( $cctv ) ) {
+	$cctv_path = 'images/cctv/hero.webp';
+	if ( function_exists( 'site_blocks_media_source_exists' ) && site_blocks_media_source_exists( $cctv_path ) ) {
 		site_blocks_cctv_image(
-			'images/cctv/hero.webp',
+			$cctv_path,
+			__( 'Sydney home with CCTV cameras and live phone monitoring app', 'site-blocks' ),
+			'sg-hero__pillar-img',
+			'eager'
+		);
+		return;
+	}
+
+	if ( is_readable( SITE_BLOCKS_DIR . 'assets/' . $cctv_path ) ) {
+		site_blocks_cctv_image(
+			$cctv_path,
 			__( 'Sydney home with CCTV cameras and live phone monitoring app', 'site-blocks' ),
 			'sg-hero__pillar-img',
 			'eager'

@@ -9,6 +9,7 @@ use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\Estimate\EstimateSnapshotRepository;
 use CheapAlarms\Plugin\Services\EstimateService;
 use CheapAlarms\Plugin\Services\PortalService;
+use CheapAlarms\Plugin\Services\WasabiS3Client;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -441,44 +442,54 @@ class EstimateController implements ControllerInterface
                         ], 200);
                     }
                     
-                    // Filter out deleted attachments - verify each attachment still exists
+                    // Filter out deleted attachments - verify each attachment still exists.
+                    // Wasabi signed URLs are refreshed for the response only — do not persist
+                    // URL-only changes (every presign is unique and would rewrite options each GET).
                     $validUploads = [];
-                    $needsUpdate = false;
-                    
+                    $needsPersist = false;
+                    /** @var WasabiS3Client $wasabi */
+                    $wasabi = $this->container->get(WasabiS3Client::class);
+
                     foreach ($data['uploads'] as $upload) {
+                        if (!is_array($upload)) {
+                            $needsPersist = true;
+                            continue;
+                        }
+
+                        $wasabiKey = $wasabi->resolveStorageKey($upload);
+                        if ($wasabiKey !== null) {
+                            $refreshed = $wasabi->refreshUploadUrls([$upload]);
+                            $validUploads[] = $refreshed['uploads'][0] ?? $upload;
+                            continue;
+                        }
+
                         $attachmentId = $upload['attachmentId'] ?? null;
                         if (!$attachmentId) {
-                            // If no attachmentId, check if URL is still accessible
                             $url = $upload['url'] ?? $upload['urls'][0] ?? null;
                             if ($url && $this->isUrlAccessible($url)) {
                                 $validUploads[] = $upload;
                             } else {
-                                $needsUpdate = true; // Mark for cleanup
+                                $needsPersist = true;
                             }
                             continue;
                         }
-                        
-                        // Check if attachment exists
+
                         $attachmentUrl = wp_get_attachment_url($attachmentId);
                         if ($attachmentUrl) {
-                            // Attachment exists, update URL if needed
                             if (empty($upload['url']) || $upload['url'] !== $attachmentUrl) {
                                 $upload['url'] = $attachmentUrl;
-                                $needsUpdate = true;
+                                $needsPersist = true;
                             }
                             $validUploads[] = $upload;
                         } else {
-                            // Attachment was deleted, skip it
-                            $needsUpdate = true;
+                            $needsPersist = true;
                         }
                     }
-                    
-                    // Update stored data if any attachments were removed
-                    if ($needsUpdate && count($validUploads) !== count($data['uploads'])) {
+
+                    if ($needsPersist || count($validUploads) !== count($data['uploads'])) {
                         $data['uploads'] = $validUploads;
                         $encoded = wp_json_encode($data);
                         if ($encoded === false) {
-                            // Log error but don't fail the request (data is already cleaned up)
                             if (function_exists('error_log')) {
                                 error_log(sprintf(
                                     '[CA] Failed to encode upload data JSON for estimate %s: %s',
@@ -490,10 +501,10 @@ class EstimateController implements ControllerInterface
                             update_option('ca_estimate_uploads_' . $estimateId, $encoded, false);
                         }
                     }
-                    
+
                     return new WP_REST_Response([
                         'ok'     => true,
-                        'stored' => $data,
+                        'stored' => array_merge($data, ['uploads' => $validUploads]),
                     ], 200);
                 },
             ],

@@ -6,6 +6,7 @@ use CheapAlarms\Plugin\Config\Config;
 use CheapAlarms\Plugin\REST\Auth\Authenticator;
 use CheapAlarms\Plugin\Services\Container;
 use CheapAlarms\Plugin\Services\DeepSeekService;
+use CheapAlarms\Plugin\Services\ChatHandoffNotifier;
 use CheapAlarms\Plugin\Services\ChatLeadService;
 use CheapAlarms\Plugin\Services\ChatQuoteService;
 use CheapAlarms\Plugin\Services\ChatConversationService;
@@ -60,6 +61,12 @@ class ChatController implements ControllerInterface
             'permission_callback' => '__return_true',
             'callback'            => [$this, 'handleRoute'],
         ]);
+
+        register_rest_route('ca/v1', '/chat/poll', [
+            'methods'             => 'POST',
+            'permission_callback' => '__return_true',
+            'callback'            => [$this, 'handlePoll'],
+        ]);
     }
 
     public function status(WP_REST_Request $request): WP_REST_Response
@@ -95,6 +102,50 @@ class ChatController implements ControllerInterface
         $quoteSession = is_array($body['quoteSession'] ?? null) ? $body['quoteSession'] : [];
         $quoteMode = !empty($body['quoteMode']) || !empty($clientState['quoteMode']);
         $conversation = $this->resolveConversation($body, $pageContext);
+
+        // Live-agent handoff: pause AI and store visitor messages only.
+        if ($conversation !== null) {
+            $convService = $this->container->get(ChatConversationService::class);
+            $full        = $convService->findById($conversation['id']);
+            if ($convService->isHumanHandoffActive($full)) {
+                $lastUser = '';
+                for ($i = count($messages) - 1; $i >= 0; $i--) {
+                    if (($messages[$i]['role'] ?? '') === 'user') {
+                        $lastUser = (string) ($messages[$i]['content'] ?? '');
+                        break;
+                    }
+                }
+
+                $stored = $convService->appendVisitorMessage($conversation['id'], $lastUser);
+                if (is_wp_error($stored)) {
+                    return $this->respond($stored);
+                }
+
+                if ($lastUser !== '' && $this->container->has(ChatHandoffNotifier::class)) {
+                    $this->container->get(ChatHandoffNotifier::class)->notifyVisitorTelegramMessage(
+                        $conversation['id'],
+                        $lastUser
+                    );
+                }
+
+                $status = (string) ($stored['status'] ?? ($full['status'] ?? 'waiting_agent'));
+                $waitingCopy = $status === ChatConversationService::STATUS_AGENT_ACTIVE
+                    ? __('Message sent to our team.', 'cheapalarms')
+                    : __('Thanks, our team has been notified. Stay on this chat and someone will reply shortly.', 'cheapalarms');
+
+                return $this->respond([
+                    'ok'               => true,
+                    'reply'            => $waitingCopy,
+                    'handoff'          => true,
+                    'status'           => $status,
+                    'conversationKey'  => $conversation['sessionKey'],
+                    'ui'               => [
+                        'type'   => 'handoff_waiting',
+                        'status' => $status,
+                    ],
+                ]);
+            }
+        }
 
         $useQuoteAgent = !$this->isQuoteSubmitted($clientState)
             && (
@@ -162,13 +213,19 @@ class ChatController implements ControllerInterface
         if ($useQuoteAgent) {
             $response['quoteMode'] = true;
         } elseif ($this->container->has(ChatUiSuggester::class)) {
+            $handoffActive = false;
+            if ($conversation !== null) {
+                $full = $this->container->get(ChatConversationService::class)->findById($conversation['id']);
+                $handoffActive = $this->container->get(ChatConversationService::class)->isHumanHandoffActive($full);
+            }
             $ui = $this->container->get(ChatUiSuggester::class)->suggest(
                 $messages,
                 $reply,
                 [
                     'pageContext'  => $pageContext,
                     'clientState'  => array_merge($clientState, [
-                        'quoteMode' => $quoteMode || $useQuoteAgent,
+                        'quoteMode'      => $quoteMode || $useQuoteAgent,
+                        'handoffActive'  => $handoffActive || !empty($clientState['handoffActive']),
                     ]),
                     'quoteSession' => $response['quoteSession'] ?? null,
                 ]
@@ -269,18 +326,108 @@ class ChatController implements ControllerInterface
         }
 
         $pageContext  = $this->normalizePageContext($body['pageContext'] ?? null);
+        $intent       = sanitize_text_field((string) ($body['intent'] ?? ($result['intent'] ?? 'quote')));
+        $isHandoff    = $intent === 'agent_handoff' || !empty($result['handoff']);
         $conversation = $this->resolveConversation($body, $pageContext);
+
+        // Live handoff requires a conversation row; create a session if the client omitted one.
+        if ($conversation === null && $isHandoff) {
+            $conversation = $this->createConversationSession($pageContext);
+        }
+
+        if ($isHandoff && ($conversation === null || empty($result['contactId']))) {
+            return $this->respond(new WP_Error(
+                'handoff_unavailable',
+                __('Could not start live chat. Please call 1300 225 276.', 'cheapalarms'),
+                ['status' => 502]
+            ));
+        }
+
         if ($conversation !== null && !empty($result['contactId'])) {
-            $intent = sanitize_text_field((string) ($body['intent'] ?? 'quote'));
-            $this->container->get(ChatConversationService::class)->markLeadCaptured(
-                $conversation['id'],
-                (string) $result['contactId'],
-                $intent
-            );
+            $convService = $this->container->get(ChatConversationService::class);
+            if ($isHandoff) {
+                $contact = is_array($result['contact'] ?? null) ? $result['contact'] : [];
+                $isNew   = $convService->markWaitingAgent(
+                    $conversation['id'],
+                    (string) $result['contactId'],
+                    $contact
+                );
+                if ($isNew && $this->container->has(ChatHandoffNotifier::class)) {
+                    $this->container->get(ChatHandoffNotifier::class)->notifyWaitingAgent(
+                        $conversation['id'],
+                        $contact
+                    );
+                }
+                $full   = $convService->findById($conversation['id']);
+                $status = (string) ($full['status'] ?? ChatConversationService::STATUS_WAITING_AGENT);
+                $result['status']  = $status;
+                $result['handoff'] = true;
+                $result['ui']      = [
+                    'type'   => 'handoff_waiting',
+                    'status' => $status,
+                ];
+            } else {
+                $convService->markLeadCaptured(
+                    $conversation['id'],
+                    (string) $result['contactId'],
+                    $intent
+                );
+            }
             $result['conversationKey'] = $conversation['sessionKey'];
         }
 
         return $this->respond($result);
+    }
+
+    public function handlePoll(WP_REST_Request $request): WP_REST_Response
+    {
+        $auth = $this->container->get(Authenticator::class);
+        $rate = $auth->enforceRateLimit('public_chat_poll', 60, 60);
+        if (is_wp_error($rate)) {
+            return $this->respond($rate);
+        }
+
+        $body = $request->get_json_params();
+        if (!is_array($body)) {
+            return $this->respond(new WP_Error('invalid_body', __('Invalid request body.', 'cheapalarms'), ['status' => 400]));
+        }
+
+        $pageContext  = $this->normalizePageContext($body['pageContext'] ?? null);
+        $conversation = $this->resolveConversation($body, $pageContext);
+        if ($conversation === null) {
+            return $this->respond(new WP_Error('missing_conversation', __('Missing conversation.', 'cheapalarms'), ['status' => 400]));
+        }
+
+        $afterId = max(0, (int) ($body['afterId'] ?? $body['after'] ?? 0));
+        $poll    = $this->container->get(ChatConversationService::class)->pollMessages(
+            $conversation['id'],
+            $afterId
+        );
+
+        // Public clients only need agent + system lines for display (user already has their own).
+        $messages = [];
+        foreach ($poll['messages'] as $msg) {
+            if (!in_array($msg['role'] ?? '', ['agent', 'system'], true)) {
+                continue;
+            }
+            $messages[] = $msg;
+        }
+
+        return $this->respond([
+            'ok'              => true,
+            'status'          => $poll['status'],
+            'messages'        => $messages,
+            'claimedBy'       => $poll['claimedBy'],
+            'conversationKey' => $conversation['sessionKey'],
+            'handoff'         => in_array(
+                $poll['status'],
+                [
+                    ChatConversationService::STATUS_WAITING_AGENT,
+                    ChatConversationService::STATUS_AGENT_ACTIVE,
+                ],
+                true
+            ),
+        ]);
     }
 
     /**
@@ -297,6 +444,35 @@ class ChatController implements ControllerInterface
 
         if (!$this->container->has(ChatConversationService::class)) {
             return null;
+        }
+
+        $resolved = $this->container->get(ChatConversationService::class)->resolve($key, $pageContext);
+        if (is_wp_error($resolved)) {
+            return null;
+        }
+
+        return [
+            'id'         => (int) $resolved['id'],
+            'sessionKey' => (string) $resolved['sessionKey'],
+        ];
+    }
+
+    /**
+     * Create a new chat session when the client omitted conversationKey (handoff must not be silent).
+     *
+     * @param array<string, mixed> $pageContext
+     * @return array{id: int, sessionKey: string}|null
+     */
+    private function createConversationSession(array $pageContext): ?array
+    {
+        if (!$this->container->has(ChatConversationService::class)) {
+            return null;
+        }
+
+        try {
+            $key = 'sg' . bin2hex(random_bytes(12));
+        } catch (\Throwable $e) {
+            $key = 'sg' . substr(hash('sha256', uniqid((string) mt_rand(), true)), 0, 24);
         }
 
         $resolved = $this->container->get(ChatConversationService::class)->resolve($key, $pageContext);

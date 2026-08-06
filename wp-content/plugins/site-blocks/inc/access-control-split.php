@@ -26,6 +26,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   paragraphs?: array<int, string>,
  *   paragraphs_html?: bool,
  *   list?: array<int, array{title: string, desc: string, html?: bool}>,
+ *   primary_label?: string,
+ *   primary_url?: string,
+ *   secondary_label?: string,
+ *   secondary_url?: string,
  *   visual: callable,
  *   footer?: callable,
  * } $args Section content.
@@ -43,14 +47,19 @@ function site_blocks_render_access_control_split( array $args ): void {
 		$section_class .= ' sg-ac-split--reverse';
 	}
 
-	$title_accent = isset( $args['title_accent'] ) ? (string) $args['title_accent'] : '';
-	$title_after  = isset( $args['title_after'] ) ? (string) $args['title_after'] : '';
-	$intro        = isset( $args['intro'] ) ? (string) $args['intro'] : '';
+	$title_accent    = isset( $args['title_accent'] ) ? (string) $args['title_accent'] : '';
+	$title_after     = isset( $args['title_after'] ) ? (string) $args['title_after'] : '';
+	$intro           = isset( $args['intro'] ) ? (string) $args['intro'] : '';
 	$paragraphs      = isset( $args['paragraphs'] ) && is_array( $args['paragraphs'] ) ? $args['paragraphs'] : array();
 	$paragraphs_html = ! empty( $args['paragraphs_html'] );
 	$list            = isset( $args['list'] ) && is_array( $args['list'] ) ? $args['list'] : array();
-	$visual       = $args['visual'];
-	$footer       = $args['footer'] ?? null;
+	$visual          = $args['visual'];
+	$footer          = $args['footer'] ?? null;
+	$primary_label   = (string) ( $args['primary_label'] ?? '' );
+	$primary_url     = (string) ( $args['primary_url'] ?? '' );
+	$secondary_label = (string) ( $args['secondary_label'] ?? '' );
+	$secondary_url   = (string) ( $args['secondary_url'] ?? '' );
+	$title_before    = (string) $args['title_before'];
 	?>
 	<section class="<?php echo esc_attr( $section_class ); ?>" aria-labelledby="<?php echo esc_attr( $heading_id ); ?>">
 		<div class="sg-container sg-ac-split__grid">
@@ -63,7 +72,7 @@ function site_blocks_render_access_control_split( array $args ): void {
 			</div>
 			<div class="sg-ac-split__copy">
 				<h2 id="<?php echo esc_attr( $heading_id ); ?>" class="sg-section-title sg-section-title--ink">
-					<?php echo esc_html( (string) $args['title_before'] ); ?>
+					<?php echo esc_html( $title_before ); ?>
 					<?php if ( '' !== $title_accent ) : ?>
 						<span class="sg-accent"><?php echo esc_html( $title_accent ); ?></span>
 					<?php endif; ?>
@@ -101,6 +110,20 @@ function site_blocks_render_access_control_split( array $args ): void {
 								<?php endif; ?>
 							</div>
 						<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
+				<?php if ( '' !== $primary_url || '' !== $secondary_url ) : ?>
+					<div class="sg-ac-split__ctas">
+						<?php if ( '' !== $primary_url ) : ?>
+							<a class="sg-btn sg-btn--orange" href="<?php echo esc_url( $primary_url ); ?>">
+								<?php echo esc_html( $primary_label ); ?>
+							</a>
+						<?php endif; ?>
+						<?php if ( '' !== $secondary_url ) : ?>
+							<a class="sg-btn sg-btn--ghost" href="<?php echo esc_url( $secondary_url ); ?>">
+								<?php echo esc_html( $secondary_label ); ?>
+							</a>
+						<?php endif; ?>
 					</div>
 				<?php endif; ?>
 			</div>

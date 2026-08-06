@@ -28,7 +28,7 @@ function site_blocks_enqueue_safeguard_home(): void {
 
 	wp_enqueue_style(
 		'safeguard-home-fonts',
-		'https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap',
+		'https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&display=swap',
 		array(),
 		null
 	);

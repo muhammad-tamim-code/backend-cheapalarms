@@ -95,21 +95,30 @@ function site_blocks_physical_security_render_split( string $page_key, string $s
 		};
 	}
 
-	site_blocks_render_access_control_split(
-		array(
-			'id'           => (string) $config['id'],
-			'class'        => (string) $config['class'],
-			'band'         => $band,
-			'reverse'      => $reverse,
-			'title_before' => (string) $config['title_before'],
-			'title_accent' => (string) ( $config['title_accent'] ?? '' ),
-			'title_after'  => (string) ( $config['title_after'] ?? '' ),
-			'paragraphs'   => $config['paragraphs'] ?? array(),
-			'list'         => $config['list'] ?? array(),
-			'visual'       => $visual,
-			'footer'       => $footer,
-		)
+	$split_args = array(
+		'id'           => (string) $config['id'],
+		'class'        => (string) $config['class'],
+		'band'         => $band,
+		'reverse'      => $reverse,
+		'layout'       => (string) ( $config['layout'] ?? '' ),
+		'title_before' => (string) $config['title_before'],
+		'title_accent' => (string) ( $config['title_accent'] ?? '' ),
+		'title_after'  => (string) ( $config['title_after'] ?? '' ),
+		'paragraphs'   => $config['paragraphs'] ?? array(),
+		'list'         => $config['list'] ?? array(),
+		'visual'       => $visual,
+		'footer'       => $footer,
 	);
+
+	if ( ! empty( $config['show_ctas'] ) ) {
+		$ctas                        = site_blocks_physical_security_ctas();
+		$split_args['primary_label'] = (string) $ctas['primary_label'];
+		$split_args['primary_url']   = (string) $ctas['primary_url'];
+		$split_args['secondary_label'] = (string) $ctas['secondary_label'];
+		$split_args['secondary_url']   = (string) $ctas['secondary_url'];
+	}
+
+	site_blocks_render_access_control_split( $split_args );
 }
 
 /**
@@ -122,16 +131,32 @@ function site_blocks_physical_security_render_cross_links( array $config ): void
 }
 
 /**
- * Hub service cards grid.
+ * Hub service cards grid (photo-options template).
  */
 function site_blocks_physical_security_render_services(): void {
-	site_blocks_render_hub_services_grid(
+	site_blocks_render_photo_options_grid(
 		array(
 			'heading_id'    => 'sg-ps-services-heading',
 			'section_class' => 'sg-physical-security-services',
+			'band'          => 'white',
+			'eyebrow'       => __( 'Physical Security', 'site-blocks' ),
 			'title_before'  => __( 'Guarding, matched to your ', 'site-blocks' ),
 			'title_accent'  => __( 'site', 'site-blocks' ),
-			'services'      => site_blocks_physical_security_hub_services(),
+			'intro'         => __( 'Professional security services to protect people, property and operations across Sydney.', 'site-blocks' ),
+			'items'         => site_blocks_physical_security_hub_photo_services(),
+			'cta'           => array(
+				'title'         => __( 'Security you can rely on.', 'site-blocks' ),
+				'checks'        => array(
+					__( 'Licensed NSW Officers', 'site-blocks' ),
+					__( '24/7 Operations', 'site-blocks' ),
+					__( 'Integrated Alarm Response', 'site-blocks' ),
+					__( 'GPS Patrol Tracking', 'site-blocks' ),
+					__( 'Digital Incident Reports', 'site-blocks' ),
+				),
+				'button_label'  => __( 'Request a Quote', 'site-blocks' ),
+				'button_url'    => home_url( '/contact/' ),
+				'icon'          => 'shield-check',
+			),
 		)
 	);
 }

@@ -139,6 +139,7 @@ function site_blocks_enqueue_safeguard_chat(): void {
 		array(
 			'apiUrl'       => esc_url_raw( rest_url( 'ca/v1/chat' ) ),
 			'leadUrl'      => esc_url_raw( rest_url( 'ca/v1/chat/lead' ) ),
+			'pollUrl'      => esc_url_raw( rest_url( 'ca/v1/chat/poll' ) ),
 			'quoteSubmitUrl' => esc_url_raw( rest_url( 'ca/v1/chat/quote' ) ),
 			'otpSendUrl'   => esc_url_raw( rest_url( 'ca/v1/otp/send' ) ),
 			'otpVerifyUrl' => esc_url_raw( rest_url( 'ca/v1/otp/verify' ) ),
@@ -153,13 +154,20 @@ function site_blocks_enqueue_safeguard_chat(): void {
 			'sendLabel'    => __( 'Send', 'site-blocks' ),
 			'openLabel'    => __( 'Chat with Safeguard', 'site-blocks' ),
 			'closeLabel'   => __( 'Close chat', 'site-blocks' ),
+			'newChatLabel' => __( 'New chat', 'site-blocks' ),
 			'thinking'     => __( 'Thinking…', 'site-blocks' ),
 			'errorGeneric' => __( 'Something went wrong. Please try again or call us.', 'site-blocks' ),
-			'unavailable'  => __( 'Chat is temporarily unavailable. Call us on 1300 225 276 or request a quote online.', 'site-blocks' ),
+			'unavailable'  => __( 'The AI assistant is temporarily unavailable. Tap Talk to a person below and our team will help you live.', 'site-blocks' ),
 			'leadIntro'    => __( 'Great, leave your details and our team will call you back (usually within business hours). Pricing is shared via your portal after we connect.', 'site-blocks' ),
 			'leadSubmit'   => __( 'Send my details', 'site-blocks' ),
 			'leadSuccess'  => __( 'Thanks, we\'ve got your details. Our team will call you shortly.', 'site-blocks' ),
 			'leadError'    => __( 'Could not send your details. Please call 1300 225 276.', 'site-blocks' ),
+			'handoffIntro' => __( 'Sure, I can connect you with our team. Please share your name, email, address, and phone below.', 'site-blocks' ),
+			'handoffSubmit'=> __( 'Connect me to the team', 'site-blocks' ),
+			'handoffSuccess'=> __( 'Thanks, connecting you with our team now. Stay on this chat and someone will reply shortly.', 'site-blocks' ),
+			'handoffError' => __( 'Could not start live chat. Please call 1300 225 276.', 'site-blocks' ),
+			'handoffResolved' => __( 'This chat has been closed by our team. You can keep chatting with the assistant or call 1300 225 276.', 'site-blocks' ),
+			'handoffReturned' => __( 'You are back with the assistant. How else can we help?', 'site-blocks' ),
 			'postLeadHelp' => __( 'Check your spam folder if you do not hear from us within a few hours. For urgent matters call 1300 225 276.', 'site-blocks' ),
 			'quoteIntro'   => __( 'Verify your mobile to receive your quote by email and in your portal, pricing is not shown in chat.', 'site-blocks' ),
 			'quoteSubmit'  => __( 'Send my quote', 'site-blocks' ),
@@ -178,6 +186,10 @@ function site_blocks_enqueue_safeguard_chat(): void {
 				array(
 					'label'  => __( 'Help me choose', 'site-blocks' ),
 					'action' => 'service_picker',
+				),
+				array(
+					'label'  => __( 'Talk to a person', 'site-blocks' ),
+					'action' => 'agent_handoff',
 				),
 				array(
 					'label' => __( 'Call us', 'site-blocks' ),
@@ -212,9 +224,14 @@ function site_blocks_render_safeguard_chat_widget(): void {
 					<p class="sg-chat__eyebrow"><?php esc_html_e( 'Safeguard Assistant', 'site-blocks' ); ?></p>
 					<h2 class="sg-chat__title" id="sg-chat-title"><?php esc_html_e( 'How can we help?', 'site-blocks' ); ?></h2>
 				</div>
-				<button type="button" class="sg-chat__close" id="sg-chat-close" aria-label="<?php esc_attr_e( 'Close chat', 'site-blocks' ); ?>">
-					<?php site_blocks_lucide_icon( 'x', 20 ); ?>
-				</button>
+				<div class="sg-chat__head-actions">
+					<button type="button" class="sg-chat__new" id="sg-chat-new" aria-label="<?php esc_attr_e( 'Start a new chat', 'site-blocks' ); ?>">
+						<?php esc_html_e( 'New chat', 'site-blocks' ); ?>
+					</button>
+					<button type="button" class="sg-chat__close" id="sg-chat-close" aria-label="<?php esc_attr_e( 'Close chat', 'site-blocks' ); ?>">
+						<?php site_blocks_lucide_icon( 'x', 20 ); ?>
+					</button>
+				</div>
 			</header>
 			<div class="sg-chat__messages" id="sg-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
 			<form class="sg-chat__form" id="sg-chat-form">

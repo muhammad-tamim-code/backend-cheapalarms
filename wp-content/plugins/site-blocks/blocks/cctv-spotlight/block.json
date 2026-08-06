@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/cctv-spotlight",
+  "version": "1.0.0",
+  "title": "CCTV Product Spotlight",
+  "category": "theme",
+  "icon": "camera",
+  "description": "Architectural product spotlight panel for the CCTV hub.",
+  "keywords": ["cctv", "spotlight", "cameras", "product"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

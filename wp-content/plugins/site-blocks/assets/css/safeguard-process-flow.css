@@ -53,7 +53,7 @@
   padding: 0.9rem 0.85rem 0.8rem;
   background: #fff;
   border: 1px solid var(--sg-line);
-  box-shadow: 0 1px 4px rgba(12, 45, 68, 0.05);
+  box-shadow: var(--sg-shadow);
 }
 
 .sg-process-flow__head {
@@ -172,7 +172,7 @@
   background: #fff;
   border: 1px solid var(--sg-blue);
   border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(12, 45, 68, 0.1);
+  box-shadow: var(--sg-shadow);
   color: var(--sg-blue);
 }
 
@@ -193,7 +193,7 @@
   padding: 0.65rem;
   background: #fff;
   border: 1px solid var(--sg-line);
-  box-shadow: 0 4px 14px rgba(12, 45, 68, 0.08);
+  box-shadow: var(--sg-shadow);
   box-sizing: border-box;
 }
 
@@ -308,7 +308,7 @@
   background: #fff;
   border: 1px solid var(--sg-line);
   color: var(--sg-success);
-  box-shadow: 0 2px 6px rgba(12, 45, 68, 0.1);
+  box-shadow: var(--sg-shadow);
 }
 
 .sg-pf-sk__feed-check .sg-lucide-icon {
@@ -364,7 +364,7 @@
   padding: 0.45rem 0.55rem;
   background: #fff;
   border: 1px solid rgba(251, 117, 35, 0.45);
-  box-shadow: 0 6px 16px rgba(12, 45, 68, 0.12);
+  box-shadow: var(--sg-shadow);
 }
 
 .sg-pf-sk__alert-icon {

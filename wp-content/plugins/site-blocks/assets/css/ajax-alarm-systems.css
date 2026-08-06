@@ -5,7 +5,7 @@ body.safeguard-ajax-page {
   --sg-ajax-navy: #061b33;
   --sg-ajax-muted: rgba(6, 27, 51, 0.62);
   --sg-ajax-divider: rgba(6, 27, 51, 0.09);
-  --sg-ajax-card-shadow: 0 14px 36px rgba(6, 27, 51, 0.11), 0 3px 10px rgba(6, 27, 51, 0.05);
+  --sg-ajax-card-shadow: var(--sg-shadow);
 }
 
 /* Kadence .entry-content ul adds ~32px left padding, reset non-hero lists */

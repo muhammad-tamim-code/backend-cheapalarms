@@ -28,7 +28,7 @@ class ChatMessageRepository
         }
 
         $role = sanitize_text_field($role);
-        if (!in_array($role, ['user', 'assistant', 'system'], true)) {
+        if (!in_array($role, ['user', 'assistant', 'system', 'agent'], true)) {
             $role = 'system';
         }
 
@@ -95,5 +95,32 @@ class ChatMessageRepository
                 $conversationId
             )
         );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listSince(int $conversationId, int $afterId = 0, int $limit = 100): array
+    {
+        global $wpdb;
+
+        if ($conversationId < 1) {
+            return [];
+        }
+
+        $limit   = max(1, min(500, $limit));
+        $afterId = max(0, $afterId);
+        $rows    = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM ' . $this->table()
+                . ' WHERE conversation_id = %d AND id > %d ORDER BY id ASC LIMIT %d',
+                $conversationId,
+                $afterId,
+                $limit
+            ),
+            ARRAY_A
+        );
+
+        return is_array($rows) ? $rows : [];
     }
 }

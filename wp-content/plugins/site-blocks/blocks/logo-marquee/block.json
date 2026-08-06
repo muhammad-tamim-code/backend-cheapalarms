@@ -11,7 +11,7 @@
   "attributes": {
     "title": {
       "type": "string",
-      "default": "Brands we have worked with"
+      "default": "Clients Portfolio"
     },
     "subtitle": {
       "type": "string",

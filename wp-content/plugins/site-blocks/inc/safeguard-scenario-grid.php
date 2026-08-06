@@ -39,18 +39,12 @@ function site_blocks_scenario_grid_render_icon( string $icon_key, bool $use_bran
 function site_blocks_scenario_grid_render_photo( array $photo ): void {
 	$subdir   = isset( $photo['dir'] ) ? trim( (string) $photo['dir'], '/' ) . '/' : 'monitoring/';
 	$relative = 'images/' . $subdir . ltrim( (string) $photo['file'], '/' );
-	$disk     = SITE_BLOCKS_DIR . 'assets/' . $relative;
 
-	if ( ! is_readable( $disk ) ) {
-		echo '<span class="sg-scenario-grid__photo-placeholder" aria-hidden="true"></span>';
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative, (string) ( $photo['alt'] ?? '' ), 'sg-scenario-grid__photo-img', 'lazy' ) ) {
 		return;
 	}
 
-	printf(
-		'<img class="sg-scenario-grid__photo-img" src="%s" alt="%s" loading="lazy" decoding="async" />',
-		esc_url( site_blocks_asset_url( $relative ) ),
-		esc_attr( (string) ( $photo['alt'] ?? '' ) )
-	);
+	echo '<span class="sg-scenario-grid__photo-placeholder" aria-hidden="true"></span>';
 }
 
 /**

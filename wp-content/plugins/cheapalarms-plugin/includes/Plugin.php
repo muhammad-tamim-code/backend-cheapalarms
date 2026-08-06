@@ -289,6 +289,29 @@ class Plugin
             wp_schedule_single_event(time() + 1, 'ca_retry_failed_webhooks');
         });
 
+        // Live-chat handoff timeout (waiting_agent → timed_out after N minutes)
+        add_action('ca_chat_handoff_timeout', function () {
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatConversationService::class)
+                ->timeoutExpiredWaitingAgents();
+        }, 10, 0);
+
+        if (!wp_next_scheduled('ca_chat_handoff_timeout_recurring')) {
+            wp_schedule_event(time() + 120, 'ca_every_5_minutes', 'ca_chat_handoff_timeout_recurring');
+        }
+
+        add_action('ca_chat_handoff_timeout_recurring', function () {
+            wp_schedule_single_event(time() + 1, 'ca_chat_handoff_timeout');
+        });
+
+        add_action('ca_chat_conversation_timed_out', function ($conversationId) {
+            $id = (int) $conversationId;
+            if ($id < 1 || !$this->container->has(\CheapAlarms\Plugin\Services\ChatHandoffNotifier::class)) {
+                return;
+            }
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatHandoffNotifier::class)
+                ->markAlertTimedOut($id);
+        }, 10, 1);
+
         // Retry failed GHL webhooks (every 5 minutes, uses same schedule)
         add_action('ca_retry_failed_ghl_webhooks', function () {
             $processor = $this->container->get(\CheapAlarms\Plugin\Services\Ghl\GhlWebhookProcessor::class);
@@ -715,6 +738,16 @@ class Plugin
             $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class),
             $this->container->get(Logger::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Services\TelegramBotService::class, fn () => new \CheapAlarms\Plugin\Services\TelegramBotService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatHandoffNotifier::class, fn () => new \CheapAlarms\Plugin\Services\ChatHandoffNotifier(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\TelegramBotService::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatConversationService::class)
+        ));
         $this->container->set(\CheapAlarms\Plugin\Services\ChatRouterService::class, fn () => new \CheapAlarms\Plugin\Services\ChatRouterService());
         $this->container->set(\CheapAlarms\Plugin\Services\ChatUiSuggester::class, fn () => new \CheapAlarms\Plugin\Services\ChatUiSuggester(
             $this->container->get(\CheapAlarms\Plugin\Services\ChatRouterService::class)
@@ -730,10 +763,15 @@ class Plugin
             $this->container->get(\CheapAlarms\Plugin\Services\GhlClient::class),
             $this->container->get(Logger::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Services\WasabiS3Client::class, fn () => new \CheapAlarms\Plugin\Services\WasabiS3Client(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
         $this->container->set(\CheapAlarms\Plugin\Services\UploadService::class, fn () => new \CheapAlarms\Plugin\Services\UploadService(
             $this->container->get(Config::class),
             $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class),
-            $this->container->get(Logger::class)
+            $this->container->get(Logger::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\WasabiS3Client::class)
         ));
         $this->container->set(\CheapAlarms\Plugin\Services\PortalService::class, fn () => new \CheapAlarms\Plugin\Services\PortalService(
             $this->container->get(\CheapAlarms\Plugin\Services\EstimateService::class),
@@ -998,6 +1036,16 @@ class Plugin
             $this->container->get(\CheapAlarms\Plugin\Services\Chat\ChatMessageRepository::class),
             $this->container->get(Logger::class)
         ));
+        $this->container->set(\CheapAlarms\Plugin\Services\TelegramBotService::class, fn () => new \CheapAlarms\Plugin\Services\TelegramBotService(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class)
+        ));
+        $this->container->set(\CheapAlarms\Plugin\Services\ChatHandoffNotifier::class, fn () => new \CheapAlarms\Plugin\Services\ChatHandoffNotifier(
+            $this->container->get(Config::class),
+            $this->container->get(Logger::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\TelegramBotService::class),
+            $this->container->get(\CheapAlarms\Plugin\Services\ChatConversationService::class)
+        ));
         $this->container->set(\CheapAlarms\Plugin\Services\ChatRouterService::class, fn () => new \CheapAlarms\Plugin\Services\ChatRouterService());
         $this->container->set(\CheapAlarms\Plugin\Services\ChatUiSuggester::class, fn () => new \CheapAlarms\Plugin\Services\ChatUiSuggester(
             $this->container->get(\CheapAlarms\Plugin\Services\ChatRouterService::class)
@@ -1009,6 +1057,7 @@ class Plugin
             (new CalculatorController($this->container))->register();
             (new ChatController($this->container))->register();
             (new \CheapAlarms\Plugin\REST\Controllers\OtpController($this->container))->register();
+            (new \CheapAlarms\Plugin\REST\Controllers\TelegramWebhookController($this->container))->register();
         });
 
         if (is_admin()) {

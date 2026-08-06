@@ -253,18 +253,34 @@ function site_blocks_monitoring_render_cross_links( $variant = 'hub' ): void {
 }
 
 /**
- * Hub service cards grid.
+ * Hub service cards grid (photo-options template).
  */
 function site_blocks_monitoring_render_services(): void {
 	$heading = site_blocks_monitoring_services_heading();
 
-	site_blocks_render_hub_services_grid(
+	site_blocks_render_photo_options_grid(
 		array(
 			'heading_id'    => 'sg-monitoring-services-heading',
 			'section_class' => 'sg-monitoring-services',
-			'title'         => $heading['title'],
-			'intro'         => $heading['intro'],
-			'services'      => site_blocks_monitoring_hub_services(),
+			'band'          => 'white',
+			'eyebrow'       => __( 'Monitoring', 'site-blocks' ),
+			'title_before'  => __( 'Choose the monitoring that fits your ', 'site-blocks' ),
+			'title_accent'  => __( 'site', 'site-blocks' ),
+			'intro'         => (string) $heading['intro'],
+			'items'         => site_blocks_monitoring_hub_photo_services(),
+			'cta'           => array(
+				'title'        => __( 'Eyes on your site, day and night.', 'site-blocks' ),
+				'checks'       => array(
+					__( 'Australian Monitoring Centre', 'site-blocks' ),
+					__( '24/7 Operators', 'site-blocks' ),
+					__( 'Video Verification', 'site-blocks' ),
+					__( 'Clear Escalation Plans', 'site-blocks' ),
+					__( 'Portal Visibility', 'site-blocks' ),
+				),
+				'button_label' => __( 'Request a Quote', 'site-blocks' ),
+				'button_url'   => home_url( '/contact/' ),
+				'icon'         => 'shield-check',
+			),
 		)
 	);
 }
@@ -511,7 +527,7 @@ function site_blocks_monitoring_render_quote(): void {
 			<div class="sg-monitoring-quote__links">
 				<?php foreach ( $config['links'] as $link ) : ?>
 					<a
-						class="sg-btn <?php echo ! empty( $link['primary'] ) ? 'sg-btn--primary' : 'sg-btn--ghost-dark'; ?>"
+						class="sg-btn <?php echo ! empty( $link['primary'] ) ? 'sg-btn--primary' : 'sg-btn--ghost'; ?>"
 						href="<?php echo esc_url( $link['url'] ); ?>"
 					>
 						<?php echo esc_html( $link['label'] ); ?>

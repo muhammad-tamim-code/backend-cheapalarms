@@ -9,7 +9,7 @@ use function update_option;
 class Schema
 {
     public const OPTION_KEY = 'ca_db_schema_version';
-    public const VERSION    = '2026-07-05-01'; // Chat conversations + messages
+    public const VERSION    = '2026-07-20-01'; // Chat live-agent handoff (claim columns)
 
     public static function maybeMigrate(): void
     {
@@ -349,6 +349,8 @@ class Schema
             estimate_id VARCHAR(64) NULL,
             quote_total DECIMAL(18,2) NULL,
             message_count INT UNSIGNED NOT NULL DEFAULT 0,
+            claimed_by BIGINT(20) UNSIGNED NULL,
+            claimed_at DATETIME NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             last_user_message_at DATETIME NULL,
@@ -357,7 +359,8 @@ class Schema
             UNIQUE KEY session_key (session_key),
             KEY idx_status_updated (status, updated_at),
             KEY idx_service (page_service),
-            KEY idx_created (created_at)
+            KEY idx_created (created_at),
+            KEY idx_claimed_by (claimed_by)
         ) {$charsetCollate};";
 
         dbDelta($convSql);

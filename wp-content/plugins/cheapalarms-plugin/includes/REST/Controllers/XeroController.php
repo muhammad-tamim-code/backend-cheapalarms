@@ -122,6 +122,11 @@ class XeroController extends AdminController
 
     private function getAuthorizationUrl(WP_REST_Request $request): WP_REST_Response
     {
+        $disabled = $this->xeroDisabledResponse();
+        if ($disabled !== null) {
+            return $disabled;
+        }
+
         $result = $this->xeroService->getAuthorizationUrl();
         
         if (is_wp_error($result)) {
@@ -176,11 +181,23 @@ class XeroController extends AdminController
 
     private function getStatus(WP_REST_Request $request): WP_REST_Response
     {
+        $config = $this->container->get(Config::class);
+        if (!$config->isXeroIntegrationsEnabled()) {
+            return $this->respond([
+                'ok'        => true,
+                'enabled'   => false,
+                'connected' => false,
+                'tenantId'  => null,
+                'message'   => 'Xero is paused for this launch.',
+            ]);
+        }
+
         $isConnected = $this->xeroService->isConnected();
         $tenantId = $isConnected ? get_option('ca_xero_tenant_id') : null;
 
         return $this->respond([
             'ok' => true,
+            'enabled' => true,
             'connected' => $isConnected,
             'tenantId' => $tenantId ?: null,
         ]);
@@ -198,6 +215,11 @@ class XeroController extends AdminController
 
     private function syncInvoice(WP_REST_Request $request): WP_REST_Response
     {
+        $disabled = $this->xeroDisabledResponse();
+        if ($disabled !== null) {
+            return $disabled;
+        }
+
         // Get parameters from JSON body (POST request)
         $body = $request->get_json_params();
         $invoiceId = sanitize_text_field($body['invoiceId'] ?? '');
@@ -298,6 +320,11 @@ class XeroController extends AdminController
 
     private function syncPayment(WP_REST_Request $request): WP_REST_Response
     {
+        $disabled = $this->xeroDisabledResponse();
+        if ($disabled !== null) {
+            return $disabled;
+        }
+
         $body = $request->get_json_params();
         $invoiceId = sanitize_text_field($body['invoiceId'] ?? '');
         $transactionId = sanitize_text_field($body['transactionId'] ?? '');
@@ -486,6 +513,23 @@ class XeroController extends AdminController
         } finally {
             delete_transient($lockKey);
         }
+    }
+
+    /**
+     * @return WP_REST_Response|null
+     */
+    private function xeroDisabledResponse(): ?WP_REST_Response
+    {
+        $config = $this->container->get(Config::class);
+        if ($config->isXeroIntegrationsEnabled()) {
+            return null;
+        }
+
+        return $this->respond(new WP_Error(
+            'xero_disabled',
+            __('Xero is paused for this launch. Accounting is handled outside the portal.', 'cheapalarms'),
+            ['status' => 503]
+        ));
     }
 
     /**

@@ -113,6 +113,8 @@ class ChatConversationRepository
             'message_count',
             'last_user_message_at',
             'meta_json',
+            'claimed_by',
+            'claimed_at',
         ];
 
         $data   = [];
@@ -123,9 +125,11 @@ class ChatConversationRepository
                 continue;
             }
 
-            if ($key === 'message_count') {
-                $data[$key] = (int) $fields[$key];
-                $format[]   = '%d';
+            if ($key === 'message_count' || $key === 'claimed_by') {
+                $data[$key] = $fields[$key] !== null && $fields[$key] !== ''
+                    ? (int) $fields[$key]
+                    : null;
+                $format[] = '%d';
                 continue;
             }
 
@@ -137,6 +141,12 @@ class ChatConversationRepository
 
             if ($key === 'meta_json' && is_array($fields[$key])) {
                 $data[$key] = wp_json_encode($fields[$key]);
+                $format[]   = '%s';
+                continue;
+            }
+
+            if ($key === 'claimed_at' && ($fields[$key] === null || $fields[$key] === '')) {
+                $data[$key] = null;
                 $format[]   = '%s';
                 continue;
             }
@@ -193,6 +203,50 @@ class ChatConversationRepository
                 ARRAY_A
             );
         }
+
+        return [
+            'items' => is_array($rows) ? $rows : [],
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * @param array<int, string> $statuses
+     * @return array{items: array<int, array<string, mixed>>, total: int}
+     */
+    public function listByStatuses(array $statuses, int $limit = 50, int $offset = 0): array
+    {
+        global $wpdb;
+
+        $statuses = array_values(array_filter(array_map(
+            static fn ($s) => sanitize_text_field((string) $s),
+            $statuses
+        )));
+
+        if ($statuses === []) {
+            return $this->listRecent($limit, $offset, null);
+        }
+
+        $limit  = max(1, min(200, $limit));
+        $offset = max(0, $offset);
+        $table  = $this->table();
+        $placeholders = implode(',', array_fill(0, count($statuses), '%s'));
+
+        $total = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE status IN ({$placeholders})",
+                ...$statuses
+            )
+        );
+
+        $params = array_merge($statuses, [$limit, $offset]);
+        $rows   = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE status IN ({$placeholders}) ORDER BY updated_at DESC LIMIT %d OFFSET %d",
+                ...$params
+            ),
+            ARRAY_A
+        );
 
         return [
             'items' => is_array($rows) ? $rows : [],

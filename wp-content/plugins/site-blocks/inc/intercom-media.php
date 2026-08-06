@@ -19,7 +19,7 @@ function site_blocks_intercom_image_dimensions( string $relative_path ): array {
 	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 
 	$defaults = array(
-		'images/intercom/hero.webp'                  => array( 'width' => 1600, 'height' => 900 ),
+		'images/intercom/hero.webp'                  => array( 'width' => 1230, 'height' => 1024 ),
 		'images/ajax/property/home.webp'             => array( 'width' => 1448, 'height' => 1086 ),
 		'images/ajax/property/apartments.webp'       => array( 'width' => 1448, 'height' => 1086 ),
 		'images/ajax/property/small-business.webp'   => array( 'width' => 1448, 'height' => 1086 ),
@@ -49,41 +49,32 @@ function site_blocks_intercom_image_dimensions( string $relative_path ): array {
  */
 function site_blocks_intercom_image( string $relative_path, string $alt = '', string $class = 'sg-cctv-media__img', string $loading = 'lazy' ): void {
 	$relative_path = ltrim( $relative_path, '/' );
-	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 
-	if ( ! is_readable( $disk ) ) {
-		printf( '<span class="sg-cctv-media-placeholder" aria-hidden="true"></span>' );
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative_path, $alt, $class, $loading ) ) {
 		return;
 	}
 
-	$dims = site_blocks_intercom_image_dimensions( $relative_path );
-
-	$attrs = sprintf(
-		'class="%s" src="%s" alt="%s"',
-		esc_attr( $class ),
-		esc_url( site_blocks_asset_url( $relative_path ) ),
-		esc_attr( $alt )
-	);
-
-	if ( $dims['width'] > 0 && $dims['height'] > 0 ) {
-		$attrs .= sprintf( ' width="%d" height="%d"', $dims['width'], $dims['height'] );
-	}
-
-	printf(
-		'<img %s loading="%s" decoding="async" />',
-		$attrs,
-		esc_attr( $loading )
-	);
+	printf( '<span class="sg-cctv-media-placeholder" aria-hidden="true"></span>' );
 }
 
 /**
  * Hero image, placeholder until intercom hero asset is provided.
  */
 function site_blocks_intercom_hero_image(): void {
-	$hero = SITE_BLOCKS_DIR . 'assets/images/intercom/hero.webp';
-	if ( is_readable( $hero ) ) {
+	$relative = 'images/intercom/hero.webp';
+	if ( function_exists( 'site_blocks_media_source_exists' ) && site_blocks_media_source_exists( $relative ) ) {
 		site_blocks_intercom_image(
-			'images/intercom/hero.webp',
+			$relative,
+			__( 'Video intercom door station, indoor monitor and phone app installed in Sydney', 'site-blocks' ),
+			'sg-hero__pillar-img',
+			'eager'
+		);
+		return;
+	}
+
+	if ( is_readable( SITE_BLOCKS_DIR . 'assets/' . $relative ) ) {
+		site_blocks_intercom_image(
+			$relative,
 			__( 'Video intercom door station, indoor monitor and phone app installed in Sydney', 'site-blocks' ),
 			'sg-hero__pillar-img',
 			'eager'

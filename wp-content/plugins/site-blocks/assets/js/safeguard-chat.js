@@ -24,6 +24,8 @@
 
     var routeUrl = cfg.routeUrl || '';
 
+    var pollUrl = cfg.pollUrl || '';
+
     if (!apiUrl) {
 
       return;
@@ -37,6 +39,8 @@
     var toggle = document.getElementById('sg-chat-toggle');
 
     var closeBtn = document.getElementById('sg-chat-close');
+
+    var newChatBtn = document.getElementById('sg-chat-new');
 
     var form = document.getElementById('sg-chat-form');
 
@@ -69,6 +73,16 @@
 
     var leadSubmitted = false;
 
+    var handoffActive = false;
+
+    var handoffStatus = '';
+
+    var lastPollMessageId = 0;
+
+    var pollTimer = null;
+
+    var seenPollMessageIds = {};
+
     var activeLeadForm = null;
 
     var starterDismissed = false;
@@ -94,12 +108,26 @@
     var otpVerifiedToken = null;
 
     var STORAGE_KEY = 'sgChatState';
-    var STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    var STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
+    var STORAGE_HANDOFF_TTL_MS = 7 * 24 * 60 * 60 * 1000;
     var MAX_STORED_MESSAGES = 20;
 
 
 
     var isRestoring = false;
+
+    function clearPersistedState() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+      try {
+        sessionStorage.removeItem('sgChatConversationKey');
+      } catch (e2) {
+        /* ignore */
+      }
+    }
 
     function persistState() {
       try {
@@ -111,10 +139,13 @@
             displayThread: displayThread.slice(-MAX_STORED_MESSAGES),
             starterDismissed: starterDismissed,
             leadSubmitted: leadSubmitted,
+            handoffActive: handoffActive,
+            handoffStatus: handoffStatus,
+            lastPollMessageId: lastPollMessageId,
             quoteSubmitted: quoteSubmitted,
             quoteMode: quoteMode,
             quoteSession: quoteSession,
-            conversationKey: conversationKey || getConversationKey(),
+            conversationKey: conversationKey || null,
           })
         );
       } catch (e) {
@@ -133,11 +164,20 @@
 
         var state = JSON.parse(raw);
         if (!state || typeof state.savedAt !== 'number') {
+          clearPersistedState();
           return;
         }
 
-        if (Date.now() - state.savedAt > STORAGE_TTL_MS) {
-          localStorage.removeItem(STORAGE_KEY);
+        // Resolved / timed-out chats start fresh on next visit.
+        // Return-to-AI (`open`) must KEEP history — do not wipe it here.
+        if (state.handoffStatus === 'resolved' || state.handoffStatus === 'timed_out') {
+          clearPersistedState();
+          return;
+        }
+
+        var ttl = state.handoffActive ? STORAGE_HANDOFF_TTL_MS : STORAGE_TTL_MS;
+        if (Date.now() - state.savedAt > ttl) {
+          clearPersistedState();
           return;
         }
 
@@ -152,18 +192,26 @@
         }
 
         welcomed = displayThread.length > 0 || history.length > 0;
-        starterDismissed = !!state.starterDismissed || history.length > 0;
+        starterDismissed = !!state.starterDismissed;
         leadSubmitted = !!state.leadSubmitted;
+        handoffActive = !!state.handoffActive;
+        handoffStatus = state.handoffStatus || '';
+        lastPollMessageId = Number(state.lastPollMessageId) || 0;
         quoteSubmitted = !!state.quoteSubmitted;
         quoteMode = !!state.quoteMode;
         quoteSession = state.quoteSession || null;
+
+        // After return-to-AI, unlock handoff CTA again.
+        if (!handoffActive && handoffStatus === 'open') {
+          leadSubmitted = false;
+        }
 
         if (state.conversationKey) {
           conversationKey = state.conversationKey;
           sessionStorage.setItem('sgChatConversationKey', conversationKey);
         }
       } catch (e) {
-        /* ignore corrupt storage */
+        clearPersistedState();
       }
     }
 
@@ -182,23 +230,70 @@
         if (!entry || !entry.content) {
           return;
         }
-        appendMessage(entry.role === 'user' ? 'user' : 'assistant', entry.content);
+        var role = entry.role === 'user' ? 'user' : entry.role === 'agent' ? 'agent' : 'assistant';
+        appendMessage(role, entry.content, role === 'agent' ? 'sg-chat__bubble--agent' : '');
       });
 
       isRestoring = false;
 
-      if (quoteSession && quoteSession.resolveToken && !quoteSubmitted) {
+      if (handoffActive) {
+        startHandoffPolling();
+      } else if (quoteSession && quoteSession.resolveToken && !quoteSubmitted) {
         showQuoteVerifyForm(quoteSession);
       } else if (
         !starterDismissed &&
-        chatAvailable &&
+        !leadSubmitted &&
         history.length === 0 &&
         thread.length <= 1
       ) {
         showStarterChoices();
       }
 
+      if (!handoffActive) {
+        ensureAgentEscapeHatch();
+      }
+
       messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function startFreshConversation() {
+      stopHandoffPolling();
+      removeLeadForm();
+      removeQuoteForm();
+      dismissStarters();
+
+      history = [];
+      displayThread = [];
+      welcomed = false;
+      starterDismissed = false;
+      leadSubmitted = false;
+      handoffActive = false;
+      handoffStatus = '';
+      lastPollMessageId = 0;
+      seenPollMessageIds = {};
+      quoteSubmitted = false;
+      quoteMode = false;
+      quoteSession = null;
+      otpVerifiedToken = null;
+      conversationKey = null;
+      activeStarterEl = null;
+
+      clearPersistedState();
+      messagesEl.innerHTML = '';
+
+      appendMessage(
+        'assistant',
+        chatAvailable
+          ? cfg.welcome ||
+              'Hi, ask anything about alarms, CCTV, access control, or getting a quote for your property.'
+          : cfg.unavailable ||
+              'The AI assistant is temporarily unavailable. Tap Talk to a person below and our team will help you live.'
+      );
+      welcomed = true;
+      showStarterChoices();
+      ensureAgentEscapeHatch();
+      persistState();
+      input.focus();
     }
 
 
@@ -229,13 +324,21 @@
 
         var key =
 
-          'sg-' +
+          'sg' +
 
-          Date.now().toString(36) +
+          (window.crypto && window.crypto.getRandomValues
 
-          '-' +
+            ? Array.prototype.map
 
-          Math.random().toString(36).slice(2, 10);
+                .call(window.crypto.getRandomValues(new Uint8Array(12)), function (b) {
+
+                  return ('0' + b.toString(16)).slice(-2);
+
+                })
+
+                .join('')
+
+            : Date.now().toString(36) + Math.random().toString(36).slice(2, 14));
 
         sessionStorage.setItem('sgChatConversationKey', key);
 
@@ -359,20 +462,83 @@
                 ? cfg.welcome ||
                     'Hi, ask anything about alarms, CCTV, access control, or getting a quote for your property.'
                 : cfg.unavailable ||
-                    'Chat is temporarily unavailable. Call 1300 225 276 or request a quote online.'
+                    'The AI assistant is temporarily unavailable. Tap Talk to a person below and our team will help you live.'
             );
 
             welcomed = true;
-
-            if (chatAvailable) {
-              showStarterChoices();
-            }
+            showStarterChoices();
+            ensureAgentEscapeHatch();
           }
+        } else if (!handoffActive) {
+          ensureAgentEscapeHatch();
         }
 
+        ensureHandoffChoicesVisible();
         input.focus();
       }
 
+    }
+
+
+
+    function ensureHandoffChoicesVisible() {
+      if (chatAvailable || leadSubmitted || handoffActive) {
+        return;
+      }
+
+      showStarterChoices();
+      ensureAgentEscapeHatch();
+    }
+
+    function ensureAgentEscapeHatch() {
+      if (handoffActive || leadSubmitted || activeLeadForm) {
+        return;
+      }
+
+      if (messagesEl.querySelector('.sg-chat__agent-escape')) {
+        return;
+      }
+
+      if (activeStarterEl && activeStarterEl.parentNode) {
+        var hasAgent = false;
+        var chips = activeStarterEl.querySelectorAll('.sg-chat__chip');
+        for (var i = 0; i < chips.length; i++) {
+          if ((chips[i].textContent || '').toLowerCase().indexOf('talk to a person') !== -1) {
+            hasAgent = true;
+            break;
+          }
+        }
+        if (hasAgent) {
+          return;
+        }
+      }
+
+      var wrap = document.createElement('div');
+      wrap.className = 'sg-chat__inline-actions sg-chat__agent-escape';
+
+      var agentBtn = document.createElement('button');
+      agentBtn.type = 'button';
+      agentBtn.className = 'sg-chat__chip sg-chat__chip--primary';
+      agentBtn.textContent = 'Talk to a person';
+      agentBtn.addEventListener('click', function () {
+        dismissStarters();
+        var escapeEl = messagesEl.querySelector('.sg-chat__agent-escape');
+        if (escapeEl && escapeEl.parentNode) {
+          escapeEl.parentNode.removeChild(escapeEl);
+        }
+        appendMessage('user', 'Talk to a person');
+        showHandoffForm(true);
+      });
+      wrap.appendChild(agentBtn);
+
+      var callLink = document.createElement('a');
+      callLink.className = 'sg-chat__chip sg-chat__chip--link';
+      callLink.href = cfg.phoneHref || 'tel:1300225276';
+      callLink.textContent = 'Call us';
+      wrap.appendChild(callLink);
+
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
 
@@ -429,11 +595,14 @@
 
       var bubble = document.createElement('div');
 
+      var isUser = role === 'user';
+      var isAgent = role === 'agent';
+
       bubble.className =
 
         'sg-chat__msg ' +
 
-        (role === 'user' ? 'sg-chat__msg--user' : 'sg-chat__msg--bot') +
+        (isUser ? 'sg-chat__msg--user' : isAgent ? 'sg-chat__msg--agent' : 'sg-chat__msg--bot') +
 
         (extraClass ? ' ' + extraClass : '');
 
@@ -445,7 +614,7 @@
 
       if (!extraClass && !isRestoring) {
         displayThread.push({
-          role: role === 'user' ? 'user' : 'assistant',
+          role: isUser ? 'user' : isAgent ? 'agent' : 'assistant',
           content: text,
         });
         if (displayThread.length > MAX_STORED_MESSAGES) {
@@ -594,6 +763,8 @@
 
       if (data.ui) {
         renderUi(data.ui);
+      } else if (data.handoff || data.status === 'waiting_agent' || data.status === 'agent_active') {
+        enterHandoffMode(data.status || 'waiting_agent');
       } else if (data.quoteSession && data.quoteSession.resolveToken) {
         showQuoteVerifyForm(data.quoteSession);
       }
@@ -612,6 +783,16 @@
       }
 
 
+
+      if (ui.type === 'agent_handoff' && !leadSubmitted) {
+        showHandoffForm(true);
+        return;
+      }
+
+      if (ui.type === 'handoff_waiting') {
+        enterHandoffMode(ui.status || 'waiting_agent');
+        return;
+      }
 
       if (ui.type === 'lead_form' && !leadSubmitted) {
 
@@ -700,6 +881,19 @@
 
         }
 
+        if (item.action === 'agent_handoff') {
+          var handoffBtn = document.createElement('button');
+          handoffBtn.type = 'button';
+          handoffBtn.className = 'sg-chat__chip';
+          handoffBtn.textContent = item.label || 'Talk to a person';
+          handoffBtn.addEventListener('click', function () {
+            dismissStarters();
+            showHandoffForm(false);
+          });
+          wrap.appendChild(handoffBtn);
+          return;
+        }
+
 
 
         if (item.action === 'service_picker') {
@@ -774,10 +968,26 @@
 
     function showStarterChoices() {
 
-      if (starterDismissed || leadSubmitted || !chatAvailable) {
+      if (leadSubmitted || handoffActive) {
 
         return;
 
+      }
+
+      if (chatAvailable && starterDismissed) {
+
+        return;
+
+      }
+
+      if (activeStarterEl && activeStarterEl.parentNode) {
+        return;
+      }
+
+      var existingActions = messagesEl.querySelector('.sg-chat__welcome-actions');
+      if (existingActions) {
+        activeStarterEl = existingActions;
+        return;
       }
 
 
@@ -786,19 +996,33 @@
 
       if (!Array.isArray(choices) || !choices.length) {
 
-        choices = [
-
-          { label: 'Get a quote', action: 'lead_form', intent: 'quote' },
-
-          { label: 'Help me choose', action: 'service_picker' },
-
-          { label: 'Call us', href: cfg.phoneHref || 'tel:1300225276' },
-
-        ];
+        choices = chatAvailable
+          ? [
+              { label: 'Get a quote', action: 'lead_form', intent: 'quote' },
+              { label: 'Help me choose', action: 'service_picker' },
+              { label: 'Call us', href: cfg.phoneHref || 'tel:1300225276' },
+            ]
+          : [
+              { label: 'Talk to a person', action: 'agent_handoff' },
+              { label: 'Call us', href: cfg.phoneHref || 'tel:1300225276' },
+            ];
 
       }
 
 
+
+      if (!chatAvailable) {
+        choices = choices.filter(function (item) {
+          return item && (item.action === 'agent_handoff' || !!item.href);
+        });
+
+        if (!choices.length) {
+          choices = [
+            { label: 'Talk to a person', action: 'agent_handoff' },
+            { label: 'Call us', href: cfg.phoneHref || 'tel:1300225276' },
+          ];
+        }
+      }
 
       var wrap = document.createElement('div');
 
@@ -856,6 +1080,20 @@
 
           return;
 
+        }
+
+        if (item.action === 'agent_handoff') {
+          var agentBtn = document.createElement('button');
+          agentBtn.type = 'button';
+          agentBtn.className = 'sg-chat__chip';
+          agentBtn.textContent = item.label || 'Talk to a person';
+          agentBtn.addEventListener('click', function () {
+            dismissStarters();
+            appendMessage('user', item.label || 'Talk to a person');
+            showHandoffForm(true);
+          });
+          wrap.appendChild(agentBtn);
+          return;
         }
 
 
@@ -1171,6 +1409,294 @@
 
       messagesEl.appendChild(formEl);
       activeQuoteForm = formEl;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      first.input.focus();
+    }
+
+    function enterHandoffMode(status) {
+      handoffActive = true;
+      handoffStatus = status || 'waiting_agent';
+      leadSubmitted = true;
+      startHandoffPolling();
+      persistState();
+    }
+
+    function stopHandoffPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function startHandoffPolling() {
+      if (pollTimer) {
+        return;
+      }
+      if (!pollUrl && !apiUrl) {
+        return;
+      }
+      pollHandoffOnce();
+      pollTimer = setInterval(pollHandoffOnce, 3000);
+    }
+
+    function pollHandoffOnce() {
+      var url = pollUrl || (apiUrl.replace(/\/chat\/?$/, '/chat/poll'));
+      if (!url || !getConversationKey()) {
+        return;
+      }
+
+      fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          withConversation({
+            afterId: lastPollMessageId,
+            pageContext: pageContext,
+          })
+        ),
+      })
+        .then(function (res) {
+          return res.json().catch(function () {
+            return {};
+          });
+        })
+        .then(function (data) {
+          if (!data || !data.ok) {
+            return;
+          }
+
+          var prevStatus = handoffStatus;
+          if (data.status) {
+            handoffStatus = data.status;
+          }
+
+          var msgs = Array.isArray(data.messages) ? data.messages : [];
+          msgs.forEach(function (msg) {
+            var id = Number(msg.id) || 0;
+            if (id && seenPollMessageIds[id]) {
+              return;
+            }
+            if (id) {
+              seenPollMessageIds[id] = true;
+              if (id > lastPollMessageId) {
+                lastPollMessageId = id;
+              }
+            }
+
+            if (msg.role === 'agent') {
+              appendMessage('agent', msg.content);
+            } else if (msg.role === 'system') {
+              appendMessage('assistant', msg.content, 'sg-chat__msg--system');
+            }
+          });
+
+          if (data.status === 'resolved') {
+            if (prevStatus !== 'resolved' && handoffActive) {
+              appendMessage(
+                'assistant',
+                cfg.handoffResolved ||
+                  'This chat has been closed by our team. You can keep chatting with the assistant or call 1300 225 276.'
+              );
+            }
+            handoffActive = false;
+            leadSubmitted = false;
+            stopHandoffPolling();
+            ensureAgentEscapeHatch();
+          } else if (data.status === 'timed_out') {
+            // Server system message already explains follow-up; avoid duplicate canned copy.
+            handoffActive = false;
+            leadSubmitted = false;
+            stopHandoffPolling();
+            ensureAgentEscapeHatch();
+          } else if (data.status === 'open') {
+            if (prevStatus !== 'open' && handoffActive) {
+              appendMessage(
+                'assistant',
+                cfg.handoffReturned ||
+                  'You are back with the assistant. How else can we help?'
+              );
+            }
+            handoffActive = false;
+            leadSubmitted = false;
+            stopHandoffPolling();
+            ensureAgentEscapeHatch();
+          }
+
+          persistState();
+        })
+        .catch(function () {
+          /* ignore transient poll errors */
+        });
+    }
+
+    function showHandoffForm(skipIntro) {
+      if (leadSubmitted || !leadUrl) {
+        if (!leadUrl) {
+          window.location.href = cfg.quoteUrl || '/get-an-instant-quote/';
+        }
+        return;
+      }
+
+      dismissStarters();
+      removeLeadForm();
+
+      var escapeEl = messagesEl.querySelector('.sg-chat__agent-escape');
+      if (escapeEl && escapeEl.parentNode) {
+        escapeEl.parentNode.removeChild(escapeEl);
+      }
+
+      if (!skipIntro) {
+        appendMessage(
+          'assistant',
+          cfg.handoffIntro ||
+            'Sure, I can connect you with our team. Please share your name, email, address, and phone below.'
+        );
+      }
+
+      var formEl = document.createElement('form');
+      formEl.className = 'sg-chat__lead sg-chat__handoff-form';
+      formEl.setAttribute('novalidate', 'novalidate');
+
+      var heading = document.createElement('p');
+      heading.className = 'sg-chat__handoff-title';
+      heading.textContent = 'Connect with our team';
+      formEl.appendChild(heading);
+
+      function createHandoffField(id, labelText, type, required, autocomplete) {
+        var wrap = document.createElement('div');
+        wrap.className = 'sg-chat__field';
+
+        var label = document.createElement('label');
+        label.className = 'sg-chat__label';
+        label.setAttribute('for', id);
+        label.textContent = labelText;
+
+        var inputEl = document.createElement('input');
+        inputEl.className = 'sg-chat__field-input';
+        inputEl.id = id;
+        inputEl.name = id;
+        inputEl.type = type || 'text';
+        inputEl.required = !!required;
+        if (autocomplete) {
+          inputEl.autocomplete = autocomplete;
+        }
+
+        wrap.appendChild(label);
+        wrap.appendChild(inputEl);
+        return { wrap: wrap, input: inputEl };
+      }
+
+      var first = createHandoffField('sg-chat-h-first', 'First name', 'text', true, 'given-name');
+      var last = createHandoffField('sg-chat-h-last', 'Last name', 'text', true, 'family-name');
+      var email = createHandoffField('sg-chat-h-email', 'Email', 'email', true, 'email');
+      var address = createHandoffField('sg-chat-h-address', 'Address', 'text', true, 'street-address');
+      var phone = createHandoffField('sg-chat-h-phone', 'Mobile phone', 'tel', true, 'tel');
+
+      var submit = document.createElement('button');
+      submit.type = 'submit';
+      submit.className = 'sg-chat__lead-submit';
+      submit.textContent = cfg.handoffSubmit || 'Connect me to the team';
+
+      formEl.appendChild(first.wrap);
+      formEl.appendChild(last.wrap);
+      formEl.appendChild(email.wrap);
+      formEl.appendChild(address.wrap);
+      formEl.appendChild(phone.wrap);
+      formEl.appendChild(submit);
+
+      formEl.addEventListener('submit', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isSending || leadSubmitted) {
+          return;
+        }
+
+        if (
+          !first.input.value.trim() ||
+          !last.input.value.trim() ||
+          !email.input.value.trim() ||
+          !address.input.value.trim() ||
+          !phone.input.value.trim()
+        ) {
+          appendMessage('assistant', 'Please fill in all fields.');
+          return;
+        }
+
+        var phoneDigits = phone.input.value.replace(/\D+/g, '');
+        if (phoneDigits.length <= 9) {
+          appendMessage('assistant', 'Please enter a phone number with more than 9 digits.');
+          return;
+        }
+
+        setBusy(true);
+        submit.disabled = true;
+
+        fetch(leadUrl, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            withConversation({
+              intent: 'agent_handoff',
+              firstName: first.input.value.trim(),
+              lastName: last.input.value.trim(),
+              email: email.input.value.trim(),
+              address: address.input.value.trim(),
+              phone: phone.input.value.trim(),
+              pagePath: pageContext.path || window.location.pathname,
+              pageTitle: pageContext.title || document.title,
+              transcript: history,
+            })
+          ),
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                if (!res.ok || !data.ok) {
+                  appendMessage(
+                    'assistant',
+                    (data && data.err) || cfg.handoffError || cfg.leadError || errorText(data, res.status)
+                  );
+                  submit.disabled = false;
+                  return;
+                }
+
+                leadSubmitted = true;
+                removeLeadForm();
+                saveConversationKey(data);
+                appendMessage(
+                  'assistant',
+                  data.message ||
+                    cfg.handoffSuccess ||
+                    'Thanks, connecting you with our team now…'
+                );
+                enterHandoffMode(data.status || 'waiting_agent');
+                if (data.ui) {
+                  renderUi(data.ui);
+                }
+                persistState();
+              });
+          })
+          .catch(function () {
+            appendMessage(
+              'assistant',
+              cfg.handoffError || cfg.leadError || 'Could not send your details. Please call 1300 225 276.'
+            );
+            submit.disabled = false;
+          })
+          .finally(function () {
+            setBusy(false);
+          });
+      });
+
+      messagesEl.appendChild(formEl);
+      activeLeadForm = formEl;
       messagesEl.scrollTop = messagesEl.scrollHeight;
       first.input.focus();
     }
@@ -1493,27 +2019,40 @@
 
 
 
-      dismissStarters();
-
       appendMessage('user', text);
 
 
 
-      if (!chatAvailable) {
+      // Live-agent handoff must keep working even when DeepSeek is offline.
+      // Previously !chatAvailable short-circuited here, so visitor messages never
+      // reached WordPress / the admin inbox.
+      if (!chatAvailable && !handoffActive) {
 
-        appendMessage(
+        ensureHandoffChoicesVisible();
 
-          'assistant',
+        if (!activeStarterEl && !activeLeadForm) {
 
-          cfg.unavailable ||
+          appendMessage(
 
-            'Chat is temporarily unavailable. Call 1300 225 276 or request a quote online.'
+            'assistant',
 
-        );
+            cfg.handoffIntro ||
+
+              'Tap Talk to a person below and our team will help you live.'
+
+          );
+
+          ensureHandoffChoicesVisible();
+
+        }
 
         return;
 
       }
+
+
+
+      dismissStarters();
 
 
 
@@ -1542,6 +2081,8 @@
           quoteSubmitted: quoteSubmitted,
 
           quoteMode: quoteMode,
+
+          handoffActive: handoffActive,
 
         },
 
@@ -1579,7 +2120,7 @@
 
 
 
-              if (!res.ok || !data.ok || !data.reply) {
+              if (!res.ok || !data.ok) {
 
                 appendMessage('assistant', errorText(data, res.status));
 
@@ -1589,7 +2130,25 @@
 
               }
 
+              // During handoff the API returns a canned ack every time. Do not
+              // spam it into the thread; the user already sees their own bubble.
+              var inHandoff =
+                !!data.handoff ||
+                data.status === 'waiting_agent' ||
+                data.status === 'agent_active' ||
+                handoffActive;
 
+              if (inHandoff) {
+                handleChatData(data);
+                persistState();
+                return;
+              }
+
+              if (!data.reply) {
+                appendMessage('assistant', errorText(data, res.status));
+                history.pop();
+                return;
+              }
 
               appendMessage('assistant', data.reply);
 
@@ -1894,6 +2453,14 @@
       setOpen(false);
 
     });
+
+    if (newChatBtn) {
+      newChatBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        startFreshConversation();
+      });
+    }
 
 
 

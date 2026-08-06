@@ -355,7 +355,7 @@ function site_blocks_monitoring_hero_config( string $page_key ): ?array {
 						'desc'  => __( 'Professional response', 'site-blocks' ),
 					),
 				),
-				'secondary_label' => __( 'Talk to our team', 'site-blocks' ),
+				'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
 				'secondary_url'   => home_url( '/contact/' ),
 				'hero_image'      => 'solar-monitoring-hero.webp',
 				'hero_alt'        => __( 'Solar-powered security camera on a construction site mast with Sydney skyline in distance', 'site-blocks' ),
@@ -507,26 +507,55 @@ function site_blocks_monitoring_faq_items( string $page_key ): array {
 }
 
 /**
- * Hub service cards (3 spokes).
+ * Hub service cards (3 spokes) for the simple text grid.
  *
  * @return array<int, array{title: string, desc: string, url: string}>
  */
 function site_blocks_monitoring_hub_services(): array {
+	$items = site_blocks_monitoring_hub_photo_services();
+	$out   = array();
+
+	foreach ( $items as $item ) {
+		$out[] = array(
+			'title' => (string) $item['title'],
+			'desc'  => (string) $item['desc'],
+			'url'   => (string) $item['url'],
+		);
+	}
+
+	return $out;
+}
+
+/**
+ * Hub service cards for the photo-options template.
+ *
+ * @return array<int, array{title: string, desc: string, url: string, image: string, alt: string, icon: string}>
+ */
+function site_blocks_monitoring_hub_photo_services(): array {
 	return array(
 		array(
 			'title' => __( 'Back-to-Base Alarm Monitoring', 'site-blocks' ),
 			'desc'  => __( 'Your alarm connects to our monitoring centre. When sensors trigger, trained operators follow your response plan, day or night.', 'site-blocks' ),
 			'url'   => home_url( '/monitoring/back-to-base/' ),
+			'image' => 'images/monitoring/back-to-base-monitoring-centre.webp',
+			'alt'   => __( 'Operators in a professional back-to-base monitoring centre', 'site-blocks' ),
+			'icon'  => 'headset',
 		),
 		array(
 			'title' => __( 'Virtual Patrol & Remote Guarding', 'site-blocks' ),
 			'desc'  => __( 'Scheduled and alarm-triggered CCTV tours by live operators, professional cover without a guard on site every hour.', 'site-blocks' ),
 			'url'   => home_url( '/monitoring/virtual-patrol/' ),
+			'image' => 'images/monitoring/virtual-patrol-hero.webp',
+			'alt'   => __( 'Virtual patrol operators reviewing live CCTV feeds', 'site-blocks' ),
+			'icon'  => 'eye',
 		),
 		array(
 			'title' => __( 'Solar Cameras with Monitoring', 'site-blocks' ),
 			'desc'  => __( 'Solar-powered cameras with 4G connectivity and professional monitoring for construction, rural and off-grid sites.', 'site-blocks' ),
 			'url'   => home_url( '/monitoring/solar-cameras-monitoring/' ),
+			'image' => 'images/monitoring/solar-monitoring-hero.webp',
+			'alt'   => __( 'Solar-powered security camera with professional monitoring', 'site-blocks' ),
+			'icon'  => 'sun',
 		),
 	);
 }
@@ -1404,7 +1433,7 @@ function site_blocks_monitoring_quote_config(): array {
 				'url'   => home_url( '/ajax-calculator/' ),
 			),
 			array(
-				'label' => __( 'Talk to our team', 'site-blocks' ),
+				'label' => __( 'Speak to Us', 'site-blocks' ),
 				'url'   => home_url( '/contact/' ),
 			),
 		),
@@ -1423,7 +1452,7 @@ function site_blocks_monitoring_cta_config( string $page_key ): ?array {
 			'accent'          => __( 'real response', 'site-blocks' ),
 			'after'           => __( '.', 'site-blocks' ),
 			'sub'             => __( 'Tell us about your property and we\'ll recommend back-to-base, virtual patrol or solar monitoring, quoted for your site, with no obligation.', 'site-blocks' ),
-			'secondary_label' => __( 'Talk to our team', 'site-blocks' ),
+			'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
 			'secondary_url'   => home_url( '/contact/' ),
 		),
 		'back-to-base' => array(
@@ -1443,7 +1472,7 @@ function site_blocks_monitoring_cta_config( string $page_key ): ?array {
 			'accent'          => __( 'ready', 'site-blocks' ),
 			'after'           => __( '.', 'site-blocks' ),
 			'sub'             => __( 'Request a site quote for solar cameras with professional monitoring, hardware, install and response plan combined.', 'site-blocks' ),
-			'secondary_label' => __( 'Talk to our team', 'site-blocks' ),
+			'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
 			'secondary_url'   => home_url( '/contact/' ),
 		),
 	);

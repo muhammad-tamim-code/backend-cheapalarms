@@ -219,8 +219,15 @@ abstract class AdminController implements ControllerInterface
         
         // SECURITY: Sanitize error messages in production
         $isDebug = defined('WP_DEBUG') && WP_DEBUG;
-        
-        if (!$isDebug) {
+        // Safe to surface — needed to debug staging object-storage setup (HTTP status / curl text only).
+        $passthroughCodes = [
+            'wasabi_upload_failed',
+            'wasabi_not_configured',
+            'wasabi_read_failed',
+            'upload_fatal',
+        ];
+
+        if (!$isDebug && !in_array($code, $passthroughCodes, true)) {
             // Generic messages for production to prevent information disclosure
             $genericMessages = [
                 'rest_forbidden' => 'Access denied.',
@@ -262,6 +269,15 @@ abstract class AdminController implements ControllerInterface
             // Include 'err' for backward compatibility
             'err'  => $message,
         ];
+
+        // Always surface Wasabi HTTP/curl diagnostics (no secrets) so staging can be debugged.
+        if (in_array($code, $passthroughCodes, true) && is_array($errorData)) {
+            foreach (['http_status', 'curl_error', 'wasabi_code', 'wasabi_message'] as $diagKey) {
+                if (isset($errorData[$diagKey]) && $errorData[$diagKey] !== '' && $errorData[$diagKey] !== null) {
+                    $response[$diagKey] = $errorData[$diagKey];
+                }
+            }
+        }
         
         // Always include retry_after for rate limit errors (needed by frontend)
         if ($code === 'rate_limited' && isset($errorData['retry_after'])) {

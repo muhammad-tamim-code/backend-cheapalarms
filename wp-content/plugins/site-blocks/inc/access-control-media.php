@@ -21,30 +21,33 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function site_blocks_access_control_image( string $relative_path, string $alt = '', string $class = 'sg-ac-split__img', string $loading = 'lazy' ): void {
 	$relative_path = ltrim( $relative_path, '/' );
-	$disk          = SITE_BLOCKS_DIR . 'assets/' . $relative_path;
 
-	if ( ! is_readable( $disk ) ) {
-		printf( '<span class="sg-cctv-media-placeholder sg-ac-media-placeholder" aria-hidden="true"></span>' );
+	if ( function_exists( 'site_blocks_print_managed_image' ) && site_blocks_print_managed_image( $relative_path, $alt, $class, $loading ) ) {
 		return;
 	}
 
-	printf(
-		'<img class="%s" src="%s" alt="%s" loading="%s" decoding="async" />',
-		esc_attr( $class ),
-		esc_url( site_blocks_asset_url( $relative_path ) ),
-		esc_attr( $alt ),
-		esc_attr( $loading )
-	);
+	printf( '<span class="sg-cctv-media-placeholder sg-ac-media-placeholder" aria-hidden="true"></span>' );
 }
 
 /**
  * Hero image, placeholder until asset is provided.
  */
 function site_blocks_access_control_hero_image(): void {
-	$hero = SITE_BLOCKS_DIR . 'assets/images/access-control/hero.webp';
+	$relative = 'images/access-control/hero.webp';
+	if ( function_exists( 'site_blocks_media_source_exists' ) && site_blocks_media_source_exists( $relative ) ) {
+		site_blocks_access_control_image(
+			$relative,
+			__( 'Access control card reader and door hardware installed in Sydney', 'site-blocks' ),
+			'sg-hero__pillar-img',
+			'eager'
+		);
+		return;
+	}
+
+	$hero = SITE_BLOCKS_DIR . 'assets/' . $relative;
 	if ( is_readable( $hero ) ) {
 		site_blocks_access_control_image(
-			'images/access-control/hero.webp',
+			$relative,
 			__( 'Access control card reader and door hardware installed in Sydney', 'site-blocks' ),
 			'sg-hero__pillar-img',
 			'eager'
@@ -64,9 +67,13 @@ function site_blocks_access_control_hero_image(): void {
 function site_blocks_access_control_process_thumb( int $step, string $alt, string $class = 'sg-ac-process__ico' ): void {
 	$step = max( 1, min( 6, $step ) );
 	$path = sprintf( 'images/access-control/process-%02d.webp', $step );
-	$disk = SITE_BLOCKS_DIR . 'assets/' . $path;
 
-	if ( ! is_readable( $disk ) ) {
+	if ( function_exists( 'site_blocks_media_source_exists' ) && ! site_blocks_media_source_exists( $path ) ) {
+		printf( '<span class="sg-cctv-media-placeholder sg-ac-process__placeholder" aria-hidden="true"></span>' );
+		return;
+	}
+
+	if ( ! function_exists( 'site_blocks_media_source_exists' ) && ! is_readable( SITE_BLOCKS_DIR . 'assets/' . $path ) ) {
 		printf( '<span class="sg-cctv-media-placeholder sg-ac-process__placeholder" aria-hidden="true"></span>' );
 		return;
 	}

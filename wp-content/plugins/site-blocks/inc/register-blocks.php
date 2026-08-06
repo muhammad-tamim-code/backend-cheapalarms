@@ -57,6 +57,7 @@ function site_blocks_register_blocks(): void {
 		'ajax-alarm-systems-related',
 		'cctv-hero',
 		'cctv-intro',
+		'cctv-spotlight',
 		'cctv-difference',
 		'cctv-install',
 		'cctv-photo-band',
@@ -97,6 +98,10 @@ function site_blocks_register_blocks(): void {
 		'logo-marquee',
 		'physical-security-hero',
 		'physical-security-section',
+		'electronic-security-hero',
+		'electronic-security-section',
+		'manpower-hero',
+		'manpower-section',
 		'monitoring-hero',
 		'monitoring-section',
 		'enterprise-hero',
@@ -219,6 +224,22 @@ function site_blocks_register_patterns(): void {
 		$physical_mobile_pattern = include $physical_mobile_pattern_file;
 		if ( is_array( $physical_mobile_pattern ) ) {
 			register_block_pattern( 'site/physical-security-mobile-patrols-page', $physical_mobile_pattern );
+		}
+	}
+
+	$electronic_hub_pattern_file = SITE_BLOCKS_DIR . 'patterns/electronic-security-hub-page.php';
+	if ( file_exists( $electronic_hub_pattern_file ) ) {
+		$electronic_hub_pattern = include $electronic_hub_pattern_file;
+		if ( is_array( $electronic_hub_pattern ) ) {
+			register_block_pattern( 'site/electronic-security-hub-page', $electronic_hub_pattern );
+		}
+	}
+
+	$manpower_hub_pattern_file = SITE_BLOCKS_DIR . 'patterns/manpower-hub-page.php';
+	if ( file_exists( $manpower_hub_pattern_file ) ) {
+		$manpower_hub_pattern = include $manpower_hub_pattern_file;
+		if ( is_array( $manpower_hub_pattern ) ) {
+			register_block_pattern( 'site/manpower-hub-page', $manpower_hub_pattern );
 		}
 	}
 

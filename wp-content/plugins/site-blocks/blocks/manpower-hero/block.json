@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "site/manpower-hero",
+  "version": "1.0.0",
+  "title": "ManPower Hero",
+  "category": "theme",
+  "icon": "shield",
+  "description": "Config-driven hero and trust strip for ManPower silo pages.",
+  "keywords": ["manpower", "guards", "staffing", "safeguard"],
+  "textdomain": "site-blocks",
+  "supports": { "html": false, "align": ["full"], "multiple": false },
+  "render": "file:./render.php"
+}

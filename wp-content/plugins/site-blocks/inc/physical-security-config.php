@@ -20,7 +20,7 @@ function site_blocks_physical_security_ctas(): array {
 	return array(
 		'primary_label'   => __( 'Request a Quote', 'site-blocks' ),
 		'primary_url'     => home_url( '/contact/' ),
-		'secondary_label' => __( 'Speak to Our Team', 'site-blocks' ),
+		'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
 		'secondary_url'   => 'tel:1300225276',
 	);
 }
@@ -119,25 +119,43 @@ function site_blocks_physical_security_hero_config( string $page_key ): ?array {
 		'hub' => array_merge(
 			$ctas,
 			array(
-				'id'            => 'sg-physical-security-hero-heading',
-				'class'         => 'sg-physical-security-hero',
-				'breadcrumb'    => array(
-					array( 'label' => __( 'Home', 'site-blocks' ), 'url' => home_url( '/' ) ),
-					array( 'label' => __( 'Physical Security', 'site-blocks' ), 'current' => true ),
+				'id'              => 'sg-physical-security-hero-heading',
+				'class'           => 'sg-physical-security-hero',
+				'breadcrumb'      => array(),
+				'badge'           => __( 'Physical Security', 'site-blocks' ),
+				'title_before'    => __( 'Licensed Security Officers Across ', 'site-blocks' ),
+				'title_accent'    => __( 'Sydney', 'site-blocks' ),
+				'title_after'     => '',
+				'lead'            => __( 'Professional guards protecting your people, property and operations — backed by technology that keeps you informed 24/7.', 'site-blocks' ),
+				'primary_label'   => __( 'Request a Quote', 'site-blocks' ),
+				'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
+				'primary_icon'    => 'calendar',
+				'secondary_icon'  => 'phone',
+				'features'        => array(
+					array(
+						'icon'  => 'user-check',
+						'label' => __( 'Licensed NSW Officers', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'car',
+						'label' => __( 'Mobile Patrols', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'bell-ring',
+						'label' => __( 'Alarm Response', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'map-pin',
+						'label' => __( 'Sydney Wide Coverage', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'clipboard-check',
+						'label' => __( 'Digital Incident Reports', 'site-blocks' ),
+					),
 				),
-				'badge'         => __( 'Physical Security · Sydney', 'site-blocks' ),
-				'title_before'  => __( 'People on the ground, backed by ', 'site-blocks' ),
-				'title_accent'  => __( 'technology', 'site-blocks' ),
-				'title_after'   => __( '.', 'site-blocks' ),
-				'lead'          => __( 'Safeguard provides licensed security guards and patrols across Sydney, static guarding, mobile patrols, alarm response, event and retail security. Because we also design your cameras, alarms and access control, our officers arrive backed by the technology watching your site, not working blind.', 'site-blocks' ),
-				'trust_strip'   => array(
-					__( 'Licensed personnel', 'site-blocks' ),
-					__( 'Master Licence #000103619', 'site-blocks' ),
-					__( 'ASIAL member', 'site-blocks' ),
-					__( 'Compliant with AS 4421', 'site-blocks' ),
-				),
-				'hero_image'    => 'hub-hero.webp',
-				'hero_alt'      => __( 'Licensed security guard at a Sydney commercial entrance', 'site-blocks' ),
+				'trust_strip'     => array(),
+				'hero_image'      => 'hub-hero.webp',
+				'hero_alt'        => __( 'Licensed security guard at a Sydney commercial entrance', 'site-blocks' ),
 			)
 		),
 		'static-guards' => array_merge(
@@ -168,26 +186,47 @@ function site_blocks_physical_security_hero_config( string $page_key ): ?array {
 		'mobile-patrols' => array_merge(
 			$ctas,
 			array(
-				'id'            => 'sg-mobile-patrols-hero-heading',
-				'class'         => 'sg-physical-security-hero sg-mobile-patrols-hero',
-				'breadcrumb'    => array(
+				'id'              => 'sg-mobile-patrols-hero-heading',
+				'class'           => 'sg-physical-security-hero sg-mobile-patrols-hero',
+				'breadcrumb'      => array(
 					array( 'label' => __( 'Home', 'site-blocks' ), 'url' => home_url( '/' ) ),
 					array( 'label' => __( 'Physical Security', 'site-blocks' ), 'url' => $hub ),
 					array( 'label' => __( 'Mobile Patrols', 'site-blocks' ), 'current' => true ),
 				),
-				'badge'         => __( 'Mobile Patrols · Sydney', 'site-blocks' ),
-				'title_before'  => __( 'Cost-effective cover, on a schedule they can\'t ', 'site-blocks' ),
-				'title_accent'  => __( 'predict', 'site-blocks' ),
-				'title_after'   => __( '.', 'site-blocks' ),
-				'lead'          => __( 'Safeguard\'s mobile patrols give your site professional protection without a full-time guard. GPS-tracked officers make scheduled and random checks across your premises, perimeter rounds, lock-ups, alarm response and welfare checks, with clear digital reporting after every visit.', 'site-blocks' ),
-				'trust_strip'   => array(
-					__( 'Licensed officers', 'site-blocks' ),
-					__( 'Master Licence #000103619', 'site-blocks' ),
-					__( 'ASIAL member', 'site-blocks' ),
-					__( 'GPS-tracked & reported', 'site-blocks' ),
+				'badge'           => __( 'Mobile Patrols · Sydney', 'site-blocks' ),
+				'title_before'    => __( 'Cost-effective cover, on a schedule they can\'t predict.', 'site-blocks' ),
+				'title_accent'    => '',
+				'title_after'     => '',
+				'lead'            => __( 'Safeguard\'s mobile patrols give your site professional protection without a full-time guard. GPS-tracked officers make scheduled and random checks across your premises — perimeter rounds, lock-ups, alarm response and welfare checks — with clear digital reporting after every visit.', 'site-blocks' ),
+				'primary_label'   => __( 'Request a Quote', 'site-blocks' ),
+				'secondary_label' => __( 'Speak to Us', 'site-blocks' ),
+				'primary_icon'    => 'calendar',
+				'secondary_icon'  => 'phone',
+				'features'        => array(
+					array(
+						'icon'  => 'map',
+						'label' => __( 'GPS-Tracked Patrols', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'shield',
+						'label' => __( 'Randomised Checks', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'bell-ring',
+						'label' => __( 'Alarm Response', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'file-text',
+						'label' => __( 'Digital Reports', 'site-blocks' ),
+					),
+					array(
+						'icon'  => 'headset',
+						'label' => __( 'Dedicated Support', 'site-blocks' ),
+					),
 				),
-				'hero_image'    => 'mobile-hero.webp',
-				'hero_alt'      => __( 'Mobile security patrol vehicle at a Sydney site', 'site-blocks' ),
+				'trust_strip'     => array(),
+				'hero_image'      => 'mobile-hero.webp',
+				'hero_alt'        => __( 'Mobile security patrol vehicle at a Sydney site', 'site-blocks' ),
 			)
 		),
 	);
@@ -278,43 +317,79 @@ function site_blocks_physical_security_faq_items( string $page_key ): array {
 }
 
 /**
- * Hub service cards (6 spokes).
+ * Hub service cards (6 spokes) for the simple text grid.
  *
  * @return array<int, array{title: string, desc: string, url: string}>
  */
 function site_blocks_physical_security_hub_services(): array {
-	$hub = home_url( '/physical-security/' );
+	$items = site_blocks_physical_security_hub_photo_services();
+	$out   = array();
 
+	foreach ( $items as $item ) {
+		$out[] = array(
+			'title' => (string) $item['title'],
+			'desc'  => (string) $item['desc'],
+			'url'   => (string) $item['url'],
+		);
+	}
+
+	return $out;
+}
+
+/**
+ * Hub service cards for the photo-options template.
+ *
+ * @return array<int, array{title: string, desc: string, url: string, image: string, alt: string, icon: string}>
+ */
+function site_blocks_physical_security_hub_photo_services(): array {
 	return array(
 		array(
 			'title' => __( 'Static Security Guards', 'site-blocks' ),
 			'desc'  => __( 'A constant, on-site presence for entrances, retail, offices and residential.', 'site-blocks' ),
 			'url'   => home_url( '/physical-security/static-guards/' ),
+			'image' => 'images/physical-security/static-hero.webp',
+			'alt'   => __( 'Licensed static security guard on duty in Sydney', 'site-blocks' ),
+			'icon'  => 'user',
 		),
 		array(
 			'title' => __( 'Mobile Patrols', 'site-blocks' ),
 			'desc'  => __( 'GPS-tracked vehicle patrols, lock-ups and after-hours checks across multiple sites.', 'site-blocks' ),
 			'url'   => home_url( '/physical-security/mobile-patrols/' ),
+			'image' => 'images/physical-security/mobile-hero.webp',
+			'alt'   => __( 'Safeguard mobile patrol vehicle on site', 'site-blocks' ),
+			'icon'  => 'car',
 		),
 		array(
 			'title' => __( 'Alarm Response', 'site-blocks' ),
 			'desc'  => __( 'A licensed officer dispatched to verify and act when your alarm triggers.', 'site-blocks' ),
 			'url'   => home_url( '/monitoring/back-to-base/' ),
+			'image' => 'images/physical-security/mobile-tracked.webp',
+			'alt'   => __( 'Security monitoring and alarm response operations', 'site-blocks' ),
+			'icon'  => 'bell-ring',
 		),
 		array(
 			'title' => __( 'Event & Crowd Control', 'site-blocks' ),
 			'desc'  => __( 'Crowd management, access and safety for functions and venues.', 'site-blocks' ),
 			'url'   => home_url( '/contact/' ),
+			'image' => 'images/physical-security/hub-covers.webp',
+			'alt'   => __( 'Security officers managing crowd access at an event', 'site-blocks' ),
+			'icon'  => 'users',
 		),
 		array(
 			'title' => __( 'Concierge Security', 'site-blocks' ),
 			'desc'  => __( 'Front-of-house professionalism with trained vigilance.', 'site-blocks' ),
 			'url'   => home_url( '/physical-security/static-guards/' ),
+			'image' => 'images/physical-security/static-duties.webp',
+			'alt'   => __( 'Concierge security officer at a building reception desk', 'site-blocks' ),
+			'icon'  => 'briefcase',
 		),
 		array(
 			'title' => __( 'Retail Security & Loss Prevention', 'site-blocks' ),
 			'desc'  => __( 'Reduce shrinkage and protect staff and stock.', 'site-blocks' ),
 			'url'   => home_url( '/physical-security/static-guards/' ),
+			'image' => 'images/physical-security/hub-sites.webp',
+			'alt'   => __( 'Retail security presence protecting staff and stock', 'site-blocks' ),
+			'icon'  => 'store',
 		),
 	);
 }
@@ -525,7 +600,7 @@ function site_blocks_physical_security_split_config( string $page_key, string $s
 				),
 				'image'        => 'static-integration.webp',
 				'alt'          => __( 'Guard monitoring CCTV on a Sydney site', 'site-blocks' ),
-				'reverse'      => false,
+				'reverse'      => true,
 			),
 			'why' => array(
 				'id'           => 'sg-static-why-heading',

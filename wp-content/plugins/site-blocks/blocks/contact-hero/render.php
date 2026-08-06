@@ -1,6 +1,6 @@
 <?php
 /**
- * Contact Hero block render.
+ * Contact Hero block — V5 centered editorial.
  *
  * @package Site_Blocks
  *
@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once SITE_BLOCKS_DIR . 'inc/safeguard-contact-details.php';
+require_once SITE_BLOCKS_DIR . 'inc/hero-variants.php';
 
 $defaults = site_blocks_get_safeguard_contact_details();
 
@@ -31,30 +32,62 @@ $schema = array(
 	'description' => wp_strip_all_tags( $subhead ),
 	'url'         => get_permalink(),
 );
+
+$title_before = $headline;
+$title_accent = '';
+$title_after  = '';
+$parts        = explode( ' ', $headline, 2 );
+if ( count( $parts ) === 2 ) {
+	$title_before = $parts[0] . ' ';
+	$title_accent = $parts[1];
+}
+
+$phone_html = sprintf(
+	'<a href="%s">%s</a>',
+	esc_attr( $phone_h ),
+	esc_html( $phone )
+);
 ?>
-<section class="sg-band sg-band--white sg-contact-hero alignfull" aria-labelledby="sg-contact-hero-heading">
-	<script type="application/ld+json"><?php echo wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); ?></script>
-	<div class="sg-container">
-		<nav class="sg-pillar-hero__breadcrumb" aria-label="<?php esc_attr_e( 'Breadcrumb', 'site-blocks' ); ?>">
-			<a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'Home', 'site-blocks' ); ?></a>
-			<span aria-hidden="true">›</span>
-			<span aria-current="page"><?php esc_html_e( 'Contact', 'site-blocks' ); ?></span>
-		</nav>
-		<p class="sg-hero__badge"><?php esc_html_e( 'Contact · Sydney', 'site-blocks' ); ?></p>
-		<h1 id="sg-contact-hero-heading" class="sg-section-title sg-section-title--ink">
-			<?php
-			$parts = explode( ' ', $headline, 2 );
-			if ( count( $parts ) === 2 ) {
-				echo esc_html( $parts[0] . ' ' );
-				echo '<span class="sg-accent">' . esc_html( $parts[1] ) . '</span>';
-			} else {
-				echo esc_html( $headline );
-			}
-			?>
-		</h1>
-		<p class="sg-section-intro sg-contact-hero__intro"><?php echo esc_html( $subhead ); ?></p>
-		<p class="sg-contact-hero__phone">
-			<a class="sg-contact-hero__phone-link" href="<?php echo esc_attr( $phone_h ); ?>"><?php echo esc_html( $phone ); ?></a>
-		</p>
-	</div>
-</section>
+<script type="application/ld+json"><?php echo wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); ?></script>
+<?php
+site_blocks_render_hero_variant(
+	'editorial',
+	array(
+		'id'              => 'sg-contact-hero-heading',
+		'class'           => 'sg-contact-hero',
+		'breadcrumb'      => array(
+			array(
+				'label' => __( 'Home', 'site-blocks' ),
+				'url'   => home_url( '/' ),
+			),
+			array(
+				'label'   => __( 'Contact', 'site-blocks' ),
+				'current' => true,
+			),
+		),
+		'badge'           => __( 'Contact · Sydney', 'site-blocks' ),
+		'title_before'    => $title_before,
+		'title_accent'    => $title_accent,
+		'title_after'     => $title_after,
+		'lead'            => $subhead,
+		'phone_html'      => $phone_html,
+		'primary_label'   => __( 'Send a message', 'site-blocks' ),
+		'primary_url'     => '#sg-contact-form',
+		'secondary_label' => __( 'Call us', 'site-blocks' ),
+		'secondary_url'   => $phone_h,
+		'proof'           => array(
+			array(
+				'label' => __( 'Phone', 'site-blocks' ),
+				'value' => $phone,
+			),
+			array(
+				'label' => __( 'Hours', 'site-blocks' ),
+				'value' => (string) ( $defaults['hoursNote'] ?? '' ),
+			),
+			array(
+				'label' => __( 'Licensed', 'site-blocks' ),
+				'value' => __( 'Master Licence #000103619', 'site-blocks' ),
+			),
+		),
+	)
+);

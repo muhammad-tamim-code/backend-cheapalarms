@@ -113,7 +113,7 @@
 
 .sg-related-services__card:hover {
   border-color: #b8d4e8;
-  box-shadow: 0 4px 16px rgba(15, 45, 82, 0.06);
+  box-shadow: var(--sg-shadow);
 }
 
 .sg-related-services__icon {

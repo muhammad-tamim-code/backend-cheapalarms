@@ -33,7 +33,10 @@ function site_blocks_get_safeguard_nav_services(): array {
 }
 
 /**
- * Structured primary nav (temporary single dropdown with all built pages).
+ * Structured primary nav — silo hubs with spoke dropdowns.
+ *
+ * IA (hub → spokes). Product pages under Electronic are top-level URLs
+ * but belong to that silo in nav. Monitoring is its own silo.
  *
  * @return array<int, array<string, mixed>>
  */
@@ -41,57 +44,63 @@ function site_blocks_get_safeguard_nav_items(): array {
 	return array(
 		array(
 			'type'     => 'group',
-			'label'    => __( 'All Pages', 'site-blocks' ),
-			'short'    => __( 'Pages', 'site-blocks' ),
-			'path'     => '/enterprise-solutions/',
+			'label'    => __( 'Physical Security', 'site-blocks' ),
+			'short'    => __( 'Physical', 'site-blocks' ),
+			'path'     => '/physical-security/',
 			'children' => array(
 				array(
-					'path'  => '/enterprise-solutions/',
-					'label' => __( 'Enterprise Solutions', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/safeguard-solutions/',
-					'label' => __( 'Safeguard Solutions', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/physical-security/',
-					'label' => __( 'Physical Security', 'site-blocks' ),
+					'path'  => '/physical-security/static-guards/',
+					'label' => __( 'Static Security Guards', 'site-blocks' ),
 				),
 				array(
 					'path'  => '/physical-security/mobile-patrols/',
 					'label' => __( 'Mobile Patrols', 'site-blocks' ),
 				),
-				array(
-					'path'  => '/access-control/',
-					'label' => __( 'Access Control', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/cctv-security-cameras/',
-					'label' => __( 'CCTV & Security Cameras', 'site-blocks' ),
-				),
+			),
+		),
+		array(
+			'path'  => '/manpower/',
+			'label' => __( 'ManPower', 'site-blocks' ),
+			'short' => __( 'ManPower', 'site-blocks' ),
+		),
+		array(
+			'type'     => 'group',
+			'label'    => __( 'Electronic Security', 'site-blocks' ),
+			'short'    => __( 'Electronic', 'site-blocks' ),
+			'path'     => '/electronic-security/',
+			'mega'     => true,
+			'children' => array(
 				array(
 					'path'  => '/alarm-systems/',
 					'label' => __( 'Alarm Systems', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/intercom-systems/',
-					'label' => __( 'Intercom Systems', 'site-blocks' ),
 				),
 				array(
 					'path'  => '/ajax-alarm-systems/',
 					'label' => __( 'Ajax Alarm Systems', 'site-blocks' ),
 				),
 				array(
-					'path'  => '/monitoring/',
-					'label' => __( 'Monitoring & Response', 'site-blocks' ),
+					'path'  => '/cctv-security-cameras/',
+					'label' => __( 'CCTV & Security Cameras', 'site-blocks' ),
 				),
+				array(
+					'path'  => '/access-control/',
+					'label' => __( 'Access Control', 'site-blocks' ),
+				),
+				array(
+					'path'  => '/intercom-systems/',
+					'label' => __( 'Intercom Systems', 'site-blocks' ),
+				),
+			),
+		),
+		array(
+			'type'     => 'group',
+			'label'    => __( 'Monitoring', 'site-blocks' ),
+			'short'    => __( 'Monitoring', 'site-blocks' ),
+			'path'     => '/monitoring/',
+			'children' => array(
 				array(
 					'path'  => '/monitoring/back-to-base/',
 					'label' => __( 'Back-to-Base Monitoring', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/physical-security/static-guards/',
-					'label' => __( 'Static Security Guards', 'site-blocks' ),
 				),
 				array(
 					'path'  => '/monitoring/virtual-patrol/',
@@ -101,15 +110,23 @@ function site_blocks_get_safeguard_nav_items(): array {
 					'path'  => '/monitoring/solar-cameras-monitoring/',
 					'label' => __( 'Solar Cameras with Monitoring', 'site-blocks' ),
 				),
+			),
+		),
+		array(
+			'type'     => 'group',
+			'label'    => __( 'Enterprise', 'site-blocks' ),
+			'short'    => __( 'Enterprise', 'site-blocks' ),
+			'path'     => '/enterprise-solutions/',
+			'children' => array(
 				array(
-					'path'  => '/ajax-calculator/',
-					'label' => __( 'Ajax Calculator', 'site-blocks' ),
-				),
-				array(
-					'path'  => '/contact/',
-					'label' => __( 'Contact', 'site-blocks' ),
+					'path'  => '/safeguard-solutions/',
+					'label' => __( 'Safeguard Solutions', 'site-blocks' ),
 				),
 			),
+		),
+		array(
+			'path'  => '/contact/',
+			'label' => __( 'Contact', 'site-blocks' ),
 		),
 	);
 }
@@ -265,7 +282,13 @@ function site_blocks_render_safeguard_header(): void {
 										<span class="sg-header__nav-caret" aria-hidden="true"></span>
 									</a>
 									<?php if ( ! empty( $item['children'] ) && is_array( $item['children'] ) ) : ?>
-										<ul class="sg-header__nav-menu sg-header__nav-menu--mega" id="<?php echo esc_attr( $group_id ); ?>" role="list">
+										<?php
+										$menu_class = 'sg-header__nav-menu';
+										if ( ! empty( $item['mega'] ) ) {
+											$menu_class .= ' sg-header__nav-menu--mega';
+										}
+										?>
+										<ul class="<?php echo esc_attr( $menu_class ); ?>" id="<?php echo esc_attr( $group_id ); ?>" role="list">
 											<?php foreach ( $item['children'] as $child ) : ?>
 												<li>
 													<?php site_blocks_render_safeguard_nav_link( $child, 'sg-header__nav-menu-link' ); ?>
@@ -294,8 +317,8 @@ function site_blocks_render_safeguard_header(): void {
 				</button>
 				<a class="sg-btn sg-btn--primary sg-header__quote-mobile" href="<?php echo esc_url( $quote ); ?>"><?php esc_html_e( 'Quote', 'site-blocks' ); ?></a>
 				<a class="sg-btn sg-btn--primary sg-header__quote" href="<?php echo esc_url( $quote ); ?>">
-					<span class="sg-header__quote-long"><?php esc_html_e( 'Get an Instant Quote', 'site-blocks' ); ?></span>
-					<span class="sg-header__quote-short" aria-hidden="true"><?php esc_html_e( 'Get a Quote', 'site-blocks' ); ?></span>
+					<span class="sg-header__quote-long"><?php esc_html_e( 'Get a Quote', 'site-blocks' ); ?></span>
+					<span class="sg-header__quote-short" aria-hidden="true"><?php esc_html_e( 'Quote', 'site-blocks' ); ?></span>
 				</a>
 			</div>
 		</div>
@@ -356,6 +379,8 @@ function site_blocks_uses_safeguard_chrome(): bool {
 		|| is_page( 'physical-security' )
 		|| is_page( 'static-guards' )
 		|| is_page( 'mobile-patrols' )
+		|| is_page( 'electronic-security' )
+		|| is_page( 'manpower' )
 		|| is_page( 'monitoring' )
 		|| is_page( 'back-to-base' )
 		|| is_page( 'virtual-patrol' )

@@ -5,11 +5,21 @@ body.safeguard-monitoring-page .entry-content ul.sg-monitoring-services__grid,
 body.safeguard-monitoring-page .entry-content ul.sg-hub-services__grid,
 body.safeguard-monitoring-page .entry-content ul.sg-monitoring-paths__grid,
 body.safeguard-monitoring-page .entry-content ul.sg-monitoring-features__list,
+body.safeguard-monitoring-page .entry-content ul.sg-ac-options__cta-checks,
+body.safeguard-monitoring-page .entry-content .sg-ac-install__grid,
+body.safeguard-monitoring-page .entry-content ol.sg-alarm-steps__list {
+  padding: 0;
+  list-style: none;
+}
+
+body.safeguard-monitoring-page .entry-content ul.sg-ac-trust-strip__list,
+body.safeguard-monitoring-page .entry-content ul.sg-monitoring-services__grid,
+body.safeguard-monitoring-page .entry-content ul.sg-hub-services__grid,
+body.safeguard-monitoring-page .entry-content ul.sg-monitoring-paths__grid,
+body.safeguard-monitoring-page .entry-content ul.sg-monitoring-features__list,
 body.safeguard-monitoring-page .entry-content .sg-ac-install__grid,
 body.safeguard-monitoring-page .entry-content ol.sg-alarm-steps__list {
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 body.safeguard-monitoring-page .entry-content ul.sg-ac-trust-strip__list > li,
@@ -17,6 +27,7 @@ body.safeguard-monitoring-page .entry-content ul.sg-monitoring-services__grid > 
 body.safeguard-monitoring-page .entry-content ul.sg-hub-services__grid > li,
 body.safeguard-monitoring-page .entry-content ul.sg-monitoring-paths__grid > article,
 body.safeguard-monitoring-page .entry-content ul.sg-monitoring-features__list > li,
+body.safeguard-monitoring-page .entry-content ul.sg-ac-options__cta-checks > li,
 body.safeguard-monitoring-page .entry-content .sg-ac-install__grid > article,
 body.safeguard-monitoring-page .entry-content ol.sg-alarm-steps__list > li {
   margin: 0;
@@ -87,30 +98,24 @@ body.safeguard-monitoring-page .entry-content ol.sg-alarm-steps__list > li {
   }
 }
 
-/* Split photos */
+/* Split photos — cover fill, no letterbox frame */
 body.safeguard-monitoring-page .sg-ac-split__visual {
-  aspect-ratio: auto;
+  aspect-ratio: 4 / 3;
+  align-self: start;
+  background: transparent;
+  display: block;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
 body.safeguard-monitoring-page .sg-ac-split__visual img,
 body.safeguard-monitoring-page .sg-ac-split__visual .sg-cctv-media-placeholder {
   width: 100%;
-  height: auto;
-  max-height: clamp(20rem, 44vw, 34rem);
-  object-fit: contain;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
   object-position: center center;
-}
-
-@media (min-width: 900px) {
-  body.safeguard-monitoring-page .sg-ac-split__visual img,
-  body.safeguard-monitoring-page .sg-ac-split__visual .sg-cctv-media-placeholder {
-    max-height: min(34rem, 72vh);
-  }
+  display: block;
 }
 
 /* Cross-link line after integration splits (inside white band) */

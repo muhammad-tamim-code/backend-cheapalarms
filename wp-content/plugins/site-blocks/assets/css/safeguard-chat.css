@@ -7,7 +7,7 @@
   --sg-chat-ink: var(--sg-ink, #1E2A33);
   --sg-chat-muted: var(--sg-muted, #5A6B77);
   --sg-chat-line: var(--sg-line, #D7E3EC);
-  --sg-chat-wash: var(--sg-blue-wash, #EAF3F9);
+  --sg-chat-wash: var(--sg-blue-wash, #ffffff);
   --sg-chat-font-head: var(--sg-font-head, "Chakra Petch", ui-sans-serif, sans-serif);
   --sg-chat-font-body: var(--sg-font-body, "Inter", ui-sans-serif, system-ui, sans-serif);
   --sg-chat-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -159,6 +159,38 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
   padding: 1rem 1rem 0.85rem;
   border-bottom: 1px solid var(--sg-chat-line);
   background: var(--sg-chat-wash);
+}
+
+.sg-chat__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.sg-chat__new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--sg-chat-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--sg-chat-navy);
+  font-family: var(--sg-chat-font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sg-chat__new:hover,
+.sg-chat__new:focus-visible {
+  border-color: var(--sg-chat-blue);
+  color: var(--sg-chat-blue);
+  background: #fff;
 }
 
 .sg-chat__eyebrow {
@@ -375,16 +407,37 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.85rem;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.9rem;
   border: 1px solid var(--sg-chat-line);
   background: var(--sg-chat-wash);
+}
+
+.sg-chat__handoff-form {
+  background: #fff;
+  border-color: #c7d9e8;
+  box-shadow: 0 1px 0 rgba(15, 45, 74, 0.04);
+}
+
+.sg-chat__handoff-title {
+  margin: 0;
+  font-family: var(--sg-chat-font-head);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sg-chat-navy);
 }
 
 .sg-chat__field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sg-chat__label {
@@ -396,13 +449,18 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
 }
 
 .sg-chat__field-input {
-  min-height: 2.25rem;
-  padding: 0.5rem 0.65rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--sg-chat-line);
+  border-radius: 0;
   background: #fff;
   font-family: var(--sg-chat-font-body);
   font-size: 0.875rem;
+  line-height: 1.3;
   color: var(--sg-chat-ink);
+  appearance: none;
 }
 
 .sg-chat__field-input:focus {
@@ -412,15 +470,18 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
 }
 
 .sg-chat__lead-submit {
-  min-height: 2.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
   margin-top: 0.15rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   border: 0;
   background: var(--sg-chat-orange);
   color: #fff;
   font-family: var(--sg-chat-font-head);
   font-size: 0.8125rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
 
@@ -431,6 +492,12 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
 .sg-chat__lead-submit:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.sg-chat__agent-escape {
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--sg-chat-line);
 }
 
 .sg-chat__msg {
@@ -446,6 +513,22 @@ body:has(.sg-mobile-bar:not([aria-hidden="true"])) .sg-chat {
   align-self: flex-start;
   background: var(--sg-chat-wash);
   color: var(--sg-chat-ink);
+}
+
+.sg-chat__msg--agent {
+  align-self: flex-start;
+  background: #e8f5e9;
+  color: var(--sg-chat-ink);
+  border: 1px solid #a5d6a7;
+}
+
+.sg-chat__msg--system {
+  align-self: center;
+  background: transparent;
+  color: var(--sg-chat-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+  padding: 0.25rem 0.5rem;
 }
 
 .sg-chat__msg--user {

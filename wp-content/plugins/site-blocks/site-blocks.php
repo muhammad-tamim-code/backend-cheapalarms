@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Site Blocks
  * Description: Server-rendered Gutenberg blocks, contact page, and security packages.
- * Version: 1.43.7
+ * Version: 1.46.44
  * Requires at least: 6.3
  * Requires PHP: 7.4
  * Author: Site Developer
@@ -17,12 +17,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SITE_BLOCKS_VERSION', '1.43.7' );
+define( 'SITE_BLOCKS_VERSION', '1.46.98' );
 define( 'SITE_BLOCKS_FILE', __FILE__ );
 define( 'SITE_BLOCKS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SITE_BLOCKS_URL', plugin_dir_url( __FILE__ ) );
 
 require_once SITE_BLOCKS_DIR . 'inc/asset-helpers.php';
+require_once SITE_BLOCKS_DIR . 'inc/safeguard-media-library.php';
 require_once SITE_BLOCKS_DIR . 'inc/lucide-icons.php';
 require_once SITE_BLOCKS_DIR . 'inc/register-blocks.php';
 require_once SITE_BLOCKS_DIR . 'inc/setup-pages.php';
@@ -41,6 +42,8 @@ require_once SITE_BLOCKS_DIR . 'inc/cctv-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/intercom-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/access-control-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/physical-security-setup.php';
+require_once SITE_BLOCKS_DIR . 'inc/electronic-security-setup.php';
+require_once SITE_BLOCKS_DIR . 'inc/manpower-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/monitoring-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/enterprise-setup.php';
 require_once SITE_BLOCKS_DIR . 'inc/cpt-enterprise-insight.php';
@@ -100,6 +103,8 @@ function site_blocks_activate(): void {
 	site_blocks_create_intercoms_redirect_page();
 	site_blocks_create_access_control_page();
 	site_blocks_create_physical_security_pages();
+	site_blocks_create_electronic_security_pages();
+	site_blocks_create_manpower_pages();
 	site_blocks_create_monitoring_pages();
 	site_blocks_create_enterprise_pages();
 	site_blocks_register_enterprise_insight_cpt();
@@ -113,7 +118,7 @@ register_activation_hook( __FILE__, 'site_blocks_activate' );
  * Refresh Kadence disable flags on existing Safeguard pages.
  */
 function site_blocks_refresh_safeguard_page_meta(): void {
-	$slugs = array( 'home', 'contact', 'alarm-systems', 'ajax-alarm-systems', 'ajax-calculator', 'cctv-security-cameras', 'intercom-systems', 'access-control', 'physical-security', 'physical-security/static-guards', 'physical-security/mobile-patrols', 'monitoring', 'monitoring/back-to-base', 'monitoring/virtual-patrol', 'monitoring/solar-cameras-monitoring', 'enterprise-solutions', 'safeguard-solutions' );
+	$slugs = array( 'home', 'contact', 'alarm-systems', 'ajax-alarm-systems', 'ajax-calculator', 'cctv-security-cameras', 'intercom-systems', 'access-control', 'physical-security', 'physical-security/static-guards', 'physical-security/mobile-patrols', 'electronic-security', 'manpower', 'monitoring', 'monitoring/back-to-base', 'monitoring/virtual-patrol', 'monitoring/solar-cameras-monitoring', 'enterprise-solutions', 'safeguard-solutions' );
 
 	foreach ( $slugs as $slug ) {
 		$page = get_page_by_path( $slug );
@@ -168,6 +173,14 @@ function site_blocks_maybe_upgrade(): void {
 
 	if ( function_exists( 'site_blocks_create_physical_security_pages' ) ) {
 		site_blocks_create_physical_security_pages();
+	}
+
+	if ( function_exists( 'site_blocks_create_electronic_security_pages' ) ) {
+		site_blocks_create_electronic_security_pages();
+	}
+
+	if ( function_exists( 'site_blocks_create_manpower_pages' ) ) {
+		site_blocks_create_manpower_pages();
 	}
 
 	if ( function_exists( 'site_blocks_create_monitoring_pages' ) ) {
